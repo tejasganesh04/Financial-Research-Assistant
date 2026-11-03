@@ -1,0 +1,135 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "financial-research-assistant"
+version = "0.3.5"
+description = "Financial document question answering with a React interface and FastAPI backend."
+readme = "README.md"
+license = "MIT"
+license-files = []
+requires-python = ">=3.11,<3.14"
+maintainers = [{ name = "Tejas Ganesh" }]
+keywords = ["rag", "langgraph", "finance", "financebench", "llm", "agent", "rbac", "hitl"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "httpx>=0.28,<1.0",
+    "python-dotenv>=1.0,<2.0",
+    "langgraph>=0.6,<1.0",
+    "langchain>=0.3,<1.0",
+    "langchain-core>=0.3,<1.0",
+    "langchain-openai>=0.3,<1.0",
+    "langchain-groq>=0.2,<1.0",
+    "langchain-anthropic>=0.3,<1.0",
+
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.34,<1.0",
+    "sse-starlette>=2.0,<3.0",
+
+    "qdrant-client>=1.13,<1.15",
+    "fastembed>=0.4,<1.0",
+
+    "sentence-transformers>=3.0,<5.0",
+
+
+    "openai>=1.60,<3.0",
+    "voyageai>=0.3,<1.0",
+
+    "PyJWT>=2.9,<3.0",
+    "python-jose[cryptography]>=3.3,<4.0",
+
+    "presidio-analyzer>=2.2,<3.0",
+    "presidio-anonymizer>=2.2,<3.0",
+    "llm-guard[onnxruntime]>=0.3,<1.0",
+
+    "langgraph-checkpoint-postgres>=2.0,<3.0",
+    "psycopg[binary]>=3.2,<4.0",
+
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+
+    "langsmith>=0.4,<1.0",
+
+    "redis>=5.0,<6.0",
+
+
+    "pyarrow>=15.0,<25.0",
+    "huggingface_hub>=0.26,<1.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.24,<1.0",
+    "pytest-timeout>=2.3,<3.0",
+]
+dev = [
+    "ruff>=0.8,<1.0",
+    "pre-commit>=4.0,<5.0",
+    "build>=1.2,<2.0",
+    "financial-research-assistant[test]",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/",
+  "frontend/",
+  "scripts/",
+  "docs/",
+  "tests/",
+  "pyproject.toml",
+  "README.md",
+  "LOCAL_SETUP.md",
+  "DATA_SOURCES.md",
+  "Makefile",
+  "Dockerfile.local",
+  "compose.minimal.yml",
+  "compose.local.yml",
+  ".env.example",
+]
+exclude = [
+  "**/node_modules/**",
+  "frontend/dist/**",
+  "frontend/test-results/**",
+  "frontend/playwright-report/**",
+  "to_be_gone/**",
+  "data/raw/**",
+  "data/models/**",
+  "data/training/**",
+  "docs/required/**",
+  "data/sample/*.pdf",
+  "logs/**",
+  "cost_logs/**",
+  "**/__pycache__/**",
+  "**/*.pyc",
+  "**/.DS_Store",
+]
+
+[tool.ruff]
+extend-exclude = ["to_be_gone"]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+norecursedirs = ["to_be_gone", ".git", ".venv", "node_modules", "build", "dist"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = ["-W", "ignore:Type google.protobuf.pyext._message:DeprecationWarning"]

@@ -1,0 +1,85 @@
+%% Actual registered nodes and edges from src/graph/builder.py.
+%% Two pairs of edges with the same destination share one visible arrow.
+%% See ../graph-workflow.md for exact conditions and persistence/SSE context.
+flowchart TB
+  subgraph intake["01  ·  UNDERSTAND THE QUESTION"]
+    direction TB
+    start_node(["START"])
+    rbac_gate["rbac_gate<br/>Set allowed document types"]
+    guardrails["guardrails<br/>Injection checks · follow-up context"]
+    metadata_extractor["metadata_extractor<br/>Small model + metadata catalog<br/>Select company/year filters"]
+    router["router<br/>Classify intent and complexity"]
+  end
+  subgraph evidence["02  ·  GATHER RELEVANT EVIDENCE"]
+    direction TB
+    retrieval["retrieval<br/>Hybrid dense + BM25 search<br/>Apply access and entity filters"]
+    reranker["reranker<br/>Reorder candidate passages"]
+    grader["grader<br/>Keep relevant evidence"]
+    query_rewriter["query_rewriter<br/>Refine query; increment retrieval counter"]
+    research_agent["research_agent<br/>Decompose → gather → assess → synthesize<br/>Retrieval / reranking / grading happen inside"]
+  end
+  subgraph answer["03  ·  DRAFT, VERIFY AND AUTHORIZE RELEASE"]
+    direction TB
+    generator["generator<br/>Draft from evidence + recent context"]
+    hallucination_checker["hallucination_checker<br/>Check grounding; update retry counter"]
+    hitl_gate["hitl_gate<br/>Expanded access: interrupt for Admin<br/>Resume this same node after a decision"]
+    response_formatter["response_formatter<br/>Complete answer + source references<br/>Add warning when verification is unresolved"]
+  end
+  subgraph exits["OTHER COMPLETED RESPONSES"]
+    direction LR
+    clarification_response["clarification_response<br/>Ask the user to clarify"]
+    out_of_scope_response["out_of_scope_response<br/>Return the scope limitation"]
+    no_info_response["no_info_response<br/>No relevant information<br/>within the permitted search scope"]
+    blocked_response["blocked_response<br/>Safety refusal OR reviewer rejection<br/>Also handles unavailable approval storage"]
+  end
+  end_node(["END"])
+
+  start_node --> rbac_gate
+  rbac_gate --> guardrails
+  guardrails -->|"Clean input"| metadata_extractor
+  guardrails -->|"Safety check blocked"| blocked_response
+  metadata_extractor -->|"Metadata available / unrestricted"| router
+  metadata_extractor -->|"Requested metadata unavailable"| no_info_response
+  router -->|"Simple lookup"| retrieval
+  router -->|"Research required"| research_agent
+  router -->|"Clarification / unknown intent"| clarification_response
+  router -->|"Out of scope"| out_of_scope_response
+  retrieval --> reranker
+  reranker --> grader
+  grader -->|"Enough relevant evidence"| generator
+  grader -->|"Too little evidence;<br/>retries remain"| query_rewriter
+  query_rewriter -->|"Retry retrieval"| retrieval
+  grader -->|"Too little evidence;<br/>retry limit reached"| no_info_response
+  research_agent -->|"Evidence collected"| generator
+  research_agent -->|"No relevant evidence"| no_info_response
+  generator --> hallucination_checker
+  hallucination_checker -->|"Check not passed;<br/>retries remain"| generator
+  hallucination_checker -->|"Passed OR retries exhausted"| hitl_gate
+  hitl_gate -->|"No review needed OR approved"| response_formatter
+  hitl_gate -->|"Rejected / review unavailable"| blocked_response
+  response_formatter --> end_node
+  blocked_response --> end_node
+  clarification_response --> end_node
+  out_of_scope_response --> end_node
+  no_info_response --> end_node
+
+  classDef boundary fill:#132D44,stroke:#132D44,color:#FFFFFF,stroke-width:2px;
+  classDef intakeNode fill:#ECF2FC,stroke:#8AA8D1,color:#17334D,stroke-width:1.6px;
+  classDef evidenceNode fill:#E5F5F0,stroke:#52A28E,color:#123D35,stroke-width:1.6px;
+  classDef researchNode fill:#FFF3D8,stroke:#D5A447,color:#654B18,stroke-width:1.8px;
+  classDef answerNode fill:#E7F0FC,stroke:#6699CE,color:#163C63,stroke-width:1.7px;
+  classDef approvalNode fill:#F0E8FC,stroke:#9C70CD,color:#4B2C6C,stroke-width:2.3px;
+  classDef exitNode fill:#F4F6F8,stroke:#A6B2BE,color:#3B4B5B,stroke-width:1.5px;
+  classDef blockedNode fill:#FFF0EC,stroke:#CF8B78,color:#753E2D,stroke-width:1.7px;
+  class start_node,end_node boundary;
+  class rbac_gate,guardrails,metadata_extractor,router intakeNode;
+  class retrieval,reranker,grader,query_rewriter evidenceNode;
+  class research_agent researchNode;
+  class generator,hallucination_checker,response_formatter answerNode;
+  class hitl_gate approvalNode;
+  class clarification_response,out_of_scope_response,no_info_response exitNode;
+  class blocked_response blockedNode;
+  style intake fill:#F8FAFE,stroke:#D7E1EE,stroke-width:1px;
+  style evidence fill:#F7FBF9,stroke:#D4E7DF,stroke-width:1px;
+  style answer fill:#F8FAFD,stroke:#D6E2EF,stroke-width:1px;
+  style exits fill:#FBFAF8,stroke:#E3DED6,stroke-width:1px;

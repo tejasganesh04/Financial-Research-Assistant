@@ -1,0 +1,64 @@
+%% Internal Python flow of research_agent_node(), not another compiled LangGraph.
+%% Dashed links point to the expanded helper, not additional graph edges.
+%% Current model names assume FORCE_GROQ_ONLY=true.
+flowchart TB
+  entry["router selects research_required<br/>Question, permissions and metadata already in state"]
+  subgraph research["ONE LANGGRAPH NODE: research_agent_node(state)"]
+    direction TB
+    input{"Working question exists?"}
+    plan["01 PLAN: _decompose()<br/>GPT-OSS 20B → qualifiers, required_quantities, sub_questions<br/>Prompt asks for 2–5; code keeps at most 5"]
+    gather["02 GATHER: initial questions, sequentially<br/>Run shared helper per question<br/>Merge 0–8 accepted chunks into chunks_by_id; deduplicate"]
+    check["03 CHECK: _judge_sufficiency()<br/>GPT-OSS 20B sees original question + plan<br/>Source/page + first 400 characters of each unique chunk"]
+    stop{"decision == sufficient<br/>OR no follow_up_question?"}
+    follow["04 FOLLOW UP: run the same helper<br/>Merge new unique chunks; retain earlier evidence<br/>No new decomposition or graph query-rewriter loop"]
+    budget{"Another round remains?<br/>At most 2 check/follow-up rounds"}
+    evidence{"Any accepted chunks?"}
+    synth["05 SYNTHESIZE: _synthesize()<br/>GPT-OSS 120B sees question + plan + FULL unique chunks<br/>Organize values, units, citations, gaps and arithmetic<br/>agent_synthesis is findings, not the released answer"]
+    empty["RETURN no evidence<br/>relevant_chunks=[]; agent_synthesis=None<br/>Normal empty-evidence path also returns diagnostics"]
+    result["06 RETURN shared state update<br/>relevant_chunks · grading_results · agent_synthesis<br/>agent_turns_used · agent_sub_questions"]
+    input -->|Yes| plan
+    input -->|No| empty
+    plan --> gather
+    gather --> check
+    check --> stop
+    stop -->|Yes: leave sufficiency loop| evidence
+    stop -->|No: follow-up supplied| follow
+    follow --> budget
+    budget -->|Yes: check enlarged collection| check
+    budget -->|No: no extra check after last search| evidence
+    evidence -->|No| empty
+    evidence -->|Yes| synth
+    synth --> result
+  end
+  subgraph helper["EXPANDED HELPER: _retrieve_and_grade_for_subq(state, search_question)"]
+    direction TB
+    copy["Copy parent state<br/>retrieval_query = sub-question / follow-up<br/>Keep original contextualized_query and all access/company/year filters"]
+    retrieve["retrieval_node()<br/>Voyage dense embedding + BM25 → Qdrant<br/>Search against sub-question; up to 50 candidates"]
+    rerank["reranker_node()<br/>Local BGE scores against sub-question<br/>Keep up to 8"]
+    grade["grader_node()<br/>GPT-OSS 20B grades against ORIGINAL question<br/>Useful partial evidence can pass"]
+    accepted["Return 0–8 relevant chunks to calling loop"]
+    copy --> retrieve
+    retrieve -->|Candidates exist| rerank
+    retrieve -->|Empty: return early| accepted
+    rerank -->|Candidates exist| grade
+    rerank -->|Empty: return early| accepted
+    grade --> accepted
+  end
+  entry --> input
+  gather -.->|Helper expanded here| copy
+  follow -.->|Same helper| copy
+  empty --> noinfo["no_info_response → END"]
+  result --> generator["Separate generator node<br/>Synthesis + raw chunks + recent context → draft"]
+  generator --> checker["hallucination_checker<br/>Ground against RAW chunks<br/>Then shared retry / approval / release routes"]
+  note["Sufficient may mean partial evidence is useful.<br/>Default bounds: ≤7 searches; ≤56 accepted chunks before deduplication.<br/>No global final top-8 cap; MAX_LLM_TURNS is unused.<br/>Helpers are ordinary functions, not separately checkpointed nodes.<br/>Provider limits abort via API error handling, not a normal graph edge."]
+  research ~~~ note
+  classDef work fill:#EAF3FC,stroke:#477BAF,color:#17364B;
+  classDef search fill:#E8F5F0,stroke:#368B76,color:#17364B;
+  classDef decision fill:#FFF7E4,stroke:#B6842B,color:#17364B;
+  classDef exit fill:#FFF2EE,stroke:#B26D5B,color:#17364B;
+  classDef context fill:#F3F6F8,stroke:#A9BAC6,color:#17364B;
+  class plan,check,synth,result,generator,checker work;
+  class gather,follow,copy,retrieve,rerank,grade,accepted search;
+  class input,stop,budget,evidence decision;
+  class empty,noinfo exit;
+  class entry,note context;
