@@ -1,0 +1,50 @@
+# Local archive and private settings
+/to_be_gone/
+/docs/required/
+/notices/
+/run
+.env
+.env.*
+!.env.example
+.claude/
+.codex/
+.agents/
+*.pem
+*.key
+*.p12
+
+# Python environments and generated files
+node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Downloaded data, local models, and runtime records
+data/raw/
+data/models/
+data/training/
+data/sample/*.pdf
+logs/
+cost_logs/
+qdrant_data/
+pg_data/
+Docker-backup-*.raw
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+

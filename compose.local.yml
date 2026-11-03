@@ -1,0 +1,31 @@
+# Local development: mount the application source and preserve local service data.
+# Include after compose.minimal.yml; keep the other local project's Redis port free.
+services:
+  api:
+    image: financial-research-assistant-api:local
+    build: !override
+      context: .
+      dockerfile: Dockerfile.local
+    environment:
+      REQUEST_TRACE_DIR: /app/logs/traces
+      # The published image's build SHA does not describe this mounted checkout.
+      GIT_SHA: unknown
+      # Use standard HTTPS downloads; the Xet transfer stalled on this network.
+      HF_HUB_DISABLE_XET: "1"
+      HF_HUB_DOWNLOAD_TIMEOUT: "60"
+    ports: !override
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./logs/traces:/app/logs/traces
+      - ./src:/app/src:ro
+      - ./scripts:/app/scripts:ro
+  qdrant:
+    ports: !override
+      - "127.0.0.1:6333:6333"
+      - "127.0.0.1:6334:6334"
+  postgres:
+    ports: !override
+      - "127.0.0.1:5432:5432"
+  redis:
+    ports: !override
+      - "127.0.0.1:16380:6379"

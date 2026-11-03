@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 2660" width="1900" height="2660" role="img" aria-labelledby="title desc">
+<title id="title">Financial Research Assistant — actual LangGraph workflow</title><desc id="desc">All 17 registered graph nodes, both retry loops, the research branch, four terminal responses, and Admin approval. Connections checked against builder.py and the compiled graph. API work, persistence and SSE are described separately, not drawn as graph nodes.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="context-stroke"/></marker></defs>
+<rect x="0" y="0" width="1900" height="2660" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<rect x="0" y="0" width="1900" height="166" rx="0" fill="#102B40" stroke="none" stroke-width="1.7"/>
+<text x="66" y="48" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" fill="#9BD8CA" text-anchor="start"><tspan x="66" dy="0">FINANCIAL RESEARCH ASSISTANT</tspan></text>
+<text x="66" y="101" font-family="Arial, Helvetica, sans-serif" font-size="43" font-weight="700" fill="#FFFFFF" text-anchor="start"><tspan x="66" dy="0">The graph, from question to release</tspan></text>
+<text x="66" y="137" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="400" fill="#D0DFE8" text-anchor="start"><tspan x="66" dy="0">Actual node names · every branch · both retry loops · Admin review</tspan></text>
+<text x="1830" y="77" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#FFFFFF" text-anchor="end"><tspan x="1830" dy="0">17 NODES</tspan></text>
+<text x="1830" y="112" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="400" fill="#C4D6E2" text-anchor="end"><tspan x="1830" dy="0">+ START / END</tspan></text>
+<rect x="62" y="194" width="1776" height="74" rx="12" fill="#F1F5F8" stroke="none" stroke-width="1.7"/>
+<text x="86" y="224" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#33546B" text-anchor="start"><tspan x="86" dy="0">BEFORE START · FASTAPI</tspan></text>
+<text x="86" y="251" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="400" fill="#344D60" text-anchor="start"><tspan x="86" dy="0">JWT + conversation ownership → parse /escalate → redact input → prepare state, config and request trace</tspan></text>
+<rect x="46" y="352" width="1808" height="663" rx="20" fill="#F7F9FD" stroke="none" stroke-width="1.7"/>
+<text x="70" y="384" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="70" dy="0">01</tspan></text>
+<text x="116" y="384" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="116" dy="0">UNDERSTAND THE QUESTION</tspan></text>
+<rect x="46" y="1082" width="1808" height="540" rx="20" fill="#F2F9F6" stroke="none" stroke-width="1.7"/>
+<text x="70" y="1114" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="70" dy="0">02</tspan></text>
+<text x="116" y="1114" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="116" dy="0">GATHER EVIDENCE</tspan></text>
+<rect x="46" y="1678" width="1808" height="843" rx="20" fill="#F7F8FC" stroke="none" stroke-width="1.7"/>
+<text x="70" y="1710" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="70" dy="0">03</tspan></text>
+<text x="116" y="1710" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="116" dy="0">DRAFT, VERIFY, RELEASE</tspan></text>
+<g class="graph-edge" data-source="__start__" data-target="rbac_gate" data-routes=""><title>__start__ → rbac_gate: </title><path d="M950 340 V405" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 340 V405" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="rbac_gate" data-target="guardrails" data-routes=""><title>rbac_gate → guardrails: </title><path d="M950 505 V565" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 505 V565" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="guardrails" data-target="metadata_extractor" data-routes="clean"><title>guardrails → metadata_extractor: clean</title><path d="M950 675 V745" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 675 V745" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="guardrails" data-target="blocked_response" data-routes="blocked"><title>guardrails → blocked_response: blocked</title><path d="M760 620 H152 V2406 H242" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M760 620 H152 V2406 H242" fill="none" stroke="#B87965" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="metadata_extractor" data-target="router" data-routes="continue"><title>metadata_extractor → router: continue</title><path d="M950 855 V890" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 855 V890" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="router" data-target="retrieval" data-routes="retrieval"><title>router → retrieval: retrieval</title><path d="M950 990 V1145" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 990 V1145" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="router" data-target="research_agent" data-routes="research_required"><title>router → research_agent: research_required</title><path d="M1140 940 H1545 V1145" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M1140 940 H1545 V1145" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="router" data-target="clarification_response" data-routes="clarification"><title>router → clarification_response: clarification</title><path d="M760 930 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M760 930 H602" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="router" data-target="out_of_scope_response" data-routes="out_of_scope"><title>router → out_of_scope_response: out_of_scope</title><path d="M760 967 H678 V1060 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M760 967 H678 V1060 H602" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="retrieval" data-target="reranker" data-routes=""><title>retrieval → reranker: </title><path d="M950 1260 V1320" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 1260 V1320" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="reranker" data-target="grader" data-routes=""><title>reranker → grader: </title><path d="M950 1410 V1480" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 1410 V1480" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="grader" data-target="generator" data-routes="sufficient"><title>grader → generator: sufficient</title><path d="M950 1580 V1735" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 1580 V1735" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="grader" data-target="query_rewriter" data-routes="retry"><title>grader → query_rewriter: retry</title><path d="M760 1530 H437 V1450" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M760 1530 H437 V1450" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="query_rewriter" data-target="retrieval" data-routes=""><title>query_rewriter → retrieval: </title><path d="M437 1330 V1202 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M437 1330 V1202 H760" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="grader" data-target="no_info_response" data-routes="no_info"><title>grader → no_info_response: no_info</title><path d="M1140 1545 H1260 V1802 H1330" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M1140 1545 H1260 V1802 H1330" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="research_agent" data-target="generator" data-routes="generator"><title>research_agent → generator: generator</title><path d="M1330 1270 H1202 V1790 H1140" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M1330 1270 H1202 V1790 H1140" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="research_agent" data-target="no_info_response" data-routes="no_info_response"><title>research_agent → no_info_response: no_info_response</title><path d="M1545 1375 V1735" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M1545 1375 V1735" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="generator" data-target="hallucination_checker" data-routes=""><title>generator → hallucination_checker: </title><path d="M950 1845 V1920" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 1845 V1920" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="hallucination_checker" data-target="generator" data-routes="retry"><title>hallucination_checker → generator: retry</title><path d="M760 1975 H672 V1790 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M760 1975 H672 V1790 H760" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="hallucination_checker" data-target="hitl_gate" data-routes="grounded|disclaimer"><title>hallucination_checker → hitl_gate: grounded / disclaimer</title><path d="M950 2030 V2150" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 2030 V2150" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="hitl_gate" data-target="response_formatter" data-routes="no_approval_needed|approved"><title>hitl_gate → response_formatter: no_approval_needed / approved</title><path d="M950 2324 V2400" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 2324 V2400" fill="none" stroke="#8760B2" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="hitl_gate" data-target="blocked_response" data-routes="rejected"><title>hitl_gate → blocked_response: rejected</title><path d="M760 2228 H672 V2406 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M760 2228 H672 V2406 H602" fill="none" stroke="#8760B2" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="response_formatter" data-target="__end__" data-routes=""><title>response_formatter → __end__: </title><path d="M950 2515 V2580" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M950 2515 V2580" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="blocked_response" data-target="__end__" data-routes=""><title>blocked_response → __end__: </title><path d="M242 2440 H80 V2604 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M242 2440 H80 V2604 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="clarification_response" data-target="__end__" data-routes=""><title>clarification_response → __end__: </title><path d="M242 940 H80 V2604 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M242 940 H80 V2604 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="out_of_scope_response" data-target="__end__" data-routes=""><title>out_of_scope_response → __end__: </title><path d="M242 1060 H80 V2604 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M242 1060 H80 V2604 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<g class="graph-edge" data-source="no_info_response" data-target="__end__" data-routes=""><title>no_info_response → __end__: </title><path d="M1760 1802 H1810 V2604 H1026" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M1760 1802 H1810 V2604 H1026" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<rect x="963" y="696" width="70.0" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="970" y="716" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="970" dy="0">Clean</tspan></text>
+<rect x="161" y="696" width="145.60000000000002" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="168" y="716" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="168" dy="0">Safety check</tspan><tspan x="168" dy="25">blocked</tspan></text>
+<rect x="967" y="1030" width="156.4" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="974" y="1050" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="974" dy="0">Simple lookup</tspan></text>
+<rect x="1218" y="902" width="199.60000000000002" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1225" y="922" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1225" dy="0">Research required</tspan></text>
+<rect x="603" y="838" width="178.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="610" y="858" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="610" dy="0">Clarification /</tspan><tspan x="610" dy="25">unknown intent</tspan></text>
+<rect x="627" y="1013" width="145.60000000000002" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="634" y="1033" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="634" dy="0">Out of scope</tspan></text>
+<rect x="966" y="1618" width="178.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="973" y="1638" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="973" dy="0">Enough relevant</tspan><tspan x="973" dy="25">evidence</tspan></text>
+<rect x="461" y="1478" width="232.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="468" y="1498" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="468" dy="0">Too little evidence;</tspan><tspan x="468" dy="25">retries remain</tspan></text>
+<rect x="456" y="1162" width="178.0" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="463" y="1182" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="463" dy="0">Retry retrieval</tspan></text>
+<rect x="1275" y="1616" width="232.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1282" y="1636" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1282" dy="0">Too little evidence;</tspan><tspan x="1282" dy="25">retry limit reached</tspan></text>
+<rect x="1211" y="1403" width="113.2" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1218" y="1423" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1218" dy="0">Evidence</tspan><tspan x="1218" dy="25">collected</tspan></text>
+<rect x="1563" y="1518" width="134.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1570" y="1538" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1570" dy="0">No relevant</tspan><tspan x="1570" dy="25">evidence</tspan></text>
+<rect x="428" y="1849" width="199.60000000000002" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="435" y="1869" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="435" dy="0">Check not passed;</tspan><tspan x="435" dy="25">retries remain</tspan></text>
+<rect x="968" y="2061" width="210.4" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="2081" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Passed OR</tspan><tspan x="975" dy="25">retries exhausted</tspan></text>
+<rect x="968" y="2330" width="188.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="2350" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">No review needed</tspan><tspan x="975" dy="25">OR approved</tspan></text>
+<rect x="414" y="2248" width="210.4" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="421" y="2268" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="421" dy="0">Rejected /</tspan><tspan x="421" dy="25">review unavailable</tspan></text>
+<g class="graph-edge" data-source="metadata_extractor" data-target="no_info_response" data-routes="unavailable"><title>metadata_extractor → no_info_response: unavailable</title><path d="M1140 792 H1784 V1650 H1690 V1735" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/><path d="M1140 792 H1784 V1650 H1690 V1735" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/></g>
+<text x="1250" y="773" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#405D71">Requested metadata unavailable</text>
+<text x="975" y="878" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#405D71">Continue</text>
+<g class="graph-node" data-node="__start__"><title>__start__</title>
+<rect x="874" y="298" width="152" height="42" rx="22" fill="#102B40" stroke="#102B40" stroke-width="1.7"/>
+<text x="950.0" y="326.0" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle"><tspan x="950.0" dy="0">START</tspan></text>
+</g>
+<g class="graph-node" data-node="rbac_gate"><title>rbac_gate</title>
+<rect x="760" y="405" width="380" height="100" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
+<rect x="760" y="405" width="7" height="100" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
+<text x="782" y="437" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">rbac_gate</tspan></text>
+<text x="782" y="470" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Set allowed document types</tspan><tspan x="782" dy="29">from role + explicit escalation</tspan></text>
+</g>
+<g class="graph-node" data-node="guardrails"><title>guardrails</title>
+<rect x="760" y="565" width="380" height="110" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
+<rect x="760" y="565" width="7" height="110" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
+<text x="782" y="597" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">guardrails</tspan></text>
+<text x="782" y="630" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Prompt injection checks</tspan><tspan x="782" dy="29">Resolve follow-up context</tspan></text>
+</g>
+<g class="graph-node" data-node="metadata_extractor"><title>metadata_extractor</title>
+<rect x="760" y="745" width="380" height="110" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
+<rect x="760" y="745" width="7" height="110" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
+<text x="782" y="777" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">metadata_extractor</tspan></text>
+<text x="782" y="810" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Select company/year filters</tspan><tspan x="782" dy="29">Small model + metadata catalog</tspan></text>
+</g>
+<g class="graph-node" data-node="router"><title>router</title>
+<rect x="760" y="890" width="380" height="100" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
+<rect x="760" y="890" width="7" height="100" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
+<text x="782" y="922" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">router</tspan></text>
+<text x="782" y="955" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Choose intent + complexity</tspan></text>
+</g>
+<g class="graph-node" data-node="retrieval"><title>retrieval</title>
+<rect x="760" y="1145" width="380" height="115" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="760" y="1145" width="7" height="115" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1177" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">retrieval</tspan></text>
+<text x="782" y="1210" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Dense + BM25 hybrid search</tspan><tspan x="782" dy="29">Apply access and entity filters</tspan></text>
+</g>
+<g class="graph-node" data-node="reranker"><title>reranker</title>
+<rect x="760" y="1320" width="380" height="90" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="760" y="1320" width="7" height="90" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1352" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">reranker</tspan></text>
+<text x="782" y="1385" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Reorder candidate passages</tspan></text>
+</g>
+<g class="graph-node" data-node="grader"><title>grader</title>
+<rect x="760" y="1480" width="380" height="100" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="760" y="1480" width="7" height="100" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1512" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">grader</tspan></text>
+<text x="782" y="1545" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Keep relevant evidence</tspan></text>
+</g>
+<g class="graph-node" data-node="query_rewriter"><title>query_rewriter</title>
+<rect x="252" y="1330" width="370" height="120" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="252" y="1330" width="7" height="120" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="274" y="1362" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="274" dy="0">query_rewriter</tspan></text>
+<text x="274" y="1395" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="274" dy="0">Refine the search query</tspan><tspan x="274" dy="29">Increment retrieval retry count</tspan></text>
+</g>
+<g class="graph-node" data-node="research_agent"><title>research_agent</title>
+<rect x="1330" y="1145" width="430" height="230" rx="14" fill="#FFF3D8" stroke="#D7AE50" stroke-width="1.7"/>
+<rect x="1330" y="1145" width="7" height="230" rx="3" fill="#D7AE50" stroke="none" stroke-width="1.7"/>
+<text x="1352" y="1177" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#765419" text-anchor="start"><tspan x="1352" dy="0">research_agent</tspan></text>
+<text x="1352" y="1210" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">Break into subquestions</tspan><tspan x="1352" dy="29">Retrieve → rerank → grade</tspan><tspan x="1352" dy="29">Assess gaps; bounded follow-ups</tspan><tspan x="1352" dy="29">Synthesize collected evidence</tspan></text>
+</g>
+<g class="graph-node" data-node="generator"><title>generator</title>
+<rect x="760" y="1735" width="380" height="110" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
+<rect x="760" y="1735" width="7" height="110" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1767" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">generator</tspan></text>
+<text x="782" y="1800" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Draft from relevant evidence</tspan><tspan x="782" dy="29">and recent conversation context</tspan></text>
+</g>
+<g class="graph-node" data-node="hallucination_checker"><title>hallucination_checker</title>
+<rect x="760" y="1920" width="380" height="110" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
+<rect x="760" y="1920" width="7" height="110" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1952" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">hallucination_checker</tspan></text>
+<text x="782" y="1985" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Check support in the evidence</tspan><tspan x="782" dy="29">Update generation retry count</tspan></text>
+</g>
+<g class="graph-node" data-node="hitl_gate"><title>hitl_gate</title>
+<rect x="760" y="2150" width="380" height="174" rx="14" fill="#EEE5FA" stroke="#A385C6" stroke-width="1.7"/>
+<rect x="760" y="2150" width="7" height="174" rx="3" fill="#A385C6" stroke="none" stroke-width="1.7"/>
+<text x="782" y="2182" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#5F3F81" text-anchor="start"><tspan x="782" dy="0">hitl_gate</tspan></text>
+<text x="782" y="2215" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Expanded scope → interrupt()</tspan><tspan x="782" dy="29">Hold draft + sources for Admin</tspan><tspan x="782" dy="29">Resume this same node</tspan><tspan x="782" dy="29">after approve / reject</tspan></text>
+</g>
+<g class="graph-node" data-node="response_formatter"><title>response_formatter</title>
+<rect x="760" y="2400" width="380" height="115" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
+<rect x="760" y="2400" width="7" height="115" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
+<text x="782" y="2432" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">response_formatter</tspan></text>
+<text x="782" y="2465" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Final answer + source references</tspan><tspan x="782" dy="29">Add warning if unverified</tspan></text>
+</g>
+<g class="graph-node" data-node="clarification_response"><title>clarification_response</title>
+<rect x="242" y="890" width="360" height="100" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
+<rect x="242" y="890" width="7" height="100" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
+<text x="264" y="922" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="264" dy="0">clarification_response</tspan></text>
+<text x="264" y="955" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Ask the user to clarify</tspan></text>
+</g>
+<g class="graph-node" data-node="out_of_scope_response"><title>out_of_scope_response</title>
+<rect x="242" y="1015" width="360" height="90" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
+<rect x="242" y="1015" width="7" height="90" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
+<text x="264" y="1047" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="264" dy="0">out_of_scope_response</tspan></text>
+<text x="264" y="1080" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Explain the scope limitation</tspan></text>
+</g>
+<g class="graph-node" data-node="no_info_response"><title>no_info_response</title>
+<rect x="1330" y="1735" width="430" height="135" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
+<rect x="1330" y="1735" width="7" height="135" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
+<text x="1352" y="1767" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="1352" dy="0">no_info_response</tspan></text>
+<text x="1352" y="1800" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">No relevant information found</tspan><tspan x="1352" dy="29">within the effective search scope</tspan><tspan x="1352" dy="29">No approval is requested here</tspan></text>
+</g>
+<g class="graph-node" data-node="blocked_response"><title>blocked_response</title>
+<rect x="242" y="2330" width="360" height="155" rx="14" fill="#FCECE7" stroke="#CE9C8D" stroke-width="1.7"/>
+<rect x="242" y="2330" width="7" height="155" rx="3" fill="#CE9C8D" stroke="none" stroke-width="1.7"/>
+<text x="264" y="2362" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#8C4B36" text-anchor="start"><tspan x="264" dy="0">blocked_response</tspan></text>
+<text x="264" y="2395" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Safety refusal OR review rejection</tspan><tspan x="264" dy="29">Also used when required</tspan><tspan x="264" dy="29">approval storage is unavailable</tspan></text>
+</g>
+<g class="graph-node" data-node="__end__"><title>__end__</title>
+<rect x="874" y="2580" width="152" height="48" rx="22" fill="#102B40" stroke="#102B40" stroke-width="1.7"/>
+<text x="950.0" y="2611.0" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle"><tspan x="950.0" dy="0">END</tspan></text>
+</g>
+<text x="109" y="2548" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="400" fill="#6E8495" text-anchor="start"><tspan x="109" dy="0">Completed responses → END</tspan></text>
+</svg>

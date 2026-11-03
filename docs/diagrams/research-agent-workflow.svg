@@ -1,0 +1,315 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="2800" viewBox="0 0 1900 2800" role="img" aria-labelledby="title desc">
+<title id="title">Inside the research agent</title>
+<desc id="desc">One LangGraph node containing planning, sequential sub-question search, evidence deduplication, up to two sufficiency checks and follow-up searches, and synthesis. A separate panel expands the reused search, rerank and grade helper. State returns to the graph before generation and verification.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="context-stroke"/></marker></defs>
+<rect x="0" y="0" width="1900" height="2800" rx="0" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<rect x="0" y="0" width="1900" height="150" rx="0" fill="#102B40" stroke="none" stroke-width="2"/>
+<text x="55" y="43" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#A5DECF" font-weight="700" text-anchor="start">
+<tspan x="55" dy="0">FINANCIAL RESEARCH ASSISTANT</tspan>
+</text>
+<text x="55" y="94" font-family="Arial, Helvetica, sans-serif" font-size="43" fill="#FFFFFF" font-weight="700" text-anchor="start">
+<tspan x="55" dy="0">Inside the research agent</tspan>
+</text>
+<text x="55" y="130" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#D5E4ED" font-weight="400" text-anchor="start">
+<tspan x="55" dy="0">Plan the work → collect evidence → organize findings → hand back to the graph</tspan>
+</text>
+<text x="1840" y="61" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#D5E4ED" font-weight="700" text-anchor="end">
+<tspan x="1840" dy="0">CODE-BASED MAP</tspan>
+</text>
+<text x="1840" y="95" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#D5E4ED" font-weight="400" text-anchor="end">
+<tspan x="1840" dy="0">2 NOV 2026</tspan>
+</text>
+<rect x="50" y="180" width="1800" height="105" rx="15" fill="#F0F5F9" stroke="none" stroke-width="2"/>
+<text x="73" y="211" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="73" dy="0">ENTRY · router chose intent=retrieval and complexity=research_required</tspan>
+</text>
+<text x="73" y="247" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="73" dy="0">State already contains the standalone question, allowed document types, access scope and company/year filters.</tspan>
+</text>
+<text x="73" y="274" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#567080" font-weight="400" text-anchor="start">
+<tspan x="73" dy="0">Example: “Compare Microsoft’s revenue in FY2016 and FY2023.”</tspan>
+</text>
+<rect x="50" y="315" width="1070" height="1935" rx="18" fill="#FBFCFD" stroke="#A9BAC6" stroke-width="2" stroke-dasharray="9 6"/>
+<text x="75" y="351" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="75" dy="0">ONE LANGGRAPH NODE · research_agent_node(state)</tspan>
+</text>
+<text x="75" y="380" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#567080" font-weight="400" text-anchor="start">
+<tspan x="75" dy="0">Local variables and helper calls below; only the final return updates graph state.</tspan>
+</text>
+<path d="M1070 285 V448 H810" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 493 V530" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 680 V735" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 890 V955" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 1110 V1160" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M830 1240 H1020 V1410 H925" fill="none" stroke="#B6842B" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M340 1240 H130 V1700 H585 V1730" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 1485 V1540" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M820 1610 H1055 V1030 H925" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 1680 V1730" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 1890 V1930" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 2070 V2110" fill="none" stroke="#567080" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 2230 V2330 H755 V2375" fill="none" stroke="#477BAF" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M360 448 H85 V2315 H260 V2375" fill="none" stroke="#B26D5B" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M350 1810 H85" fill="none" stroke="#B26D5B" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M585 403 L810 448 L585 493 L360 448 Z" fill="#FFF7E4" stroke="#477BAF" stroke-width="2"/>
+<text x="585" y="440" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="700" text-anchor="middle">
+<tspan x="585" dy="0">Question exists?</tspan>
+</text>
+<rect x="592" y="497" width="51.5" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="602" y="517" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#567080" font-weight="600" text-anchor="start">
+<tspan x="602" dy="0">Yes</tspan>
+</text>
+<rect x="87" y="403" width="41.0" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="97" y="423" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#B26D5B" font-weight="600" text-anchor="start">
+<tspan x="97" dy="0">No</tspan>
+</text>
+<rect x="260" y="530" width="665" height="150" rx="15" fill="#EAF3FC" stroke="#477BAF" stroke-width="2"/>
+<text x="282" y="565" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="282" dy="0">01  PLAN · _decompose()</tspan>
+</text>
+<text x="282" y="602" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="282" dy="0">Small model → a _Decomposition object</tspan>
+<tspan x="282" dy="29">qualifiers · required_quantities · sub_questions</tspan>
+<tspan x="282" dy="29">Ask for 2–5 questions; code keeps at most 5.</tspan>
+</text>
+<text x="905" y="563" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#477BAF" font-weight="700" text-anchor="end">
+<tspan x="905" dy="0">GPT-OSS 20B</tspan>
+</text>
+<rect x="260" y="735" width="665" height="155" rx="15" fill="#E8F5F0" stroke="#368B76" stroke-width="2"/>
+<text x="282" y="770" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="282" dy="0">02  GATHER · for each initial sub-question</tspan>
+</text>
+<text x="282" y="807" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="282" dy="0">Run the shared helper shown on the right →</tspan>
+<tspan x="282" dy="29">Receive 0–8 accepted chunks per search.</tspan>
+<tspan x="282" dy="29">Merge into chunks_by_id; keep each identity once.</tspan>
+</text>
+<rect x="597" y="906" width="303.5" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="607" y="926" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#567080" font-weight="600" text-anchor="start">
+<tspan x="607" dy="0">After all initial questions</tspan>
+</text>
+<rect x="260" y="955" width="665" height="155" rx="15" fill="#EAF3FC" stroke="#477BAF" stroke-width="2"/>
+<text x="282" y="990" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="282" dy="0">03  CHECK · _judge_sufficiency()</tspan>
+</text>
+<text x="282" y="1027" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="282" dy="0">Original question + plan + evidence excerpts</tspan>
+<tspan x="282" dy="29">Source/page + first 400 characters per chunk</tspan>
+<tspan x="282" dy="29">Returns decision, missing quantity, follow-up, reason</tspan>
+</text>
+<text x="905" y="988" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#477BAF" font-weight="700" text-anchor="end">
+<tspan x="905" dy="0">GPT-OSS 20B</tspan>
+</text>
+<path d="M585 1160 L830 1240 L585 1320 L340 1240 Z" fill="#FFF7E4" stroke="#B6842B" stroke-width="2"/>
+<text x="585" y="1232" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="700" text-anchor="middle">
+<tspan x="585" dy="0">decision == sufficient</tspan>
+<tspan x="585" dy="29">OR no follow-up question?</tspan>
+</text>
+<rect x="135" y="1273" width="209.0" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="145" y="1293" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#368B76" font-weight="600" text-anchor="start">
+<tspan x="145" dy="0">Yes: stop checking</tspan>
+</text>
+<rect x="942" y="1265" width="41.0" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="952" y="1285" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#B6842B" font-weight="600" text-anchor="start">
+<tspan x="952" dy="0">No</tspan>
+</text>
+<rect x="260" y="1345" width="665" height="140" rx="15" fill="#E8F5F0" stroke="#368B76" stroke-width="2"/>
+<text x="282" y="1380" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="282" dy="0">04  FOLLOW UP · one targeted search</tspan>
+</text>
+<text x="282" y="1417" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="282" dy="0">Run the same helper with follow_up_question.</tspan>
+<tspan x="282" dy="29">Add new unique chunks; retain earlier evidence.</tspan>
+<tspan x="282" dy="29">An empty result adds nothing; it erases nothing.</tspan>
+</text>
+<path d="M585 1540 L820 1610 L585 1680 L350 1610 Z" fill="#FFF7E4" stroke="#B6842B" stroke-width="2"/>
+<text x="585" y="1602" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="700" text-anchor="middle">
+<tspan x="585" dy="0">Another round remains?</tspan>
+<tspan x="585" dy="29">At most 2 rounds in total</tspan>
+</text>
+<rect x="930" y="1560" width="146.0" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="940" y="1580" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#368B76" font-weight="600" text-anchor="start">
+<tspan x="940" dy="0">Yes: recheck</tspan>
+</text>
+<rect x="592" y="1694" width="251.0" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="602" y="1714" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#567080" font-weight="600" text-anchor="start">
+<tspan x="602" dy="0">No: do not check again</tspan>
+</text>
+<path d="M585 1730 L820 1810 L585 1890 L350 1810 Z" fill="#FFF7E4" stroke="#B6842B" stroke-width="2"/>
+<text x="585" y="1802" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="700" text-anchor="middle">
+<tspan x="585" dy="0">Any accepted chunks?</tspan>
+<tspan x="585" dy="29">len(relevant_chunks) &gt; 0</tspan>
+</text>
+<rect x="93" y="1756" width="41.0" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="103" y="1776" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#B26D5B" font-weight="600" text-anchor="start">
+<tspan x="103" dy="0">No</tspan>
+</text>
+<rect x="592" y="1894" width="51.5" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="602" y="1914" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#368B76" font-weight="600" text-anchor="start">
+<tspan x="602" dy="0">Yes</tspan>
+</text>
+<rect x="260" y="1930" width="665" height="140" rx="15" fill="#EAF3FC" stroke="#477BAF" stroke-width="2"/>
+<text x="282" y="1965" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="282" dy="0">05  SYNTHESIZE · _synthesize()</tspan>
+</text>
+<text x="282" y="2002" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="282" dy="0">Original question + plan + ALL full unique chunks</tspan>
+<tspan x="282" dy="29">Organize values, units, sources, gaps and arithmetic.</tspan>
+<tspan x="282" dy="29">Markdown findings: agent_synthesis, not the answer.</tspan>
+</text>
+<text x="905" y="1963" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#477BAF" font-weight="700" text-anchor="end">
+<tspan x="905" dy="0">GPT-OSS 120B</tspan>
+</text>
+<rect x="260" y="2110" width="665" height="120" rx="15" fill="#EAF0FA" stroke="#477BAF" stroke-width="2"/>
+<text x="282" y="2145" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="282" dy="0">06  RETURN · update shared graph state</tspan>
+</text>
+<text x="282" y="2182" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="282" dy="0">relevant_chunks · agent_synthesis · grading_results</tspan>
+<tspan x="282" dy="29">agent_turns_used · agent_sub_questions</tspan>
+</text>
+<rect x="1170" y="315" width="680" height="1115" rx="15" fill="#F7FBF9" stroke="#9BC7B7" stroke-width="2"/>
+<text x="1195" y="351" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1195" dy="0">EXPANDED HELPER · called for every search</tspan>
+</text>
+<text x="1195" y="383" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#368B76" font-weight="700" text-anchor="start">
+<tspan x="1195" dy="0">_retrieve_and_grade_for_subq(state, search_question)</tspan>
+</text>
+<rect x="1200" y="420" width="585" height="165" rx="15" fill="#FFFFFF" stroke="#368B76" stroke-width="2"/>
+<text x="1222" y="455" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1222" dy="0">A  COPY THE PARENT STATE</tspan>
+</text>
+<text x="1222" y="492" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1222" dy="0">sub_state = dict(state)</tspan>
+<tspan x="1222" dy="29">retrieval_query = this search question</tspan>
+<tspan x="1222" dy="29">contextualized_query = original working question</tspan>
+<tspan x="1222" dy="29">Keep access rules and company/year filters.</tspan>
+</text>
+<path d="M1492 585 V625" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1200" y="625" width="585" height="140" rx="15" fill="#FFFFFF" stroke="#368B76" stroke-width="2"/>
+<text x="1222" y="660" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1222" dy="0">B  RETRIEVE · retrieval_node()</tspan>
+</text>
+<text x="1222" y="697" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1222" dy="0">Search text = this sub-question / follow-up.</tspan>
+<tspan x="1222" dy="29">Voyage dense vector + local BM25 → Qdrant</tspan>
+<tspan x="1222" dy="29">Same mandatory filters; up to 50 candidates.</tspan>
+</text>
+<path d="M1492 765 V810" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1200" y="810" width="585" height="145" rx="15" fill="#FFFFFF" stroke="#368B76" stroke-width="2"/>
+<text x="1222" y="845" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1222" dy="0">C  RERANK · reranker_node()</tspan>
+</text>
+<text x="1222" y="882" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1222" dy="0">Local BGE scores question–passage pairs.</tspan>
+<tspan x="1222" dy="29">Question = this sub-question / follow-up.</tspan>
+<tspan x="1222" dy="29">Keep up to 8 candidates.</tspan>
+</text>
+<path d="M1492 955 V985" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1200" y="985" width="585" height="140" rx="15" fill="#FFFFFF" stroke="#368B76" stroke-width="2"/>
+<text x="1222" y="1020" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1222" dy="0">D  GRADE · grader_node()</tspan>
+</text>
+<text x="1222" y="1057" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1222" dy="0">GPT-OSS 20B judges each surviving passage.</tspan>
+<tspan x="1222" dy="29">Question = ORIGINAL contextualized question.</tspan>
+<tspan x="1222" dy="29">Accept useful partial evidence → 0–8 chunks.</tspan>
+</text>
+<path d="M1492 1125 V1220" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1200" y="1220" width="585" height="120" rx="15" fill="#DFF1E9" stroke="#368B76" stroke-width="2"/>
+<text x="1222" y="1255" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1222" dy="0">RETURN TO THE CALLING LOOP</tspan>
+</text>
+<text x="1222" y="1292" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1222" dy="0">Return only accepted chunks to the caller.</tspan>
+<tspan x="1222" dy="29">Zero retrieval/rerank candidates → return [] early.</tspan>
+</text>
+<text x="1195" y="1380" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1195" dy="0">Initial sub-questions run sequentially, not in parallel.</tspan>
+</text>
+<text x="1195" y="1408" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#567080" font-weight="400" text-anchor="start">
+<tspan x="1195" dy="0">Both initial and follow-up searches reuse this same helper.</tspan>
+</text>
+<path d="M925 796 H1140 V450 H1197" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 6"/>
+<rect x="950" y="758" width="135.5" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<text x="960" y="778" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#368B76" font-weight="600" text-anchor="start">
+<tspan x="960" dy="0">helper call</tspan>
+</text>
+<rect x="1170" y="1470" width="680" height="230" rx="15" fill="#FFF8E9" stroke="#B6842B" stroke-width="2"/>
+<text x="1192" y="1505" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1192" dy="0">WHAT “SUFFICIENT” MEANS</tspan>
+</text>
+<text x="1192" y="1542" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1192" dy="0">Useful enough to proceed; partial evidence is allowed.</tspan>
+<tspan x="1192" dy="29">It is not proof that every required quantity was found.</tspan>
+<tspan x="1192" dy="29">The second round may run one last follow-up search.</tspan>
+<tspan x="1192" dy="29">There is NO sufficiency check after that final search.</tspan>
+<tspan x="1192" dy="29">Only 400 characters/chunk go to this checker;</tspan>
+<tspan x="1192" dy="29">the synthesizer receives the full chunk text.</tspan>
+</text>
+<rect x="1170" y="1740" width="680" height="245" rx="15" fill="#F0F5FB" stroke="#477BAF" stroke-width="2"/>
+<text x="1192" y="1775" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1192" dy="0">BOUNDS, FILTERS AND MEMORY</tspan>
+</text>
+<text x="1192" y="1812" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1192" dy="0">≤5 initial searches + ≤2 follow-ups = ≤7 searches.</tspan>
+<tspan x="1192" dy="29">Each yields ≤8 chunks: ≤56 before deduplication.</tspan>
+<tspan x="1192" dy="29">No final global “keep only 8” step in research.</tspan>
+<tspan x="1192" dy="29">Sub-questions change wording, not metadata filters.</tspan>
+<tspan x="1192" dy="29">No graph query-rewriter loop inside the helper.</tspan>
+<tspan x="1192" dy="29">Helpers are not separately checkpointed graph nodes.</tspan>
+</text>
+<rect x="1170" y="2025" width="680" height="225" rx="15" fill="#F4F1FA" stroke="#9B83BA" stroke-width="2"/>
+<text x="1192" y="2060" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1192" dy="0">TRACING, COUNTS AND FAILURES</tspan>
+</text>
+<text x="1192" y="2097" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1192" dy="0">observe_step() times ordinary helper calls.</tspan>
+<tspan x="1192" dy="29">agent_turns_used counts plan + checks + synthesis;</tspan>
+<tspan x="1192" dy="29">it excludes embeddings, grades and SDK retries.</tspan>
+<tspan x="1192" dy="29">MAX_LLM_TURNS=5 is unused, not a total-call cap.</tspan>
+<tspan x="1192" dy="29">Detected provider limits abort to API error handling.</tspan>
+<tspan x="1192" dy="29">Other helper fallbacks are explained in the guide.</tspan>
+</text>
+<text x="1170" y="2310" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1170" dy="0">BACK IN LANGGRAPH · builder.py selects the next node</tspan>
+</text>
+<rect x="65" y="2375" width="390" height="140" rx="15" fill="#FFF2EE" stroke="#B26D5B" stroke-width="2"/>
+<text x="87" y="2410" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="87" dy="0">no_info_response</tspan>
+</text>
+<text x="87" y="2447" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="87" dy="0">Empty question or no evidence:</tspan>
+<tspan x="87" dy="29">return a no-information response.</tspan>
+<tspan x="87" dy="29">Skip synthesis / answer drafting.</tspan>
+</text>
+<rect x="530" y="2375" width="455" height="140" rx="15" fill="#EAF3FC" stroke="#477BAF" stroke-width="2"/>
+<text x="552" y="2410" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="552" dy="0">generator</tspan>
+</text>
+<text x="552" y="2447" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="552" dy="0">A separate model call writes</tspan>
+<tspan x="552" dy="29">the user-facing draft from</tspan>
+<tspan x="552" dy="29">synthesis + raw chunks + context.</tspan>
+</text>
+<path d="M985 2445 H1080" fill="none" stroke="#477BAF" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1080" y="2375" width="770" height="140" rx="15" fill="#EAF3FC" stroke="#477BAF" stroke-width="2"/>
+<text x="1102" y="2410" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="1102" dy="0">hallucination_checker → shared release path</tspan>
+</text>
+<text x="1102" y="2447" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
+<tspan x="1102" dy="0">Check the draft against raw evidence, not synthesis alone.</tspan>
+<tspan x="1102" dy="29">Then follow the existing retry, approval and formatting routes.</tspan>
+<tspan x="1102" dy="29">Research findings are not directly released to the user.</tspan>
+</text>
+<rect x="50" y="2565" width="1800" height="180" rx="15" fill="#F3F6F8" stroke="none" stroke-width="2"/>
+<text x="75" y="2600" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#17364B" font-weight="700" text-anchor="start">
+<tspan x="75" dy="0">HOW TO READ THIS MAP</tspan>
+</text>
+<text x="75" y="2634" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#567080" font-weight="400" text-anchor="start">
+<tspan x="75" dy="0">Solid arrows show execution order. Dashed helper-call arrow expands ordinary Python work; it is not another graph edge.</tspan>
+<tspan x="75" dy="29">Model names reflect the current Groq-only setup. Paid profile: GPT-4o-mini for planning/grading/checks; Sonnet 4.6 for synthesis.</tspan>
+<tspan x="75" dy="29">Local collections stay inside this function until return. Empty-question return contains only relevant_chunks=[] and agent_synthesis=None.</tspan>
+<tspan x="75" dy="29">Source: research_agent.py, retrieval.py, reranker.py, grader.py, prompts.py, llm_factory.py and builder.py. No API calls were made.</tspan>
+</text>
+</svg>
