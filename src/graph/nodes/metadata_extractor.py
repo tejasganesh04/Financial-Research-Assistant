@@ -18,6 +18,9 @@ from src.services.request_trace import record
 
 logger = logging.getLogger(__name__)
 
+# A 10-K shows its own year and the two before it; 10-Qs and releases show one earlier year.
+COVERAGE_YEARS = 2
+
 
 def metadata_extractor_node(state: RAGState) -> dict:
     """One selection call on the contextualized question; no regex extraction or history fallback."""
@@ -70,28 +73,39 @@ def metadata_extractor_node(state: RAGState) -> dict:
         elif slug not in companies:
             companies.append(slug)
     years = list(dict.fromkeys(selected.fiscal_years))
-    # Validate the selection against company/year relationships, not unrelated global lists.
-    scoped = {company: values for company, values in available.items() if not companies or company in companies}
-    available_years = {year for values in scoped.values() for year in values}
-    missing_years = [year for year in years if year not in available_years]
-    companies_without_year = [company for company in companies if years and not available[company].intersection(years)]
-    unavailable = bool(missing_companies or missing_years or companies_without_year)
+    # Filings report their own year plus earlier comparison years, so a requested year can be
+    # answered from filings dated up to COVERAGE_YEARS later. Search every covering filing.
+    scope = companies if selected.companies else list(available)
+
+    def covering(company: str, year: int) -> set[int]:
+        return {filed for filed in available[company] if year <= filed <= year + COVERAGE_YEARS}
+
+    allowed_years = sorted({filed for company in scope for year in years for filed in covering(company, year)})
+    uncovered_years = [year for year in years if not any(covering(company, year) for company in scope)]
+    companies_without_coverage = [
+        company for company in companies if years and not any(covering(company, year) for year in years)
+    ]
+    # Refuse only when nothing requested can exist; partial gaps are left for the answer to report.
+    unavailable = bool(selected.companies and not companies) or bool(years and not allowed_years)
     reason = selected.reason
     if unavailable:
         reason += " Requested metadata unavailable within the effective search scope."
+    elif missing_companies or uncovered_years or companies_without_coverage:
+        reason += " Some requested companies or years are not covered; searching the covered filings."
     record(
         "metadata_filter_selection",
         proposed_companies=selected.companies,
         proposed_fiscal_years=years,
+        searched_fiscal_years=allowed_years,
         missing_companies=missing_companies,
-        missing_years=missing_years,
-        companies_without_requested_year=companies_without_year,
+        uncovered_years=uncovered_years,
+        companies_without_coverage=companies_without_coverage,
         reason=reason,
         unavailable=unavailable,
     )
     return {
         "target_companies": companies,
-        "target_fiscal_years": years,
+        "target_fiscal_years": allowed_years,
         "metadata_filter_reason": reason,
         "metadata_unavailable": unavailable,
     }
