@@ -36,6 +36,8 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
     # OpenAI chat
     "gpt-4o-mini": {"input": 0.15, "output": 0.60, "cache_read": 0.075},
     "gpt-4o": {"input": 2.50, "output": 10.00, "cache_read": 1.25},
+    "gpt-5.4": {"input": 2.50, "output": 15.00, "cache_read": 0.25},
+    "gpt-5.4-mini": {"input": 0.75, "output": 4.50, "cache_read": 0.075},
     # OpenAI embeddings (output cost = 0; recorded as input only)
     "text-embedding-3-small": {"input": 0.02, "output": 0.0},
     "text-embedding-3-large": {"input": 0.13, "output": 0.0},
