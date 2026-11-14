@@ -61,10 +61,8 @@ Classify the query into exactly one of these categories:
   something too vague to search (e.g. "hi", "what can you do?", "tell me about
   finance").
 
-- "out_of_scope": Filings cannot answer the query: unrelated topics (weather,
-  programming help, recipes, gossip), investment advice ("should I buy X?"),
-  live market data (today's share price, current market cap) and predictions
-  of future results.
+- "out_of_scope": The query has nothing to do with companies or their financial
+  filings (e.g. weather, programming help, recipes, gossip).
 
 Be LIBERAL with "retrieval". When in doubt, choose "retrieval".
 
@@ -305,7 +303,7 @@ For example:
 
 Name a company to get started."""
 
-OUT_OF_SCOPE_RESPONSE = """I answer questions about companies using their filings, such as annual and quarterly reports. I can't help with unrelated topics, investment advice, live market data or predictions.
+OUT_OF_SCOPE_RESPONSE = """I answer questions about companies using their filings, such as annual and quarterly reports.
 
 Try asking about a company's reported figures, for example its revenue, margins or cash flow in a given year."""
 
