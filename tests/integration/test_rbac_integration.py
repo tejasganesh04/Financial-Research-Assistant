@@ -89,7 +89,7 @@ class TestRBACFilterShape:
         assert "confidential" in list(conf_cond.match.any)
 
     def test_unknown_role_falls_back_to_analyst(self):
-        """Sprint 3 convention: unknown role gets the most-restrictive permissions."""
+        """Unknown role gets the most-restrictive permissions."""
         perms_known = get_permissions("analyst")
         perms_unknown = get_permissions("not_a_real_role")
         assert perms_known == perms_unknown

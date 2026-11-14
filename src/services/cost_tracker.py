@@ -245,7 +245,7 @@ def get_cost_handler() -> CostCallbackHandler:
     return _GLOBAL_HANDLER
 
 
-# One observer per question, attached beside RequestTrace in config.callbacks; record usage without extra model calls.
+# One observer per question; records usage without extra model calls.
 class RequestScopedCostHandler(BaseCallbackHandler):
     """In-memory per-request cost collector. Attach via `config["callbacks"]` on
     graph.ainvoke so the per-request total can be surfaced in
@@ -262,7 +262,6 @@ class RequestScopedCostHandler(BaseCallbackHandler):
         self._starts: dict[UUID, tuple[float, str | None, dict | None]] = {}
         self._lock = threading.Lock()
 
-    # MODEL START: Remember call ID, model and start time so the end callback is matched to this request.
     def on_llm_start(
         self,
         serialized: dict,
@@ -288,7 +287,6 @@ class RequestScopedCostHandler(BaseCallbackHandler):
     def on_chat_model_start(self, *args: Any, **kwargs: Any) -> None:
         return self.on_llm_start(*args, **kwargs)
 
-    # MODEL END: Read provider-reported token usage, estimate cost using configured prices, and add a trace event.
     def on_llm_end(self, response: LLMResult, *, run_id: UUID, **kwargs: Any) -> None:
         with self._lock:
             start_time, start_model, metadata = self._starts.pop(
@@ -343,7 +341,6 @@ class RequestScopedCostHandler(BaseCallbackHandler):
                               duration_s=round(time.monotonic() - start, 3),
                               usage_available=False, cost_usd=None, error_type=type(error).__name__)
 
-    # RESULT: Sum observed calls for the response. Missing usage/pricing stays distinguishable in detailed records.
     def aggregate(self) -> dict:
         """Return a single-turn cost summary suitable for surfacing in the chat
         API's complete JSON response."""

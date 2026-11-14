@@ -185,7 +185,6 @@ class HITLDecisionRequest(BaseModel):
     reason: str | None = None
 
 
-# REVIEW FLOW: Authorize Admin and verify a real pending task, then resume its checkpoint; do not regenerate the draft.
 async def _decide(body: HITLDecisionRequest, request: Request, user: User, decision: str):
     if decision == "rejected" and not (body.reason or "").strip():
         raise HTTPException(status_code=400, detail="A reason is required when rejecting an answer.")
@@ -218,7 +217,7 @@ async def _decide(body: HITLDecisionRequest, request: Request, user: User, decis
             "reason": (body.reason or "").strip(), "submitted_at": pending.get("submitted_at"),
         }
         try:
-            # Resume the saved task with the reviewer decision. The approval node restarts and interrupt() returns this payload.
+            # Resume the paused checkpoint; interrupt() in hitl_gate returns this payload.
             result = await graph.ainvoke(Command(resume=payload), config=config)
         except Exception as exc:
             logger.exception("Failed to resume approval for thread %s", body.thread_id)

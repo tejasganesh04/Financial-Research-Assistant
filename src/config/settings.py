@@ -95,10 +95,10 @@ class Settings(BaseSettings):
     GRADER_MODEL: str = "llama-3.3-70b-versatile"
     GENERATOR_MODEL: str = "claude-sonnet-4-6"
     HALLUCINATION_MODEL: str = "claude-sonnet-4-6"
-    HIGH_STAKES_HALLUCINATION_MODEL: str = "claude-sonnet-4-6"  # ↓ from opus-4-7 (saves ~$0.30/eval avg)
-    RESEARCH_AGENT_DECOMPOSE_MODEL: str = "gpt-4o-mini"        # ↓ from sonnet-4-6 (saves ~$0.55/eval)
-    RESEARCH_AGENT_SUFFICIENCY_MODEL: str = "gpt-4o-mini"      # ↓ from sonnet-4-6 (saves ~$0.55/eval)
-    RESEARCH_AGENT_SYNTHESIZE_MODEL: str = "claude-sonnet-4-6"  # KEPT (Haiku regression)
+    HIGH_STAKES_HALLUCINATION_MODEL: str = "claude-sonnet-4-6"
+    RESEARCH_AGENT_DECOMPOSE_MODEL: str = "gpt-4o-mini"
+    RESEARCH_AGENT_SUFFICIENCY_MODEL: str = "gpt-4o-mini"
+    RESEARCH_AGENT_SYNTHESIZE_MODEL: str = "claude-sonnet-4-6"
     # Legacy OpenAI fallback model — used when Anthropic fails or FORCE_OPENAI_ONLY is on
     OPENAI_FALLBACK_MODEL: str = "gpt-4o-mini"
 

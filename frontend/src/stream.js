@@ -1,5 +1,4 @@
 // SSE messages can span network chunks. Decode bytes first, then complete lines.
-// TRANSPORT: Network chunks are not complete events. Buffer bytes/lines until one SSE message is complete.
 export async function readEvents(stream, onEvent) {
   if (!stream?.getReader)
     throw new Error("This browser could not open the response stream.");

@@ -47,7 +47,6 @@ class MetadataExtraction(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
 
 
-# REQUEST BODY: FastAPI validates incoming JSON. The path-based endpoint copies its thread ID into this object.
 class ChatRequest(BaseModel):
     """Request body for the chat endpoint."""
 
@@ -62,7 +61,6 @@ class ChatRequest(BaseModel):
         return value
 
 
-# JSON RESPONSE: Used by ordinary question endpoints. SSE event dictionaries are built separately in chat_stream.
 class ChatResponse(BaseModel):
     """Response body for the chat endpoint."""
 
@@ -78,7 +76,6 @@ class ChatResponse(BaseModel):
     tokens: dict | None = None
 
 
-# LOGIN BODY: Both username and password are required strings; malformed input is rejected before login runs.
 class LoginRequest(BaseModel):
     """Request body for login."""
 
@@ -86,7 +83,6 @@ class LoginRequest(BaseModel):
     password: str
 
 
-# LOGIN RESPONSE: Return the signed token and demo identity. The browser stores the token in sessionStorage.
 class TokenResponse(BaseModel):
     """Login response containing the signed JWT and demo identity. React then calls /auth/me to load permissions."""
 
@@ -98,7 +94,6 @@ class TokenResponse(BaseModel):
     department: str
 
 
-# IDENTITY RESPONSE: Exposes the document-type/confidentiality rules and the explicit-escalation approval policy.
 class UserPermissions(BaseModel):
     """Role-derived RBAC permissions surfaced on `/auth/me`."""
 
@@ -107,7 +102,6 @@ class UserPermissions(BaseModel):
     approval_policy: str = "Explicit access escalations require Admin approval"
 
 
-# GET /auth/me returns this identity/permissions object after the JWT dependency succeeds.
 class UserMeResponse(BaseModel):
     """`GET /auth/me` response. Validates the JWT is still good and lets
     the frontend re-fetch user state after a refresh.

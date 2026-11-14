@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-# PDF ACCESS: Read document type/confidentiality from a Qdrant chunk for this source filename.
 def _lookup_document_meta(filename: str) -> dict | None:
     """Fetch a single chunk for this filename to read doc_type + confidentiality.
 
@@ -83,7 +82,6 @@ def _is_allowed(perms: dict, meta: dict) -> bool:
     return type_ok and conf_ok
 
 
-# SOURCE CLICK: Validate filename, check metadata permissions, then serve the local PDF; missing originals return 404.
 @router.get("/{filename}")
 async def get_document(filename: str, user: User = Depends(get_current_user)):
     # Path traversal guard — the filename must be a plain basename living

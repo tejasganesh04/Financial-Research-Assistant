@@ -6,12 +6,11 @@ from langchain_core.messages import HumanMessage
 
 from src.config.settings import settings
 
-# The local API uses one worker. Reject overlapping writes to the same thread.
-# Single-worker reservation list. Different conversations can run concurrently; this is not a multi-server lock.
+# In-process lock against overlapping writes to one thread; not shared across workers.
 _busy_threads: set[str] = set()
 
 
-# ENTER: reject an already-busy thread and mark it busy. EXIT: remove the mark even after an error or cancellation.
+# Reject a busy thread; always release, including on errors and cancellation.
 @asynccontextmanager
 async def conversation_write(thread_id: str):
     if thread_id in _busy_threads:
@@ -33,7 +32,7 @@ def pending_approval(snapshot) -> dict | None:
     return None
 
 
-# NEW-QUESTION CHECK: Called before preparation and again inside the write reservation.
+# Checked before preparation and again inside the reservation.
 # Reads and approval decisions use other checks, so full conversations remain readable/reviewable.
 async def check_chat_access(graph, thread_id: str, user_id: str):
     try:

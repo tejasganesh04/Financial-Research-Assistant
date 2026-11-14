@@ -1,9 +1,6 @@
 """Conversation endpoints and the question request flow.
 
-Walkthrough order: list_threads -> get_thread -> conversation_message_stream -> chat_stream.
-Within chat_stream, read preparation 1-7, then the EventSourceResponse return,
-then event_generator (8-10), which runs unlocked_event_generator (11-15).
-The graph handles its own node order; these wrappers send progress and the complete result.
+The graph decides node order; these endpoints stream progress and return the complete result.
 """
 
 import asyncio
@@ -45,7 +42,6 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 _graphs: dict = {}
 
 
-# Reuse the compiled workflow for this checkpointer. Each execution selects its own conversation using thread_id.
 def _get_graph(checkpointer=None):
     key = id(checkpointer)
     if key not in _graphs:
@@ -53,7 +49,7 @@ def _get_graph(checkpointer=None):
     return _graphs[key]
 
 
-# NEW TURN INPUT: Supply only the new HumanMessage; add_messages keeps older history.
+# Supply only the new message; add_messages appends it to the saved history.
 # Reset temporary evidence, answers, retries, approval details and escalation so they do not leak into the next turn.
 def _build_initial_state(message: str, user: User, request_id: str | None = None, access_scope: dict | None = None) -> dict:
     """Build the initial RAGState for a chat request."""
@@ -100,7 +96,6 @@ def _build_initial_state(message: str, user: User, request_id: str | None = None
     }
 
 
-# JSON ALTERNATIVE: Same preparation/permissions, but ainvoke returns a complete response without stage events.
 @router.post("/messages", response_model=ChatResponse)
 async def chat(request: ChatRequest, user: User = Depends(get_current_user), http_request: Request = None):
     """Process a chat message through the RAG agent pipeline and return the complete answer."""
@@ -194,7 +189,7 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
             trace.finish()
 
 
-# APPROVAL POLL: Read the saved result/status only. Polling never starts a new answering run.
+# Read-only: polling never resumes or reruns the graph.
 @router.get("/{thread_id}/result")
 async def chat_result(
     thread_id: str,
@@ -269,7 +264,6 @@ async def chat_result(
     return payload
 
 
-# Get the shared startup pool from the HTTP Request object; storage-dependent endpoints return 503 when it is absent.
 def _pool_or_503(http_request: Request):
     pool = getattr(http_request.app.state, "pool", None)
     if pool is None:
@@ -280,7 +274,7 @@ def _pool_or_503(http_request: Request):
     return pool
 
 
-# Use the saved original/cleaned question as a compact sidebar title; the database has no separate title column.
+# The checkpoint store has no title column, so the question is used as the title.
 def _make_title(state_values: dict[str, Any] | None) -> str:
     """Pick a sidebar title for a thread.
 
@@ -297,7 +291,6 @@ def _make_title(state_values: dict[str, Any] | None) -> str:
     return q[:80] + ("…" if len(q) > 80 else "")
 
 
-# Read pending interrupt payloads from checkpoint tasks without starting the graph.
 def _is_interrupted(graph_state) -> tuple[bool, dict | None]:
     """Return pending status and the first recorded task interrupt payload."""
     interrupted = False
@@ -311,7 +304,7 @@ def _is_interrupted(graph_state) -> tuple[bool, dict | None]:
     return interrupted, payload
 
 
-# Build browser history from saved messages; hide the current draft while review is pending and preserve request IDs.
+# Hide the draft while approval is pending.
 def _messages_from_state(state_values: dict[str, Any] | None, interrupted: bool = False) -> list[dict[str, Any]]:
     """Reconstruct a {role, content} message list from the graph state.
 
@@ -355,7 +348,6 @@ def _messages_from_state(state_values: dict[str, Any] | None, interrupted: bool 
     return result
 
 
-# SIDEBAR: GET /v1/conversations returns this JWT user's saved threads from PostgreSQL checkpoint metadata.
 @router.get("")
 async def list_threads(
     http_request: Request,
@@ -369,10 +361,9 @@ async def list_threads(
     user: User = Depends(get_current_user),
 ):
     """Return paginated conversation summaries: own threads by default, all owners only for Admin with all=true."""
-    # 1. Use the startup database pool; an unavailable store returns HTTP 503.
     pool = _pool_or_503(http_request)
 
-    # 2. The normal browser request lists only the verified user's threads. Explicit Admin all=true lists every owner.
+    # Admins can list every owner's threads with all=true.
     if all_users and user.role == "admin":
         rows, total = await list_all_threads_paged(pool, limit=limit, offset=offset)
         scope = "all"
@@ -380,7 +371,7 @@ async def list_threads(
         rows, total = await list_threads_for_user(pool, user.user_id, limit=limit, offset=offset)
         scope = "self"
 
-    # 3. Read each thread's latest checkpoint for its title/pending flag. aget_state does not run answering nodes.
+    # aget_state reads the checkpoint without running the graph.
     graph = getattr(http_request.app.state, "graph", None)
     if graph is None:
         graph = _get_graph(checkpointer=http_request.app.state.checkpointer)
@@ -401,7 +392,6 @@ async def list_threads(
             "title": title,
             "checkpoint_count": r["checkpoint_count"],
             "is_interrupted": interrupted,
-            # Owner and checkpoint-derived activity information for the sidebar.
             "owner": {
                 "user_id": r["user_id"],
                 "name": r["name"],
@@ -412,7 +402,6 @@ async def list_threads(
             "last_activity_at": r["last_activity_at"],
         })
 
-    # 4. Return sidebar summaries and pagination; React stores this response in its history state.
     return {
         "threads": threads,
         "total": total,
@@ -423,7 +412,6 @@ async def list_threads(
     }
 
 
-# OPEN CONVERSATION: Check ownership/Admin viewing access, read the latest checkpoint and return messages/status.
 @router.get("/{thread_id}")
 async def get_thread(
     thread_id: str,
@@ -434,7 +422,6 @@ async def get_thread(
     pool = _pool_or_503(http_request)
 
     from src.services.thread_service import get_thread_owner_role
-    # 1. Read ownership from saved checkpoint metadata and enforce owner/Admin viewing access.
     owner_user_id, owner_role, owner_name, owner_dept = await get_thread_owner_role(pool, thread_id)
     if owner_user_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
@@ -446,7 +433,6 @@ async def get_thread(
         graph = _get_graph(checkpointer=http_request.app.state.checkpointer)
 
     cfg = {"configurable": {"thread_id": thread_id}}
-    # 2. Load/reconstruct the latest saved state for this thread. This is a database read, not a graph invocation.
     gs = await graph.aget_state(cfg)
     owner_block = {
         "user_id": owner_user_id,
@@ -466,20 +452,16 @@ async def get_thread(
             "last_activity_at": None,
         }
 
-    # 3. Detect recorded interrupts, then expose only safe messages and approval metadata to the requester.
     interrupted, payload = _is_interrupted(gs)
     values = gs.values or {}
 
-    # Turn count = number of HumanMessage entries in the state. Cheap (already
-    # have the deserialized state from aget_state above).
     try:
         from langchain_core.messages import HumanMessage
         turn_count = sum(1 for m in (values.get("messages") or []) if isinstance(m, HumanMessage))
     except Exception:
         turn_count = 0
 
-    # Include a decision audit only after this thread has recorded an approval decision.
-    # and had a decision recorded. All None if the thread never triggered HITL.
+    # Decision audit, only when an approval decision was recorded.
     audit = None
     if values.get("hitl_submitted_at") or values.get("human_decision_at"):
         audit = {
@@ -507,7 +489,6 @@ async def get_thread(
     }
 
 
-# DELETE CONVERSATION: After ownership checks, remove its checkpoints, state blobs and task writes.
 @router.delete("/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_thread_endpoint(
     thread_id: str,
@@ -528,14 +509,13 @@ async def delete_thread_endpoint(
         return None
 
 
-# JSON PATH WRAPPER: The URL supplies the conversation ID; pass it with the validated body to the shared handler.
 @router.post("/{thread_id}/messages", response_model=ChatResponse)
 async def conversation_message(thread_id: str, body: ChatRequest, http_request: Request,
                                user: User = Depends(get_current_user)):
     return await chat(body.model_copy(update={"thread_id": thread_id}), user, http_request)
 
 
-# Translate our graph node names into readable stage labels. These labels do not decide which node runs next.
+# Readable stage labels for the stream; they do not affect routing.
 _NODE_LABELS = {
     "rbac_gate": "Checking permissions",
     "guardrails": "Running safety checks",
@@ -560,25 +540,20 @@ _NODE_LABELS = {
 }
 
 
-# QUESTION FLOW: Preparation 1-7 happens first. Then EventSourceResponse starts the outer generator (8-10),
-# which consumes the inner generator (11-15). Inner is defined first below, but outer runs first.
 @router.post("/messages/stream")
 async def chat_stream(request: ChatRequest, user: User = Depends(get_current_user), http_request: Request = None):
     """Prepare a question, send live stage updates, then return the complete answer or pending status."""
-    # 1. Start the request timer; reuse React's thread ID, with a backend UUID fallback when none was supplied.
     request_started = time.monotonic()
     thread_id = request.thread_id or str(uuid.uuid4())
 
-    # 2. Get the PostgreSQL saver prepared at startup and reuse/build the compiled graph. No node executes yet.
     checkpointer = getattr(http_request.app.state, "checkpointer", None) if http_request else None
     graph = _get_graph(checkpointer=checkpointer)
 
-    # 3. Read the saved conversation: reject another owner or a pending approval before doing any answer work.
+    # Reject another user's thread, or one awaiting approval, before doing any work.
     if checkpointer is not None:
         await check_chat_access(graph, thread_id, user.user_id)
     elif request.thread_id:
         raise HTTPException(status_code=503, detail="Conversation history is unavailable.")
-    # 4. Strip/validate a first-line /escalate command and calculate role permissions plus requested additions.
     try:
         question, access_scope = parse_escalation(request.message, user.role)
     except ValueError as error:
@@ -587,16 +562,12 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
     escalated = bool(access_scope and access_scope["escalated"])
     if escalated and checkpointer is None:
         raise HTTPException(status_code=503, detail="Approval storage is unavailable. Please try again later.")
-    # 5. Replace detected personal details with labels. Keep cleaned text; discard the detection list at this call site.
+    # Redact personal details before the question reaches the graph or the trace.
     sanitized_message, _ = detect_pii(question)
-    # 6. Create this question's recorder and request UUID. Record normal role permissions and the effective access scope.
     trace = RequestTrace(thread_id, sanitized_message, user.role, get_permissions(user.role), started=request_started)
     trace.record("access_scope", requested_scope=access_scope)
-    # 7a. Prepare new graph input and reset temporary fields; LangGraph will merge it with the thread's checkpoint later.
     initial_state = _build_initial_state(sanitized_message, user, trace.request_id, access_scope)
-    # 7b. Attach a request-local token/cost recorder. Creating observers does not call a model.
     req_cost = RequestScopedCostHandler(trace=trace)
-    # 7c. thread_id selects saved state; metadata carries verified identity; callbacks observe steps/model usage.
     config = {
         "configurable": {"thread_id": thread_id},
         "run_name": "rag_query_stream",
@@ -607,23 +578,17 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
 
     # The browser receives stage labels and one terminal event; partial model-answer tokens are never forwarded.
 
-    # INNER GENERATOR (runs at step 11, after the outer generator below).
-    # Run LangGraph, measure stages and produce either the complete result or a pending/error event.
-    # It does not reserve the conversation itself; the outer generator already holds that reservation.
+    # Runs the graph; the outer generator holds the conversation reservation.
     async def unlocked_event_generator():
-        # 11. Keep the most recent node-output dictionary, not the full saved state; the terminal node supplies response fields.
         final_state = None
 
-        # Measure stage durations while observing execution; timing does not run extra graph work.
         import time as _time
-        # Start graph timing. Track stage start times and each node's latest duration; the trace keeps individual attempts.
         _wall_start = _time.monotonic()
         _node_starts: dict[str, float] = {}
         _stage_timings_ms: dict[str, int] = {}
 
         try:
-            # 12. Execute the graph once while reading its events. The saver loads the thread and applies initial_state updates.
-            # aclosing closes the event iterator when this block ends, including interruption or early exit.
+            # aclosing closes the event iterator on early exit.
             async with aclosing(graph.astream_events(
                 initial_state, config=config, version="v2"
             )) as graph_events:
@@ -631,7 +596,6 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     kind = event.get("event", "")
                     name = event.get("name", "")
 
-                    # 13a. For registered graph nodes, record a start time and yield a readable stage label. Ignore other event types.
                     if kind == "on_chain_start" and name in _NODE_LABELS:
                         _node_starts[name] = _time.monotonic()
                         yield json.dumps({
@@ -640,7 +604,6 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                             "label": _NODE_LABELS[name],
                         })
 
-                    # 13b. Record the completed stage duration/output and emit its end marker. LangGraph itself schedules the next node.
                     elif kind == "on_chain_end" and name in _NODE_LABELS:
                         if name in _node_starts:
                             _stage_timings_ms[name] = int((_time.monotonic() - _node_starts.pop(name)) * 1000)
@@ -652,7 +615,7 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                             "node": name,
                         })
 
-            # 14. Execution has finished or paused. Read checkpoint task interrupts to distinguish pending review from completion.
+            # Interrupted tasks mean the answer is waiting for approval.
             if checkpointer is not None:
                 try:
                     graph_state = await graph.aget_state(config)
@@ -660,7 +623,7 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                         for task in graph_state.tasks:
                             if hasattr(task, "interrupts") and task.interrupts:
                                 interrupt_value = task.interrupts[0].value
-                                # Send approval details without the generated draft or citations, then stop this response.
+                                # Send approval details without the draft or citations.
                                 yield json.dumps({
                                     "type": "pending_approval",
                                     "reason": interrupt_value.get("reason", "Approval required"),
@@ -671,11 +634,10 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                                     "requester_role": user.role,
                                 })
                                 return
-                # A failure after SSE started is sent as an error event; the HTTP status has already been sent.
+                # The HTTP status is already sent, so failures become SSE error events.
                 except Exception as e:
                     raise RuntimeError("Unable to check approval status") from e
 
-            # 15. No interrupt remains: total this request's usage and send one complete checked response with sources/timing.
             cost_summary = req_cost.aggregate()
             _wall_clock_s = round(_time.monotonic() - _wall_start, 1)
             if final_state:
@@ -718,28 +680,22 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                 "message": "An error occurred processing your request.",
             })
 
-    # OUTER GENERATOR (runs first when EventSourceResponse starts reading).
-    # Own request context, conversation reservation and cleanup; forward the inner generator's updates with request IDs.
+    # Owns the request context and conversation reservation, and tags events with the request ID.
     async def event_generator():
-        # 8. Make this trace available to request-local helpers through ContextVar, without passing it to every helper.
         with trace.activate():
             try:
-                # 9. Reserve this conversation in the single worker. An overlapping write gets 409; leaving releases it.
+                # Single-process reservation: an overlapping write gets 409.
                 async with conversation_write(thread_id):
                     # Recheck ownership/pending status inside the reservation, in case it changed since the first check.
                     if checkpointer is not None:
                         await check_chat_access(graph, thread_id, user.user_id)
-                    # 10. First browser event: identify this question and display the cleaned text before any graph node runs.
                     yield json.dumps({"type": "request_started", "request_id": trace.request_id,
                                       "thread_id": thread_id, "access_scope": access_scope,
                                       "sanitized_message": sanitized_message})
-                    # Now start the inner generator above (step 11). Each yielded JSON string passes through this loop.
                     async with aclosing(unlocked_event_generator()) as events:
                         async for event in events:
                             payload = json.loads(event)
-                            # Give every forwarded stage/result/error the same request ID so the browser links it to the correct local trace.
                             payload["request_id"] = trace.request_id
-                            # Finalize paused/failed trace outcomes before forwarding the terminal event. No draft text is added here.
                             if payload.get("type") == "pending_approval":
                                 trace.record("approval_pending", submitted_at=payload.get("submitted_at"),
                                              access_scope=payload.get("access_scope"), approvers=payload.get("approvers"))
@@ -747,25 +703,20 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                             elif payload.get("type") == "error":
                                 trace.finish("failed")
                             yield json.dumps(payload)
-            # Access/busy failures inside the already-open response become SSE errors rather than a second HTTP response.
+            # The response is already open, so access failures become SSE errors.
             except HTTPException as exc:
                 trace.finish("failed")
                 yield json.dumps({"type": "error", "message": exc.detail, "status": exc.status_code,
                                   "request_id": trace.request_id})
-            # Cancellation/connection interruption also finalizes the trace and then propagates for normal cleanup.
             except BaseException:
                 trace.finish("interrupted")
                 raise
-            # 16. Finalize the trace once on every exit. The reservation/context managers also release their resources.
             finally:
                 trace.finish()
 
-    # START SENDING HERE: Definitions above did not execute their bodies. The response now consumes outer step 8 first.
     return EventSourceResponse(event_generator())
 
 
-# BROWSER ENTRY: FastAPI supplies path ID, validated body, raw Request and verified User.
-# Copy the path ID into ChatRequest, then call chat_stream above as an ordinary Python function.
 @router.post("/{thread_id}/messages/stream")
 async def conversation_message_stream(thread_id: str, body: ChatRequest, http_request: Request,
                                       user: User = Depends(get_current_user)):

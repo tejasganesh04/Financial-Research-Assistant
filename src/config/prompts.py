@@ -160,7 +160,7 @@ NOT research_required — these LOOK multi-year but are just list/enumeration:
   the list, it's a single retrieval pass over the relevant section.
 
 When uncertain, prefer "simple_lookup". The agent path is slower (~90s vs
-~20s) and Sprint 7.6 Day 3 review showed it can REGRESS simple lookups by
+~20s) and testing showed it can REGRESS simple lookups by
 adding unnecessary disclaimers. Only invoke the agent when at least one
 trigger above is clearly present.
 
@@ -467,7 +467,7 @@ research agent has executed one or more sub-question retrievals and collected
 evidence chunks. Decide whether the evidence is enough to produce a USEFUL
 answer for the user — not necessarily a perfect one.
 
-CRITICAL ANTI-REFUSAL POLICY (Sprint 7.6 Day 3 lesson):
+CRITICAL ANTI-REFUSAL POLICY:
 
 Default to "sufficient" unless you have a SPECIFIC, ACTIONABLE follow-up that
 is likely to find missing evidence. Reasons:
@@ -482,7 +482,7 @@ is likely to find missing evidence. Reasons:
    numerator but not the denominator, mark "sufficient" — the synthesizer
    will report the confirmed input plus flag the missing one. The
    generator will produce a partial answer that's more useful than a
-   refusal. Day 3 review showed the agent looping on missing denominators
+   refusal. Testing showed the agent looping on missing denominators
    when partial answers would have served the user better.
 
 3. **Don't loop on the same missing quantity.** If a follow-up came back

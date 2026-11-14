@@ -7,10 +7,9 @@ from src.config.settings import settings
 from src.models.auth import User
 
 
-# Create a signed JWT after a successful login. Signing detects tampering; it does not encrypt the payload.
+# Signed, not encrypted: never put secrets in the payload.
 def create_token(user_id: str, name: str, role: str, department: str = "") -> str:
     """Create a JWT token for a user."""
-    # sub identifies the user; iat/exp specify issue/expiry times. Passwords are never included.
     payload = {
         "sub": user_id,
         "name": name,
@@ -23,7 +22,6 @@ def create_token(user_id: str, name: str, role: str, department: str = "") -> st
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-# Verify the signature and expiry before constructing the User object supplied to protected endpoints.
 def decode_token(token: str) -> User:
     """Decode and validate a JWT token. Returns User on success, raises HTTPException on failure."""
     try:

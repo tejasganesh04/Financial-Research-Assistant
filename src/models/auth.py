@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-# Pydantic object constructed from verified JWT data. React's displayed user object is not trusted as identity.
+# Built from verified JWT claims, never from client-supplied user data.
 class User(BaseModel):
     """Authenticated user representation."""
 

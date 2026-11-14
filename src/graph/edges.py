@@ -18,7 +18,7 @@ def route_after_metadata_extraction(state: RAGState) -> str:
 
 
 def route_after_router(state: RAGState) -> str:
-    """Route based on query intent + complexity (Sprint 7.6).
+    """Route based on query intent and complexity.
 
     intent="retrieval" splits further on `query_complexity`:
       - simple_lookup → existing fast path (retrieval → reranker → grader → ...)
@@ -45,7 +45,6 @@ def route_after_router(state: RAGState) -> str:
     return "clarification"
 
 
-# RETRY DECISION: Evidence is sufficient, search gets another bounded attempt, or the workflow returns no information.
 def route_after_grading(state: RAGState) -> str:
     """Route based on grading results: sufficient chunks, retry, or no info."""
     relevant_chunks = state.get("relevant_chunks", [])
@@ -58,7 +57,6 @@ def route_after_grading(state: RAGState) -> str:
     return "no_info"
 
 
-# RETRY DECISION: Grounded answers proceed; otherwise retry generation until the limit, then add a warning.
 def route_after_hallucination(state: RAGState) -> str:
     """Route based on hallucination check results."""
     status = state.get("hallucination_status", "grounded")
@@ -73,7 +71,6 @@ def route_after_hallucination(state: RAGState) -> str:
     return "disclaimer"
 
 
-# Choose the release path from state: ordinary answer, approved escalation, or rejection.
 def route_after_hitl(state: RAGState) -> str:
     """Route based on HITL decision."""
     requires_approval = state.get("requires_human_approval", False)

@@ -4,14 +4,13 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
 
-# GRAPH DATA: TypedDict documents the dictionary shape; it does not perform Pydantic-style runtime validation.
 class RAGState(TypedDict):
     """Shared state flowing through every node in the RAG agent graph."""
 
     # --- Input ---
-    # REDUCER: Merge incoming messages by ID. New IDs append; an existing ID updates that message.
+    # add_messages appends new messages and updates existing ones by ID.
     messages: Annotated[list[BaseMessage], add_messages]
-    # Other fields have no reducer: provided updates replace old values; omitted fields keep their checkpointed values.
+    # Other fields are replaced on update.
     original_query: str
     request_id: str | None
     access_scope: dict | None

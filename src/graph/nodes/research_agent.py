@@ -173,9 +173,7 @@ def _retrieve_and_grade_for_subq(state: RAGState, sub_question: str) -> list[dic
     if not sub_state["reranked_chunks"]:
         return []
 
-    # 3) Grade against the original working question: GPT-OSS 20B in Groq-only mode.
-    # The retained paid profile uses GPT-4o-mini when Groq fast path is off.
-    # Grader concurrency is configured inside grader.py, not by this helper.
+    # 3) Grade against the original question, not the sub-question.
     grade_out = observe_step("grader", grader_node, sub_state)
     return grade_out.get("relevant_chunks", []) or []
 
@@ -194,7 +192,6 @@ def _decompose(query: str, target_companies: list[str], target_fiscal_years: lis
     with no retrieved document chunks. LLMFactory selects the model.
     """
     llm = LLMFactory.get_research_decompose_llm()
-    # Request the three fields in _Decomposition and parse the response into that object.
     # GPT-OSS supports native JSON schemas; tool calling can emit an undeclared 'json' tool.
     options = {}
     if isinstance(llm, ChatGroq) and llm.model_name.startswith("openai/gpt-oss-"):
@@ -322,8 +319,7 @@ def research_agent_node(state: RAGState) -> dict:
     target_companies = state.get("target_companies") or []
     target_fiscal_years = state.get("target_fiscal_years") or []
 
-    # 1) observe_step times _decompose(query, companies, years) and returns its plan.
-    # decomp is a local _Decomposition object; no graph state update happens here.
+    # 1) Plan the sub-questions.
     decomp = observe_step("research.decompose", _decompose, query, target_companies, target_fiscal_years)
     sub_questions = decomp.sub_questions
     logger.info(
@@ -398,7 +394,6 @@ def research_agent_node(state: RAGState) -> dict:
     # nonempty research evidence directly to generator; these markers do not choose the route.
     grading_results = [{"agent_curated": True} for _ in relevant_chunks]
 
-    # 5) This returned dictionary is the update LangGraph merges into its shared state.
     return {
         "relevant_chunks": relevant_chunks,
         "grading_results": grading_results,
