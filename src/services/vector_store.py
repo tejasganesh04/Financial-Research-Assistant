@@ -260,6 +260,21 @@ def hybrid_search(
     ]
 
 
+def dense_ranks(
+    client: QdrantClient, query_dense_vector: list[float], rbac_filter: Filter | None, limit: int = 50
+) -> dict[tuple, int]:
+    """Rank of each chunk in dense search alone, keyed by (source_file, chunk_index)."""
+    points = client.query_points(
+        collection_name=settings.QDRANT_COLLECTION,
+        query=query_dense_vector,
+        using=DENSE_VECTOR_NAME,
+        query_filter=rbac_filter,
+        limit=limit,
+        with_payload=["source_file", "chunk_index"],
+    ).points
+    return {(p.payload.get("source_file"), p.payload.get("chunk_index")): rank for rank, p in enumerate(points, 1)}
+
+
 # Legacy dense-only search — kept for any caller that wants pure semantic search
 # (e.g. debugging, benchmarking). The graph uses hybrid_search.
 def search(
