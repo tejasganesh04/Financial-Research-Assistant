@@ -53,9 +53,14 @@ def _verify_manifest(manifest_path: Path, dense_dim_expected: int) -> dict:
     manifest = json.loads(manifest_path.read_text())
     dense = manifest.get("dense_embedding") or {}
     model = str(dense.get("model", "")).removeprefix("voyage/")
-    if (dense.get("dim") != dense_dim_expected or model != settings.EMBEDDING_MODEL
-            or str(dense.get("distance", "")).lower() != "cosine"):
-        raise ValueError("Snapshot embedding model, dimensions, or distance do not match this app; collection left unchanged.")
+    if (
+        dense.get("dim") != dense_dim_expected
+        or model != settings.EMBEDDING_MODEL
+        or str(dense.get("distance", "")).lower() != "cosine"
+    ):
+        raise ValueError(
+            "Snapshot embedding model, dimensions, or distance do not match this app; collection left unchanged."
+        )
     provider = str(dense.get("provider", "")).lower().replace(" ", "")
     if provider not in {settings.EMBEDDING_PROVIDER.lower(), settings.EMBEDDING_PROVIDER.lower() + "ai"}:
         raise ValueError("Snapshot embedding provider does not match this app.")
@@ -111,21 +116,23 @@ def _restore(parquet_path: Path, collection: str, batch_size: int, replace: bool
         batch = t.slice(start, end - start).to_pylist()
         points = []
         for row in batch:
-            sparse_vec = qm.SparseVector(
-                indices=row["sparse_indices"],
-                values=row["sparse_values"],
-            ) if row["sparse_indices"] else None
+            sparse_vec = (
+                qm.SparseVector(
+                    indices=row["sparse_indices"],
+                    values=row["sparse_values"],
+                )
+                if row["sparse_indices"]
+                else None
+            )
             vectors: dict = {"dense": row["dense_vector"]}
             if sparse_vec is not None:
                 vectors["sparse"] = sparse_vec
             payload = {
-                k: v for k, v in row.items()
-                if k not in {"chunk_id", "dense_vector", "sparse_indices", "sparse_values"}
-                and v is not None
+                k: v
+                for k, v in row.items()
+                if k not in {"chunk_id", "dense_vector", "sparse_indices", "sparse_values"} and v is not None
             }
-            points.append(
-                qm.PointStruct(id=row["chunk_id"], vector=vectors, payload=payload)
-            )
+            points.append(qm.PointStruct(id=row["chunk_id"], vector=vectors, payload=payload))
         client.upsert(collection_name=collection, points=points, wait=True)
         upserted += len(points)
         if upserted % 5000 < batch_size:

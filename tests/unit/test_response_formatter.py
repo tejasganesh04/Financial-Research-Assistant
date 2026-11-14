@@ -1,6 +1,5 @@
 """Unit tests for the response_formatter_node."""
 
-
 from src.graph.nodes.response_formatter import response_formatter_node
 
 
@@ -18,6 +17,7 @@ def _make_chunk(source_file, page_number=1, section_header="", doc_type="10k"):
 
 
 # ── Formats answer with source citations correctly ─────────────────────────
+
 
 def test_formats_answer_with_source_citations():
     state = {
@@ -44,6 +44,7 @@ def test_formats_answer_with_source_citations():
 
 # ── Deduplicates exact file/page pairs without losing cited pages ──────────
 
+
 def test_deduplicates_sources():
     state = {
         "generated_answer": "Answer.",
@@ -61,11 +62,14 @@ def test_deduplicates_sources():
     sources = result["response_metadata"]["sources"]
 
     assert [(s["file"], s["page"]) for s in sources] == [
-        ("report.pdf", 1), ("report.pdf", 3), ("other.pdf", 1),
+        ("report.pdf", 1),
+        ("report.pdf", 3),
+        ("other.pdf", 1),
     ]
 
 
 # ── Adds disclaimer when hallucination_status is "hallucinated" ────────────
+
 
 def test_adds_disclaimer_when_hallucinated():
     state = {
@@ -85,6 +89,7 @@ def test_adds_disclaimer_when_hallucinated():
 
 # ── No disclaimer when hallucination_status is "grounded" ─────────────────
 
+
 def test_no_disclaimer_when_grounded():
     state = {
         "generated_answer": "Net income was $1.2B.",
@@ -100,6 +105,7 @@ def test_no_disclaimer_when_grounded():
 
 
 # ── Handles empty generated_answer ────────────────────────────────────────
+
 
 def test_handles_empty_generated_answer():
     """When generated_answer is empty, final_response should be the empty string
@@ -120,6 +126,7 @@ def test_handles_empty_generated_answer():
 
 # ── Handles empty relevant_chunks ─────────────────────────────────────────
 
+
 def test_handles_empty_relevant_chunks():
     state = {
         "generated_answer": "Some fallback answer.",
@@ -137,6 +144,7 @@ def test_handles_empty_relevant_chunks():
 
 
 # ── response_metadata includes correct keys ───────────────────────────────
+
 
 def test_response_metadata_keys():
     state = {
@@ -164,6 +172,7 @@ def test_response_metadata_keys():
 
 
 # ── Handles missing state keys gracefully (uses defaults) ─────────────────
+
 
 def test_handles_missing_state_keys():
     """The node uses .get() with defaults, so an empty dict should not crash."""

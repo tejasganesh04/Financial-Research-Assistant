@@ -1,4 +1,5 @@
 """Application versions must match the package metadata."""
+
 import re
 import tomllib
 from pathlib import Path
@@ -11,7 +12,7 @@ SEMVER = r"(\d+\.\d+\.\d+)"
 
 # (relative path, regex with one capture group for the version)
 VERSION_SITES = [
-    ("src/api/main.py", rf'version="{SEMVER}"'),          # FastAPI app.version
+    ("src/api/main.py", rf'version="{SEMVER}"'),  # FastAPI app.version
 ]
 
 
@@ -27,6 +28,5 @@ def test_version_matches_pyproject(rel_path, pattern):
     m = re.search(pattern, text)
     assert m, f"no version string matching {pattern!r} found in {rel_path}"
     assert m.group(1) == canonical, (
-        f"{rel_path} declares {m.group(1)} but pyproject.toml is {canonical} — "
-        f"update package and API versions together"
+        f"{rel_path} declares {m.group(1)} but pyproject.toml is {canonical} — update package and API versions together"
     )

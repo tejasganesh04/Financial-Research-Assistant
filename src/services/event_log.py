@@ -50,6 +50,7 @@ def emit(stage: str, **fields: Any) -> None:
     # These calls already contain selected decisions, not full graph state.
     # Runtime boot information belongs in the process log only.
     from src.services.request_trace import record
+
     if stage != "runtime_components":
         record("decision." + stage, **fields)
     _init()
@@ -120,7 +121,7 @@ def log_runtime_components() -> dict:
     if env_sha and env_sha != "unknown":
         banner["git"] = {
             "sha": env_sha[:12],
-            "dirty": False,         # build-time sha; no working-tree concept inside container
+            "dirty": False,  # build-time sha; no working-tree concept inside container
             "n_dirty_files": 0,
             "source": "env",
         }
@@ -143,18 +144,33 @@ def log_runtime_components() -> dict:
 
     # Pydantic settings snapshot
     for k in (
-        "EMBEDDING_PROVIDER", "EMBEDDING_MODEL", "EMBEDDING_DIMENSIONS",
-        "QDRANT_HOST", "QDRANT_PORT", "QDRANT_COLLECTION",
-        "GENERATOR_MODEL", "HALLUCINATION_MODEL", "HIGH_STAKES_HALLUCINATION_MODEL",
-        "ROUTER_MODEL", "GRADER_MODEL",
-        "RESEARCH_AGENT_DECOMPOSE_MODEL", "RESEARCH_AGENT_SUFFICIENCY_MODEL",
+        "EMBEDDING_PROVIDER",
+        "EMBEDDING_MODEL",
+        "EMBEDDING_DIMENSIONS",
+        "QDRANT_HOST",
+        "QDRANT_PORT",
+        "QDRANT_COLLECTION",
+        "GENERATOR_MODEL",
+        "HALLUCINATION_MODEL",
+        "HIGH_STAKES_HALLUCINATION_MODEL",
+        "ROUTER_MODEL",
+        "GRADER_MODEL",
+        "RESEARCH_AGENT_DECOMPOSE_MODEL",
+        "RESEARCH_AGENT_SUFFICIENCY_MODEL",
         "RESEARCH_AGENT_SYNTHESIZE_MODEL",
-        "USE_LLAMA_GRADER", "LLAMA_GRADER_PROVIDER", "USE_GROQ_FAST_PATH",
-        "FORCE_OPENAI_ONLY", "OPENAI_FALLBACK_MODEL",
-        "FORCE_GROQ_ONLY", "GROQ_LIGHT_MODEL", "GROQ_ANSWER_MODEL",
-        "RETRIEVAL_TOP_K", "RERANKER_TOP_K",
+        "USE_LLAMA_GRADER",
+        "LLAMA_GRADER_PROVIDER",
+        "USE_GROQ_FAST_PATH",
+        "FORCE_OPENAI_ONLY",
+        "OPENAI_FALLBACK_MODEL",
+        "FORCE_GROQ_ONLY",
+        "GROQ_LIGHT_MODEL",
+        "GROQ_ANSWER_MODEL",
+        "RETRIEVAL_TOP_K",
+        "RERANKER_TOP_K",
         "ENABLE_DETERMINISTIC_VALIDATOR",
-        "MAX_RETRIEVAL_RETRIES", "MAX_GENERATION_RETRIES",
+        "MAX_RETRIEVAL_RETRIES",
+        "MAX_GENERATION_RETRIES",
         "GRADING_MIN_RELEVANT_CHUNKS",
     ):
         banner["settings"][k] = getattr(settings, k, None)
@@ -162,16 +178,21 @@ def log_runtime_components() -> dict:
     # Selected os.environ — these are the keys that bypass pydantic-settings
     # and have historically been silent-bug surfaces.
     for k in (
-        "RERANKER_DEVICE", "GRADER_PARALLELISM",
-        "RESULT_CACHE_REDIS_HOST", "RESULT_CACHE_REDIS_PORT",
-        "LANGCHAIN_TRACING_V2", "LANGSMITH_TRACING",
-        "EVENT_LOG_PATH", "LOGS_DIR",
+        "RERANKER_DEVICE",
+        "GRADER_PARALLELISM",
+        "RESULT_CACHE_REDIS_HOST",
+        "RESULT_CACHE_REDIS_PORT",
+        "LANGCHAIN_TRACING_V2",
+        "LANGSMITH_TRACING",
+        "EVENT_LOG_PATH",
+        "LOGS_DIR",
     ):
         v = os.environ.get(k)
         banner["env_relevant"][k] = v if v else "(unset)"
 
     try:
         from src.services.reranker_service import get_reranker
+
         rk = get_reranker()
         banner["components_loaded"]["reranker"] = {
             "class": type(rk).__name__,
@@ -182,6 +203,7 @@ def log_runtime_components() -> dict:
     # Grader LLM — which model is actually wired up
     try:
         from src.services.llm_factory import LLMFactory
+
         grader = LLMFactory.get_grader_llm()
         banner["components_loaded"]["grader_llm"] = {
             "class": type(grader).__name__,
@@ -195,6 +217,7 @@ def log_runtime_components() -> dict:
         from qdrant_client import QdrantClient
 
         from src.services.vector_store import get_collection_fingerprint
+
         qc = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=5)
         info = qc.get_collection(settings.QDRANT_COLLECTION)
         qdrant_info = {
@@ -232,7 +255,9 @@ def log_runtime_components() -> dict:
             stored = (fp.get("embedding_provider"), fp.get("embedding_model"), fp.get("embedding_dim"))
             live = (settings.EMBEDDING_PROVIDER, settings.EMBEDDING_MODEL, settings.EMBEDDING_DIMENSIONS)
             if stored == live:
-                qdrant_info["fingerprint"] = f"match ({fp.get('embedding_provider')}/{fp.get('embedding_model')}, dim={fp.get('embedding_dim')})"
+                qdrant_info["fingerprint"] = (
+                    f"match ({fp.get('embedding_provider')}/{fp.get('embedding_model')}, dim={fp.get('embedding_dim')})"
+                )
             else:
                 qdrant_info["fingerprint"] = {
                     "status": "MISMATCH",
@@ -250,6 +275,7 @@ def log_runtime_components() -> dict:
     # Redis — ping + key count (the rag-cache used by reranker/grader/query-emb caches)
     try:
         import redis
+
         host = os.environ.get("RESULT_CACHE_REDIS_HOST", "localhost")
         port = int(os.environ.get("RESULT_CACHE_REDIS_PORT", "6379"))
         db = int(os.environ.get("RESULT_CACHE_REDIS_DB", "1"))
@@ -263,7 +289,8 @@ def log_runtime_components() -> dict:
         }
     except Exception as exc:
         banner["external"]["redis"] = {
-            "endpoint": f"{os.environ.get('RESULT_CACHE_REDIS_HOST', 'localhost')}:{os.environ.get('RESULT_CACHE_REDIS_PORT', '6379')}",
+            "endpoint": f"{os.environ.get('RESULT_CACHE_REDIS_HOST', 'localhost')}:"
+            f"{os.environ.get('RESULT_CACHE_REDIS_PORT', '6379')}",
             "connected": False,
             "error": f"{type(exc).__name__}: {str(exc)[:120]}",
         }
@@ -277,12 +304,14 @@ def log_runtime_components() -> dict:
         sep,
         f"[Pipeline boot] run_id={_run_id}  event_log={_log_path}",
         sep,
-        f"git:         {banner['git'].get('sha', '?')} ({'dirty +' + str(banner['git'].get('n_dirty_files', '?')) if banner['git'].get('dirty') else 'clean'})",
+        f"git:         {banner['git'].get('sha', '?')} "
+        f"({'dirty +' + str(banner['git'].get('n_dirty_files', '?')) if banner['git'].get('dirty') else 'clean'})",
         f"reranker:    {banner['components_loaded'].get('reranker', {})}",
         f"grader:      {banner['components_loaded'].get('grader_llm', {})}",
         f"generator:   {settings.GROQ_ANSWER_MODEL if settings.FORCE_GROQ_ONLY else settings.GENERATOR_MODEL}  "
         f"hallu: {settings.GROQ_ANSWER_MODEL if settings.FORCE_GROQ_ONLY else settings.HALLUCINATION_MODEL}",
-        f"embedding:   {banner['settings'].get('EMBEDDING_PROVIDER')}/{banner['settings'].get('EMBEDDING_MODEL')} (dim={banner['settings'].get('EMBEDDING_DIMENSIONS')})",
+        f"embedding:   {banner['settings'].get('EMBEDDING_PROVIDER')}/{banner['settings'].get('EMBEDDING_MODEL')} "
+        f"(dim={banner['settings'].get('EMBEDDING_DIMENSIONS')})",
         f"qdrant:      {banner['external'].get('qdrant', {})}",
         f"redis:       {banner['external'].get('redis', {})}",
         f"flags:       USE_LLAMA_GRADER={banner['settings'].get('USE_LLAMA_GRADER')}  "
@@ -301,11 +330,16 @@ def log_runtime_components() -> dict:
         logger.warning(sep)
         logger.warning(
             "WARNING: collection '%s' was created with %s/%s (dim=%s)",
-            qdrant_state.get("collection"), stored["provider"], stored["model"], stored["dim"],
+            qdrant_state.get("collection"),
+            stored["provider"],
+            stored["model"],
+            stored["dim"],
         )
         logger.warning(
             "WARNING: current EMBEDDING_PROVIDER is %s (%s, dim=%s)",
-            live["provider"], live["model"], live["dim"],
+            live["provider"],
+            live["model"],
+            live["dim"],
         )
         logger.warning("WARNING: queries will return wrong results or fail with VectorDimensionError.")
         logger.warning("WARNING: re-ingest the corpus with the new embedding to fix.")
@@ -324,16 +358,22 @@ def log_runtime_components() -> dict:
             dim_mismatch["live_model"],
         )
         logger.critical(
-            "FATAL: every retrieval call will fail with HTTP 400 from Qdrant and the pipeline will silently degrade to no_info refusals."
+            "FATAL: every retrieval call will fail with HTTP 400 from Qdrant "
+            "and the pipeline will silently degrade to no_info refusals."
         )
         logger.critical("FATAL: fix by either:")
         logger.critical("FATAL:   (a) re-ingesting with the matching embedding:")
         logger.critical(
             "FATAL:       curl -X DELETE http://%s:%s/collections/%s && python scripts/seed_qdrant.py --sample",
-            settings.QDRANT_HOST, settings.QDRANT_PORT, qdrant_state.get("collection"),
+            settings.QDRANT_HOST,
+            settings.QDRANT_PORT,
+            qdrant_state.get("collection"),
         )
         logger.critical("FATAL:   (b) editing .env to match the existing collection:")
-        logger.critical("FATAL:       EMBEDDING_PROVIDER=<provider> / EMBEDDING_MODEL=<model> / EMBEDDING_DIMENSIONS=%d", dim_mismatch["stored"])
+        logger.critical(
+            "FATAL:       EMBEDDING_PROVIDER=<provider> / EMBEDDING_MODEL=<model> / EMBEDDING_DIMENSIONS=%d",
+            dim_mismatch["stored"],
+        )
         logger.critical(sep)
         raise SystemExit(
             f"Embedding dimension mismatch: collection={dim_mismatch['stored']}-dim, "

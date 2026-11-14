@@ -1,6 +1,5 @@
 """Unit tests for terminal graph nodes (blocked, out-of-scope, clarification, no-info)."""
 
-
 from src.config.prompts import (
     BLOCKED_RESPONSE,
     CLARIFICATION_RESPONSE,

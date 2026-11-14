@@ -3,6 +3,7 @@
 Callbacks write token usage and timings without changing model calls. Unknown
 prices remain unpriced; these records are not a provider billing statement.
 Request-scoped callbacks also attach usage to each local request trace."""
+
 from __future__ import annotations
 
 import contextlib
@@ -153,9 +154,7 @@ class CostCallbackHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, *, run_id: UUID, **kwargs: Any) -> None:
         with self._lock:
-            start_time, start_model, metadata = self._starts.pop(
-                run_id, (time.monotonic(), None, {})
-            )
+            start_time, start_model, metadata = self._starts.pop(run_id, (time.monotonic(), None, {}))
         duration = time.monotonic() - start_time
 
         try:
@@ -288,9 +287,7 @@ class RequestScopedCostHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, *, run_id: UUID, **kwargs: Any) -> None:
         with self._lock:
-            start_time, start_model, metadata = self._starts.pop(
-                run_id, (time.monotonic(), None, {})
-            )
+            start_time, start_model, metadata = self._starts.pop(run_id, (time.monotonic(), None, {}))
         duration = time.monotonic() - start_time
 
         try:
@@ -306,39 +303,61 @@ class RequestScopedCostHandler(BaseCallbackHandler):
             )
             available = any(
                 getattr(getattr(g, "message", None), "usage_metadata", None) is not None
-                for group in response.generations for g in group
+                for group in response.generations
+                for g in group
             ) or bool((response.llm_output or {}).get("token_usage"))
             known_price = model in MODEL_PRICING
             record = {
-                    "model": model,
-                    "duration_s": round(duration, 3),
-                    "cost_usd": cost,
-                    "node": (metadata or {}).get("trace_step") or (metadata or {}).get("langgraph_node") or (metadata or {}).get("node"),
-                    "usage_available": available,
-                    "pricing_available": known_price,
-                    **usage,
-                }
+                "model": model,
+                "duration_s": round(duration, 3),
+                "cost_usd": cost,
+                "node": (metadata or {}).get("trace_step")
+                or (metadata or {}).get("langgraph_node")
+                or (metadata or {}).get("node"),
+                "usage_available": available,
+                "pricing_available": known_price,
+                **usage,
+            }
             with self._lock:
                 self._records.append(record)
             if self.trace is not None:
-                self.trace.record("model_call", call_id=str(run_id), **{
-                    **record, "cost_usd": cost if available and known_price else None,
-                })
+                self.trace.record(
+                    "model_call",
+                    call_id=str(run_id),
+                    **{
+                        **record,
+                        "cost_usd": cost if available and known_price else None,
+                    },
+                )
         except Exception:  # noqa: BLE001
             pass
 
     def on_llm_error(self, error, *, run_id: UUID, **kwargs):
         with self._lock:
             start, model, metadata = self._starts.pop(run_id, (time.monotonic(), None, {}))
-            self._records.append({"model": model or "unknown", "cost_usd": 0.0,
-                                  "input_tokens": 0, "output_tokens": 0,
-                                  "cache_read_tokens": 0, "cache_write_tokens": 0,
-                                  "usage_available": False, "pricing_available": model in MODEL_PRICING})
+            self._records.append(
+                {
+                    "model": model or "unknown",
+                    "cost_usd": 0.0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cache_read_tokens": 0,
+                    "cache_write_tokens": 0,
+                    "usage_available": False,
+                    "pricing_available": model in MODEL_PRICING,
+                }
+            )
         if self.trace is not None:
-            self.trace.record("model_call", call_id=str(run_id), model=model or "unknown",
-                              node=metadata.get("trace_step") or metadata.get("langgraph_node") or metadata.get("node"),
-                              duration_s=round(time.monotonic() - start, 3),
-                              usage_available=False, cost_usd=None, error_type=type(error).__name__)
+            self.trace.record(
+                "model_call",
+                call_id=str(run_id),
+                model=model or "unknown",
+                node=metadata.get("trace_step") or metadata.get("langgraph_node") or metadata.get("node"),
+                duration_s=round(time.monotonic() - start, 3),
+                usage_available=False,
+                cost_usd=None,
+                error_type=type(error).__name__,
+            )
 
     def aggregate(self) -> dict:
         """Return a single-turn cost summary suitable for surfacing in the chat
@@ -464,5 +483,3 @@ def _auto_init_from_env() -> None:
 
 
 _auto_init_from_env()
-
-

@@ -1,4 +1,5 @@
 """Informed draft revision through the real graph, with model/search responses mocked."""
+
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -30,11 +31,16 @@ def checker_returning(monkeypatch, verdict):
 
 @pytest.mark.parametrize("grounded,score", [(False, 0.3), (True, 0.5)])
 def test_failed_checks_save_existing_explanation_for_revision(monkeypatch, grounded, score):
-    checker_returning(monkeypatch, HallucinationCheck(
-        grounded=grounded, score=score, explanation="  " + FEEDBACK + "  "))
-    result = hallucination.hallucination_checker_node({
-        "generated_answer": WRONG_DRAFT, "relevant_chunks": [CHUNK], "generation_retry_count": 0,
-    })
+    checker_returning(
+        monkeypatch, HallucinationCheck(grounded=grounded, score=score, explanation="  " + FEEDBACK + "  ")
+    )
+    result = hallucination.hallucination_checker_node(
+        {
+            "generated_answer": WRONG_DRAFT,
+            "relevant_chunks": [CHUNK],
+            "generation_retry_count": 0,
+        }
+    )
     assert result["hallucination_status"] == "hallucinated"
     assert result["hallucination_feedback"] == FEEDBACK
     assert result["generation_retry_count"] == 1
@@ -42,10 +48,14 @@ def test_failed_checks_save_existing_explanation_for_revision(monkeypatch, groun
 
 def test_successful_check_clears_previous_feedback(monkeypatch):
     checker_returning(monkeypatch, HallucinationCheck(grounded=True, score=0.9, explanation="Supported"))
-    result = hallucination.hallucination_checker_node({
-        "generated_answer": CORRECT_DRAFT, "relevant_chunks": [CHUNK],
-        "hallucination_feedback": FEEDBACK, "generation_retry_count": 1,
-    })
+    result = hallucination.hallucination_checker_node(
+        {
+            "generated_answer": CORRECT_DRAFT,
+            "relevant_chunks": [CHUNK],
+            "hallucination_feedback": FEEDBACK,
+            "generation_retry_count": 1,
+        }
+    )
     assert result["hallucination_feedback"] == ""
     assert result["generation_retry_count"] == 1
 
@@ -67,22 +77,30 @@ def test_unverified_checks_clear_stale_feedback(monkeypatch, failure):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status,retries,feedback", [
-    ("", 0, ""),
-    ("hallucinated", 0, FEEDBACK),
-    ("grounded", 1, FEEDBACK),
-    ("unverified", 1, FEEDBACK),
-    ("hallucinated", 1, ""),
-])
+@pytest.mark.parametrize(
+    "status,retries,feedback",
+    [
+        ("", 0, ""),
+        ("hallucinated", 0, FEEDBACK),
+        ("grounded", 1, FEEDBACK),
+        ("unverified", 1, FEEDBACK),
+        ("hallucinated", 1, ""),
+    ],
+)
 async def test_initial_and_unreviewed_attempts_do_not_receive_revision_material(monkeypatch, status, retries, feedback):
     model = MagicMock()
     model.ainvoke = AsyncMock(return_value=AIMessage(content=CORRECT_DRAFT))
     monkeypatch.setattr(generator.LLMFactory, "get_generator_llm", lambda: model)
-    await generator.generator_node({
-        "contextualized_query": QUESTION, "relevant_chunks": [CHUNK],
-        "generated_answer": WRONG_DRAFT, "hallucination_feedback": feedback,
-        "hallucination_status": status, "generation_retry_count": retries,
-    })
+    await generator.generator_node(
+        {
+            "contextualized_query": QUESTION,
+            "relevant_chunks": [CHUNK],
+            "generated_answer": WRONG_DRAFT,
+            "hallucination_feedback": feedback,
+            "hallucination_status": status,
+            "generation_retry_count": retries,
+        }
+    )
     prompt = model.ainvoke.call_args.args[0][-1].content
     assert QUESTION in prompt and CHUNK["content"] in prompt
     assert WRONG_DRAFT not in prompt and FEEDBACK not in prompt
@@ -93,31 +111,48 @@ async def test_initial_and_unreviewed_attempts_do_not_receive_revision_material(
 @pytest.mark.parametrize("revision_passes", [True, False])
 @pytest.mark.parametrize("research_path", [False, True])
 async def test_real_graph_revises_then_rechecks_with_bounded_retry_and_new_turn_reset(
-    monkeypatch, revision_passes, research_path,
+    monkeypatch,
+    revision_passes,
+    research_path,
 ):
     # Keep actual generator, checker, edges and formatter; replace only upstream model/search work.
-    monkeypatch.setattr(builder, "guardrails_node", lambda s: {
-        "guardrail_status": "clean", "contextualized_query": s["original_query"]})
+    monkeypatch.setattr(
+        builder, "guardrails_node", lambda s: {"guardrail_status": "clean", "contextualized_query": s["original_query"]}
+    )
     monkeypatch.setattr(builder, "metadata_extractor_node", lambda s: {"metadata_unavailable": False})
-    monkeypatch.setattr(builder, "router_node", lambda s: {
-        "query_intent": "retrieval", "query_complexity": "research_required" if research_path else "simple_lookup"})
+    monkeypatch.setattr(
+        builder,
+        "router_node",
+        lambda s: {
+            "query_intent": "retrieval",
+            "query_complexity": "research_required" if research_path else "simple_lookup",
+        },
+    )
     monkeypatch.setattr(builder, "retrieval_node", lambda s: {"retrieved_chunks": [CHUNK]})
     monkeypatch.setattr(builder, "reranker_node", lambda s: {"reranked_chunks": [CHUNK]})
     monkeypatch.setattr(builder, "grader_node", lambda s: {"relevant_chunks": [CHUNK]})
     synthesis = "Research finding: revenue is $10 million."
-    monkeypatch.setattr(builder, "research_agent_node", lambda s: {
-        "relevant_chunks": [CHUNK], "agent_synthesis": synthesis})
+    monkeypatch.setattr(
+        builder, "research_agent_node", lambda s: {"relevant_chunks": [CHUNK], "agent_synthesis": synthesis}
+    )
 
     answer_model = MagicMock()
-    answer_model.ainvoke = AsyncMock(side_effect=[
-        AIMessage(content=WRONG_DRAFT), AIMessage(content=CORRECT_DRAFT), AIMessage(content=CORRECT_DRAFT),
-    ])
+    answer_model.ainvoke = AsyncMock(
+        side_effect=[
+            AIMessage(content=WRONG_DRAFT),
+            AIMessage(content=CORRECT_DRAFT),
+            AIMessage(content=CORRECT_DRAFT),
+        ]
+    )
     monkeypatch.setattr(generator.LLMFactory, "get_generator_llm", lambda: answer_model)
     review_model = checker_returning(monkeypatch, None)
     review_model.with_structured_output.return_value.invoke.side_effect = [
         HallucinationCheck(grounded=False, score=0.3, explanation=FEEDBACK),
-        HallucinationCheck(grounded=revision_passes, score=0.95 if revision_passes else 0.4,
-                           explanation="Supported" if revision_passes else "Still uncertain about the figure."),
+        HallucinationCheck(
+            grounded=revision_passes,
+            score=0.95 if revision_passes else 0.4,
+            explanation="Supported" if revision_passes else "Still uncertain about the figure.",
+        ),
         HallucinationCheck(grounded=True, score=0.95, explanation="Supported"),
     ]
     graph = builder.build_graph(InMemorySaver())

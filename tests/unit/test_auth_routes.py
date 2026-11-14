@@ -3,6 +3,7 @@
 TokenResponse includes user_id, name and department, and GET /v1/auth/me
 returns the caller's identity. These tests pin that contract.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -18,6 +19,7 @@ def client():
 
 
 # ── POST /v1/auth/login ──────────────────────────────────────────────────────
+
 
 def test_login_returns_full_user_tuple(client):
     """The frontend renders the header from this response — every field
@@ -44,6 +46,7 @@ def test_login_rejects_unknown_user(client):
 
 
 # ── GET /v1/auth/me ──────────────────────────────────────────────────────────
+
 
 def _token(role: str = "finance", user_id: str = "finance", department: str = "FP&A") -> str:
     return create_token(user_id=user_id, name=f"Test {role.title()}", role=role, department=department)

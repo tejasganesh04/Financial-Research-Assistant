@@ -1,6 +1,5 @@
 """Unit tests for the RBAC gate node in src/graph/nodes/rbac_gate.py."""
 
-
 from src.graph.nodes.rbac_gate import rbac_gate
 
 # ---------------------------------------------------------------------------
@@ -30,7 +29,9 @@ class TestRbacGateRoles:
         state = {"user_role": "c_level"}
         result = rbac_gate(state)
         assert result["allowed_doc_types"] == [
-            "10k", "10q", "8k",
+            "10k",
+            "10q",
+            "8k",
             "invoice",
             "expense_policy",
             "board_report",

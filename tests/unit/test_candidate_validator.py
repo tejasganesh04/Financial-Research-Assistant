@@ -14,8 +14,11 @@ def test_validator_does_not_readd_mismatches_when_few_candidates_remain():
 
 
 def test_validator_keeps_requested_company_and_year_lists():
-    candidates = [{"metadata": {"company": company, "fiscal_year": year}} for company, year in (
-        ("microsoft", 2016), ("3m", 2023), ("microsoft", 2024), ("nike", 2023))]
-    kept, _ = validate_candidates(candidates=candidates, target_companies=["microsoft", "3m"],
-                                  target_fiscal_years=[2016, 2023])
+    candidates = [
+        {"metadata": {"company": company, "fiscal_year": year}}
+        for company, year in (("microsoft", 2016), ("3m", 2023), ("microsoft", 2024), ("nike", 2023))
+    ]
+    kept, _ = validate_candidates(
+        candidates=candidates, target_companies=["microsoft", "3m"], target_fiscal_years=[2016, 2023]
+    )
     assert kept == candidates[:2]

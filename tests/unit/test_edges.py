@@ -1,6 +1,5 @@
 """Unit tests for conditional edge routing functions in src/graph/edges.py."""
 
-
 from src.graph.edges import (
     route_after_grading,
     route_after_guardrails,

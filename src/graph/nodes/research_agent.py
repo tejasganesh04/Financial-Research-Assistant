@@ -26,6 +26,7 @@ Only this node's returned dictionary updates graph state:
   - agent_turns_used: planning/check/synthesis count, excluding grader calls
   - agent_sub_questions: initial planned sub-questions, excluding follow-ups
 """
+
 from __future__ import annotations
 
 import logging
@@ -70,16 +71,14 @@ class _Decomposition(BaseModel):
 
     qualifiers: list[str] = Field(
         description="Question qualifiers that change WHAT counts as a correct answer "
-                    "(e.g. 'exclude M&A', 'organic', 'year over year direction'). "
-                    "Use ['no qualifiers'] if none."
+        "(e.g. 'exclude M&A', 'organic', 'year over year direction'). "
+        "Use ['no qualifiers'] if none."
     )
     required_quantities: list[str] = Field(
         description="The 2+ inputs the question's answer requires (current assets, "
-                    "current liabilities, operating income FY-1, etc)."
+        "current liabilities, operating income FY-1, etc)."
     )
-    sub_questions: list[str] = Field(
-        description="2–4 atomic sub-questions, each retrievable from a single section."
-    )
+    sub_questions: list[str] = Field(description="2–4 atomic sub-questions, each retrievable from a single section.")
 
 
 class _SufficiencyVerdict(BaseModel):
@@ -99,11 +98,15 @@ class _SufficiencyVerdict(BaseModel):
 def _system_block(prompt_text: str, llm) -> SystemMessage:
     """Create a system message; add a cache marker only for the Anthropic client."""
     if isinstance(llm, ChatAnthropic):
-        return SystemMessage(content=[{
-            "type": "text",
-            "text": prompt_text,
-            "cache_control": {"type": "ephemeral"},
-        }])
+        return SystemMessage(
+            content=[
+                {
+                    "type": "text",
+                    "text": prompt_text,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+        )
     return SystemMessage(content=prompt_text)
 
 
@@ -203,10 +206,12 @@ def _decompose(query: str, target_companies: list[str], target_fiscal_years: lis
         target_fiscal_years=target_fiscal_years or "(not specified)",
     )
     try:
-        result: _Decomposition = structured.invoke([
-            _system_block(DECOMPOSE_SYSTEM_PROMPT, llm),
-            HumanMessage(content=prompt),
-        ])
+        result: _Decomposition = structured.invoke(
+            [
+                _system_block(DECOMPOSE_SYSTEM_PROMPT, llm),
+                HumanMessage(content=prompt),
+            ]
+        )
         # Keep only the first five search questions; this does not enforce a minimum.
         result.sub_questions = result.sub_questions[:MAX_SUB_QUESTIONS]
         return result
@@ -249,10 +254,12 @@ def _judge_sufficiency(
         evidence_summary=_evidence_summary(chunks),
     )
     try:
-        verdict: _SufficiencyVerdict = structured.invoke([
-            _system_block(SUFFICIENCY_SYSTEM_PROMPT, llm),
-            HumanMessage(content=prompt),
-        ])
+        verdict: _SufficiencyVerdict = structured.invoke(
+            [
+                _system_block(SUFFICIENCY_SYSTEM_PROMPT, llm),
+                HumanMessage(content=prompt),
+            ]
+        )
         return verdict
     except Exception as exc:  # noqa: BLE001
         raise_if_rate_limited(exc, "research.sufficiency", llm=llm)
@@ -287,10 +294,12 @@ def _synthesize(
         evidence=_full_evidence(chunks),
     )
     try:
-        result = llm.invoke([
-            _system_block(AGENT_SYNTHESIZER_SYSTEM_PROMPT, llm),
-            HumanMessage(content=prompt),
-        ])
+        result = llm.invoke(
+            [
+                _system_block(AGENT_SYNTHESIZER_SYSTEM_PROMPT, llm),
+                HumanMessage(content=prompt),
+            ]
+        )
         synthesis = result.content if isinstance(result.content, str) else str(result.content)
     except Exception as exc:  # noqa: BLE001
         raise_if_rate_limited(exc, "research.synthesize", llm=llm)
@@ -327,9 +336,14 @@ def research_agent_node(state: RAGState) -> dict:
         f"qualifiers={decomp.qualifiers}; required={decomp.required_quantities}"
     )
     from src.services.event_log import emit
-    emit("research_agent.decompose", n_sub_questions=len(sub_questions),
-         qualifiers=list(decomp.qualifiers), required_quantities=list(decomp.required_quantities),
-         sub_questions=list(sub_questions))
+
+    emit(
+        "research_agent.decompose",
+        n_sub_questions=len(sub_questions),
+        qualifiers=list(decomp.qualifiers),
+        required_quantities=list(decomp.required_quantities),
+        sub_questions=list(sub_questions),
+    )
 
     # 2) Search/rerank/grade each planned question, keeping each accepted chunk once.
     chunks_by_id: dict[tuple, dict] = {}
@@ -346,26 +360,43 @@ def research_agent_node(state: RAGState) -> dict:
     for round_idx in range(MAX_FOLLOWUP_ROUNDS):
         chunks = list(chunks_by_id.values())
         verdict = observe_step("research.sufficiency", _judge_sufficiency, query, decomp, chunks)
-        sufficiency_history.append({
-            "decision": verdict.decision,
-            "missing": verdict.missing_quantity,
-            "follow_up": verdict.follow_up_question,
-            "reason": verdict.reason,
-        })
+        sufficiency_history.append(
+            {
+                "decision": verdict.decision,
+                "missing": verdict.missing_quantity,
+                "follow_up": verdict.follow_up_question,
+                "reason": verdict.reason,
+            }
+        )
         if verdict.decision == "sufficient":
             logger.info(f"Agent: sufficient after round {round_idx} ({verdict.reason})")
-            emit("research_agent.sufficiency", decision="sufficient", round=round_idx,
-                 reason=verdict.reason, n_chunks_so_far=len(chunks_by_id))
+            emit(
+                "research_agent.sufficiency",
+                decision="sufficient",
+                round=round_idx,
+                reason=verdict.reason,
+                n_chunks_so_far=len(chunks_by_id),
+            )
             break
         if not verdict.follow_up_question:
             logger.info("Agent: 'need_more' but no follow-up — exiting loop")
-            emit("research_agent.sufficiency", decision="need_more_no_followup",
-                 round=round_idx, reason=verdict.reason, n_chunks_so_far=len(chunks_by_id))
+            emit(
+                "research_agent.sufficiency",
+                decision="need_more_no_followup",
+                round=round_idx,
+                reason=verdict.reason,
+                n_chunks_so_far=len(chunks_by_id),
+            )
             break
         logger.info(f"Agent follow-up [{round_idx}]: {verdict.follow_up_question} ({verdict.reason})")
-        emit("research_agent.sufficiency", decision="need_more", round=round_idx,
-             follow_up=verdict.follow_up_question, missing=verdict.missing_quantity,
-             reason=verdict.reason)
+        emit(
+            "research_agent.sufficiency",
+            decision="need_more",
+            round=round_idx,
+            follow_up=verdict.follow_up_question,
+            missing=verdict.missing_quantity,
+            reason=verdict.reason,
+        )
         for c in _retrieve_and_grade_for_subq(state, verdict.follow_up_question):
             cid = _chunk_id(c)
             if cid not in chunks_by_id:
@@ -375,8 +406,13 @@ def research_agent_node(state: RAGState) -> dict:
     # Otherwise prepare findings for the separate generator node.
     relevant_chunks = list(chunks_by_id.values())
     if not relevant_chunks:
-        return {"relevant_chunks": [], "agent_synthesis": None, "grading_results": [],
-                "agent_turns_used": 1 + len(sufficiency_history), "agent_sub_questions": sub_questions}
+        return {
+            "relevant_chunks": [],
+            "agent_synthesis": None,
+            "grading_results": [],
+            "agent_turns_used": 1 + len(sufficiency_history),
+            "agent_sub_questions": sub_questions,
+        }
     synthesis = observe_step("research.synthesize", _synthesize, query, decomp, relevant_chunks)
 
     # Diagnostic count: planner + sufficiency checks + synthesizer.
@@ -387,8 +423,12 @@ def research_agent_node(state: RAGState) -> dict:
         f"Agent done: {len(relevant_chunks)} chunks, {turns_used} planning/check/synthesis calls, "
         f"sub_questions={sub_questions}"
     )
-    emit("research_agent.synthesize", n_chunks=len(relevant_chunks), turns_used=turns_used,
-         synthesis_chars=len(synthesis) if synthesis else 0)
+    emit(
+        "research_agent.synthesize",
+        n_chunks=len(relevant_chunks),
+        turns_used=turns_used,
+        synthesis_chars=len(synthesis) if synthesis else 0,
+    )
 
     # Diagnostic markers for already curated chunks. The edge in builder.py sends
     # nonempty research evidence directly to generator; these markers do not choose the route.

@@ -22,13 +22,15 @@ logger = logging.getLogger(__name__)
 def _build_system_message(llm) -> SystemMessage:
     """Build the checker instructions; add an Anthropic cache marker when supported."""
     if isinstance(llm, ChatAnthropic):
-        return SystemMessage(content=[
-            {
-                "type": "text",
-                "text": HALLUCINATION_CHECK_SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ])
+        return SystemMessage(
+            content=[
+                {
+                    "type": "text",
+                    "text": HALLUCINATION_CHECK_SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+        )
     return SystemMessage(content=HALLUCINATION_CHECK_SYSTEM_PROMPT)
 
 
@@ -38,9 +40,12 @@ def hallucination_checker_node(state: RAGState) -> dict:
     chunks = state.get("relevant_chunks", [])
 
     if not answer or not chunks:
-        return {"hallucination_status": "unverified", "hallucination_score": 0.0,
-                "hallucination_feedback": "",
-                "generation_retry_count": settings.MAX_GENERATION_RETRIES}
+        return {
+            "hallucination_status": "unverified",
+            "hallucination_score": 0.0,
+            "hallucination_feedback": "",
+            "generation_retry_count": settings.MAX_GENERATION_RETRIES,
+        }
 
     sources = "\n\n---\n\n".join(
         f"[{chunk.get('metadata', {}).get('source_file', 'Unknown')}]\n"
@@ -54,18 +59,25 @@ def hallucination_checker_node(state: RAGState) -> dict:
     llm = None
     try:
         high_stakes = is_escalated(state)
-        llm = (LLMFactory.get_high_stakes_hallucination_llm() if high_stakes
-               else LLMFactory.get_hallucination_llm())
+        llm = LLMFactory.get_high_stakes_hallucination_llm() if high_stakes else LLMFactory.get_hallucination_llm()
         structured_llm = llm.with_structured_output(HallucinationCheck)
-        result: HallucinationCheck = structured_llm.invoke([
-            _build_system_message(llm),
-            HumanMessage(content=user_prompt),
-        ])
+        result: HallucinationCheck = structured_llm.invoke(
+            [
+                _build_system_message(llm),
+                HumanMessage(content=user_prompt),
+            ]
+        )
 
         logger.info(f"Hallucination check: grounded={result.grounded}, score={result.score:.2f}")
         from src.services.event_log import emit
-        emit("hallucination", grounded=result.grounded, score=result.score,
-             retry_count=retry_count, will_retry=not result.grounded or result.score < settings.HALLUCINATION_THRESHOLD)
+
+        emit(
+            "hallucination",
+            grounded=result.grounded,
+            score=result.score,
+            retry_count=retry_count,
+            will_retry=not result.grounded or result.score < settings.HALLUCINATION_THRESHOLD,
+        )
 
         is_grounded = result.grounded and result.score >= settings.HALLUCINATION_THRESHOLD
         return {

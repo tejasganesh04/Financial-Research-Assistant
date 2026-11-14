@@ -3,6 +3,7 @@
 The PostgresSaver-backed thread_service is stubbed, as is the LangGraph
 state read. We only verify auth, ownership, and the response shape.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch

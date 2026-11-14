@@ -4,6 +4,7 @@ Filter tests check allowed document types and confidentiality. Database tests
 count visible points in the configured public-filing collection: financial
 readers see public filings, while HR (policies only) sees none.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -35,6 +36,7 @@ qdrant_required = pytest.mark.skipif(
 # ────────────────────────────────────────────────────────────
 # Layer 1: filter-shape tests (no Qdrant)
 # ────────────────────────────────────────────────────────────
+
 
 class TestRBACFilterShape:
     """Verify filter construction matches each role's documented permissions."""
@@ -97,6 +99,7 @@ class TestRBACFilterShape:
 # ────────────────────────────────────────────────────────────
 # Layer 2: Qdrant end-to-end (skip if Qdrant down)
 # ────────────────────────────────────────────────────────────
+
 
 @qdrant_required
 class TestRBACQdrantEnforcement:

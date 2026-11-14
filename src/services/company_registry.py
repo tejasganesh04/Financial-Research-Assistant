@@ -51,7 +51,40 @@ FINANCEBENCH_TICKER_ALIASES: dict[str, set[str]] = {
 
 # Company labels in the published knowledge base. Bundled so snapshot users do
 # not need a second, optional metadata download for company recognition.
-CORPUS_COMPANIES = ['3m', 'activision_blizzard', 'adobe', 'aes_corporation', 'amazon', 'amcor', 'amd', 'american_express', 'american_water_works', 'best_buy', 'block', 'boeing', 'coca_cola', 'corning', 'costco', 'cvs_health', 'foot_locker', 'general_mills', 'johnson_johnson', 'jpmorgan', 'kraft_heinz', 'lockheed_martin', 'mgm_resorts', 'microsoft', 'netflix', 'nike', 'paypal', 'pepsico', 'pfizer', 'ulta_beauty', 'verizon', 'walmart']
+CORPUS_COMPANIES = [
+    "3m",
+    "activision_blizzard",
+    "adobe",
+    "aes_corporation",
+    "amazon",
+    "amcor",
+    "amd",
+    "american_express",
+    "american_water_works",
+    "best_buy",
+    "block",
+    "boeing",
+    "coca_cola",
+    "corning",
+    "costco",
+    "cvs_health",
+    "foot_locker",
+    "general_mills",
+    "johnson_johnson",
+    "jpmorgan",
+    "kraft_heinz",
+    "lockheed_martin",
+    "mgm_resorts",
+    "microsoft",
+    "netflix",
+    "nike",
+    "paypal",
+    "pepsico",
+    "pfizer",
+    "ulta_beauty",
+    "verizon",
+    "walmart",
+]
 
 # These ticker strings are also common words. Require uppercase or a $ prefix.
 AMBIGUOUS_TICKERS = {"cost", "ba", "ko", "pep", "sq", "fb"}
@@ -136,4 +169,3 @@ def build_company_alias_map() -> dict[str, set[str]]:
 
 def all_company_slugs() -> list[str]:
     return sorted(build_company_alias_map().keys())
-

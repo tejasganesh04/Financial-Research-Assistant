@@ -5,6 +5,7 @@ entries last seven days unless RAG_RESULT_CACHE_TTL_SECONDS or a per-call TTL
 sets another positive expiry. Existing entries keep their original expiry.
 Cache failures fall back to computing a fresh result.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -80,9 +81,7 @@ class _CacheClient:
             )
             # Smoke ping — a dead Redis will surface here, not on first use.
             self._client.ping()
-            logger.info(
-                "Result cache connected to redis://%s:%s db=%s", host, port, db
-            )
+            logger.info("Result cache connected to redis://%s:%s db=%s", host, port, db)
         except Exception as e:
             logger.warning(
                 "Result cache disabled — could not connect to Redis: %s",
@@ -160,12 +159,11 @@ def get_or_compute(
     on a true miss.
     """
     if cache_name not in _KEY_PREFIX:
-        raise KeyError(
-            f"Unknown cache_name {cache_name!r}; expected one of {list(_KEY_PREFIX)}"
-        )
+        raise KeyError(f"Unknown cache_name {cache_name!r}; expected one of {list(_KEY_PREFIX)}")
     key = _KEY_PREFIX[cache_name] + _hash_key(*key_parts)
     cached = _client.get(key)
     from src.services.request_trace import record
+
     record("local_cache", cache=cache_name, hit=cached is not None)
     if cached is not None:
         return cached

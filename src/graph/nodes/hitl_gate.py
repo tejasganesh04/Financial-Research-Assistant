@@ -1,4 +1,5 @@
 """Hold an escalated answer until Admin authorizes its release."""
+
 import logging
 from datetime import datetime, timezone
 
@@ -23,13 +24,18 @@ def hitl_gate_node(state: RAGState, config: RunnableConfig | None = None) -> dic
     scope = state.get("access_scope") or {}
     submitted_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     # On first execution this pauses the graph. On resume the node restarts and this call returns the reviewer's value.
-    decision = interrupt({
-        "type": "approval_required",
-        "reason": "This answer uses a search scope outside the requester's role. Admin approval is required before release.",
-        "access_scope": scope,
-        "request_id": state.get("request_id"),
-        "submitted_at": submitted_at,
-    })
+    decision = interrupt(
+        {
+            "type": "approval_required",
+            "reason": (
+                "This answer uses a search scope outside the requester's role. "
+                "Admin approval is required before release."
+            ),
+            "access_scope": scope,
+            "request_id": state.get("request_id"),
+            "submitted_at": submitted_at,
+        }
+    )
     # Execution resumes here after the human responds. NOTE: this whole
     # function runs again from the top on resume, so the local
     # `submitted_at` was just recomputed (it's now() of the resume call,
@@ -62,4 +68,3 @@ def hitl_gate_node(state: RAGState, config: RunnableConfig | None = None) -> dic
         "human_decision_reason": decision_reason,
         "hitl_submitted_at": original_submitted_at,
     }
-

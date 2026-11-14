@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
     os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project_name
 
     from src.services.event_log import attach_file_handler, log_runtime_components
+
     attach_file_handler()
     log_runtime_components()
 
@@ -42,7 +43,9 @@ async def lifespan(app: FastAPI):
     # Initialize PostgresSaver checkpointer for HITL persistence
     try:
         conninfo = settings.postgres_url
-        logger.info(f"Connecting to PostgreSQL at {settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
+        logger.info(
+            f"Connecting to PostgreSQL at {settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+        )
         pool = AsyncConnectionPool(
             conninfo=conninfo,
             min_size=1,
@@ -87,14 +90,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Report database outages as 503 rather than 500.
 @app.exception_handler(psycopg.OperationalError)
 @app.exception_handler(PoolTimeout)
 async def database_unavailable(request, exc):
     logger.warning("Database unavailable: %s", type(exc).__name__)
-    return JSONResponse(status_code=503, content={
-        "detail": "Conversation storage is unavailable. Check service status before retrying."
-    })
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Conversation storage is unavailable. Check service status before retrying."},
+    )
 
 
 app.add_middleware(
@@ -105,15 +110,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @lru_cache(maxsize=1)
 def _git_sha() -> str:
     env_sha = os.environ.get("GIT_SHA", "").strip()
     if env_sha and env_sha != "unknown":
         return env_sha[:12]
     try:
-        out = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
-        ).strip()
+        out = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
         return out[:12]
     except Exception:
         return "unknown"
@@ -122,9 +126,11 @@ def _git_sha() -> str:
 @app.get("/version")
 def version() -> dict:
     llm_mode = (
-        "groq-only" if settings.FORCE_GROQ_ONLY else
-        "openai-only" if settings.FORCE_OPENAI_ONLY or not settings.ANTHROPIC_API_KEY else
-        "claude-and-openai"
+        "groq-only"
+        if settings.FORCE_GROQ_ONLY
+        else "openai-only"
+        if settings.FORCE_OPENAI_ONLY or not settings.ANTHROPIC_API_KEY
+        else "claude-and-openai"
     )
     return {"api_version": API_VERSION, "semver": app.version, "git_sha": _git_sha(), "llm_mode": llm_mode}
 
@@ -164,4 +170,3 @@ def favicon():
     if not icon.is_file():
         return JSONResponse(status_code=404, content={"detail": "Frontend not built"})
     return FileResponse(icon)
-

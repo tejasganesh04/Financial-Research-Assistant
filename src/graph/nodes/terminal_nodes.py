@@ -15,24 +15,51 @@ def blocked_response_node(state: RAGState) -> dict:
         answer = "The reviewer rejected this answer.\n\n**Message from reviewer:**\n\n" + quoted_reason
     else:
         answer = BLOCKED_RESPONSE
-    return {"requires_human_approval": state.get("human_decision") in ("rejected", "unavailable"), "final_response": answer, "messages": [AIMessage(content=answer, additional_kwargs={"request_id": state.get("request_id")})],
-            "response_metadata": {"reason": ("approval_" + state["human_decision"]
-                if state.get("human_decision") else state.get("guardrail_status", "blocked")), "sources": []}}
+    return {
+        "requires_human_approval": state.get("human_decision") in ("rejected", "unavailable"),
+        "final_response": answer,
+        "messages": [AIMessage(content=answer, additional_kwargs={"request_id": state.get("request_id")})],
+        "response_metadata": {
+            "reason": (
+                "approval_" + state["human_decision"]
+                if state.get("human_decision")
+                else state.get("guardrail_status", "blocked")
+            ),
+            "sources": [],
+        },
+    }
 
 
 def out_of_scope_node(state: RAGState) -> dict:
-    return {"requires_human_approval": False, "messages": [AIMessage(content=OUT_OF_SCOPE_RESPONSE, additional_kwargs={"request_id": state.get("request_id")})], "final_response": OUT_OF_SCOPE_RESPONSE, "response_metadata": {"reason": "out_of_scope"}}
+    return {
+        "requires_human_approval": False,
+        "messages": [
+            AIMessage(content=OUT_OF_SCOPE_RESPONSE, additional_kwargs={"request_id": state.get("request_id")})
+        ],
+        "final_response": OUT_OF_SCOPE_RESPONSE,
+        "response_metadata": {"reason": "out_of_scope"},
+    }
 
 
 def clarification_node(state: RAGState) -> dict:
-    return {"requires_human_approval": False, "messages": [AIMessage(content=CLARIFICATION_RESPONSE, additional_kwargs={"request_id": state.get("request_id")})], "final_response": CLARIFICATION_RESPONSE, "response_metadata": {"reason": "clarification"}}
+    return {
+        "requires_human_approval": False,
+        "messages": [
+            AIMessage(content=CLARIFICATION_RESPONSE, additional_kwargs={"request_id": state.get("request_id")})
+        ],
+        "final_response": CLARIFICATION_RESPONSE,
+        "response_metadata": {"reason": "clarification"},
+    }
 
 
 def no_info_node(state: RAGState) -> dict:
     """Report no relevant evidence in the permitted search scope. Never probe outside it."""
     answer = NO_INFO_RESPONSE
     if state.get("metadata_unavailable"):
-        answer = "I couldn't find the requested company or filing year in the documents available within your search permissions."
+        answer = (
+            "I couldn't find the requested company or filing year in the documents "
+            "available within your search permissions."
+        )
     return {
         "requires_human_approval": False,
         "messages": [AIMessage(content=answer, additional_kwargs={"request_id": state.get("request_id")})],

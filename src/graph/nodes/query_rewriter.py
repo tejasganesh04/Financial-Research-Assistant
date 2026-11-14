@@ -33,10 +33,12 @@ def query_rewriter_node(state: RAGState) -> dict:
         prompt = QUERY_REWRITER_USER_TEMPLATE.format(query=query, feedback=feedback)
 
         def _invoke():
-            return llm.invoke([
-                SystemMessage(content=QUERY_REWRITER_PROMPT),
-                HumanMessage(content=prompt),
-            ])
+            return llm.invoke(
+                [
+                    SystemMessage(content=QUERY_REWRITER_PROMPT),
+                    HumanMessage(content=prompt),
+                ]
+            )
 
         result = retry_llm_call(_invoke, label="query rewriter")
         rewritten = result.content.strip()

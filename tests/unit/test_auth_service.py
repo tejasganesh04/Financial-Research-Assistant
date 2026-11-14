@@ -11,6 +11,7 @@ from src.services.auth_service import create_token, decode_token
 
 # ── create_token returns a non-empty string ───────────────────────────────
 
+
 def test_create_token_returns_nonempty_string():
     token = create_token(user_id="u1", name="Alice", role="finance", department="treasury")
 
@@ -19,6 +20,7 @@ def test_create_token_returns_nonempty_string():
 
 
 # ── decode_token returns User with correct fields ─────────────────────────
+
 
 def test_decode_token_returns_user_with_correct_fields():
     token = create_token(user_id="u42", name="Bob Smith", role="analyst", department="research")
@@ -31,6 +33,7 @@ def test_decode_token_returns_user_with_correct_fields():
 
 
 # ── Roundtrip preserves user_id, name, role ───────────────────────────────
+
 
 def test_roundtrip_preserves_identity():
     cases = [
@@ -50,6 +53,7 @@ def test_roundtrip_preserves_identity():
 
 
 # ── Expired token raises HTTPException ────────────────────────────────────
+
 
 def test_expired_token_raises_http_exception():
     # Manually craft a token that expired one hour ago
@@ -73,6 +77,7 @@ def test_expired_token_raises_http_exception():
 
 # ── Invalid token string raises HTTPException ─────────────────────────────
 
+
 def test_invalid_token_raises_http_exception():
     with pytest.raises(HTTPException) as exc_info:
         decode_token("not-a-jwt-at-all")
@@ -82,6 +87,7 @@ def test_invalid_token_raises_http_exception():
 
 
 # ── Token signed with wrong secret raises HTTPException ───────────────────
+
 
 def test_wrong_secret_raises_http_exception():
     payload = {

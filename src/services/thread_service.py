@@ -3,6 +3,7 @@
 LangGraph saves many checkpoints per thread. These queries group them into
 sidebar rows and filter by the verified user ID; there is no conversations table.
 The conversation route uses LangGraph to reconstruct readable messages."""
+
 from __future__ import annotations
 
 import logging
@@ -119,10 +120,11 @@ LIMIT %s OFFSET %s
 _COUNT_ALL_SQL = "SELECT COUNT(DISTINCT thread_id) FROM checkpoints"
 
 
-async def list_all_threads_paged(
-    pool, limit: int = 50, offset: int = 0
-) -> tuple[list[dict[str, Any]], int]:
-    """Return paginated summaries across owners for an authorized Admin request, using the same shape as the user listing."""
+async def list_all_threads_paged(pool, limit: int = 50, offset: int = 0) -> tuple[list[dict[str, Any]], int]:
+    """Return paginated summaries across owners for an authorized Admin request.
+
+    Uses the same shape as the user listing.
+    """
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(_LIST_ALL_PAGED_SQL, (limit, offset))
@@ -224,7 +226,8 @@ async def list_all_threads(pool, limit: int = 200) -> list[dict[str, Any]]:
     ]
 
 
-# Return persisted owner identity for viewing history and authorizing review. Demo account definitions still live in auth.py.
+# Return persisted owner identity for viewing history and authorizing review.
+# Demo account definitions live in auth.py.
 async def get_thread_owner_role(pool, thread_id: str) -> tuple[str | None, str | None, str | None, str | None]:
     """Return (user_id, role, name, department) for the thread's creator.
     All None if not found. Older callers using a 2-tuple unpacking should

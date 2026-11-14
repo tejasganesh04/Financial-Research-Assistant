@@ -21,7 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 def _attribution_kwargs() -> dict:
-    """Add verified user attribution only when an optional LiteLLM gateway is configured. Direct providers receive no extra user field."""
+    """Add verified user attribution only when an optional LiteLLM gateway is configured.
+
+    Direct providers receive no extra user field.
+    """
     uid = current_user_id.get()
     if not uid or not settings.LITELLM_URL:
         return {}
@@ -79,10 +82,7 @@ def _llm_for_task(model_name: str, temperature: float = 0.0, max_tokens: int = 2
         return _anthropic(model_name, temperature=temperature, max_tokens=max_tokens)
     if model_name.startswith("gpt-"):
         return _openai(model_name, temperature=temperature, max_tokens=max_tokens)
-    raise ValueError(
-        f"Unknown model provider for {model_name!r}. "
-        f"Expected prefix 'claude-' or 'gpt-'."
-    )
+    raise ValueError(f"Unknown model provider for {model_name!r}. Expected prefix 'claude-' or 'gpt-'.")
 
 
 def _groq(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatGroq | ChatOpenAI:
@@ -162,8 +162,7 @@ class LLMFactory:
                 key = settings.OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY")
                 if not key:
                     raise RuntimeError(
-                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=openrouter "
-                        "requires OPENROUTER_API_KEY in env"
+                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=openrouter requires OPENROUTER_API_KEY in env"
                     )
                 _warn_once(
                     "grader_openrouter_llama",
@@ -189,8 +188,7 @@ class LLMFactory:
                 key = settings.FIREWORKS_API_KEY or os.environ.get("FIREWORKS_API_KEY")
                 if not key:
                     raise RuntimeError(
-                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=fireworks "
-                        "requires FIREWORKS_API_KEY in env"
+                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=fireworks requires FIREWORKS_API_KEY in env"
                     )
                 _warn_once(
                     "grader_fireworks_llama",

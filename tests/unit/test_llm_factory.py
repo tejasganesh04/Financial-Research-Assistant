@@ -10,12 +10,16 @@ from src.services import llm_factory
 
 class GroqOnlyFactoryTests(unittest.TestCase):
     light_methods = (
-        "get_router_llm", "get_grader_llm", "get_research_decompose_llm",
+        "get_router_llm",
+        "get_grader_llm",
+        "get_research_decompose_llm",
         "get_research_sufficiency_llm",
     )
     answer_methods = (
-        "get_generator_llm", "get_hallucination_llm",
-        "get_high_stakes_hallucination_llm", "get_research_synthesize_llm",
+        "get_generator_llm",
+        "get_hallucination_llm",
+        "get_high_stakes_hallucination_llm",
+        "get_research_synthesize_llm",
     )
 
     def test_every_stage_uses_groq_even_with_other_provider_flags_enabled(self):
@@ -37,7 +41,8 @@ class GroqOnlyFactoryTests(unittest.TestCase):
                     model = getattr(llm_factory.LLMFactory, method)()
                     self.assertIsInstance(model, ChatGroq)
                     expected = (
-                        llm_factory.settings.GROQ_LIGHT_MODEL if method in self.light_methods
+                        llm_factory.settings.GROQ_LIGHT_MODEL
+                        if method in self.light_methods
                         else llm_factory.settings.GROQ_ANSWER_MODEL
                     )
                     self.assertEqual(model.model_name, expected)
@@ -65,9 +70,13 @@ class GroqOnlyFactoryTests(unittest.TestCase):
     def test_switching_mode_off_restores_original_provider_selection(self):
         with (
             patch.multiple(
-                llm_factory.settings, FORCE_GROQ_ONLY=False, FORCE_OPENAI_ONLY=False,
-                USE_LLAMA_GRADER=False, USE_GROQ_FAST_PATH=False,
-                ANTHROPIC_API_KEY="test-placeholder", LITELLM_URL="",
+                llm_factory.settings,
+                FORCE_GROQ_ONLY=False,
+                FORCE_OPENAI_ONLY=False,
+                USE_LLAMA_GRADER=False,
+                USE_GROQ_FAST_PATH=False,
+                ANTHROPIC_API_KEY="test-placeholder",
+                LITELLM_URL="",
             ),
             patch.object(llm_factory, "ChatOpenAI", return_value=sentinel.openai),
             patch.object(llm_factory, "ChatAnthropic", return_value=sentinel.claude),
