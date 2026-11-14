@@ -19,7 +19,7 @@ from src.models.auth import User
 from src.models.schemas import ChatRequest, HallucinationCheck
 from src.models.state import RAGState
 from src.services.auth_service import create_token
-from src.services.company_registry import CORPUS_COMPANIES, company_mentions
+from src.services.company_registry import CORPUS_COMPANIES, canonical_company_slug
 from src.services.conversation_access import check_chat_access, conversation_write
 
 CHUNK = {"content": "Revenue was $200,000.", "metadata": {"source_file": "filing.pdf", "page_number": 8}}
@@ -229,14 +229,7 @@ def test_pending_history_hides_current_draft_but_keeps_previous_answer():
 
 @pytest.mark.parametrize("slug", CORPUS_COMPANIES)
 def test_all_corpus_company_names_recognized_without_metadata_download(slug):
-    name = slug.replace("_", " ")
-    assert slug in {company for _, _, company in company_mentions(f"What was {name}'s revenue in 2023?")}
-
-
-def test_cost_is_not_a_company_but_explicit_ticker_is():
-    assert not company_mentions("What was the cost of revenue?")
-    assert {company for _, _, company in company_mentions("COST revenue?")} == {"costco"}
-    assert {company for _, _, company in company_mentions("Compare Microsoft and Nike")} == {"microsoft", "nike"}
+    assert canonical_company_slug(slug.replace("_", " ")) == slug
 
 
 def test_role_boundaries_are_simple_and_explicit():

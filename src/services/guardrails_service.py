@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 from typing import Literal
 
 from src.services.provider_errors import raise_if_rate_limited
@@ -189,10 +188,11 @@ def detect_pii(text: str) -> tuple[str, list[dict]]:
         return text, []
 
     try:
+        # Names are not redacted: questions name companies and executives, and the name
+        # model also flagged unknown company names, fiscal years and tickers as people.
         results = analyzer.analyze(
             text=text,
             entities=[
-                "PERSON",
                 "PHONE_NUMBER",
                 "EMAIL_ADDRESS",
                 "CREDIT_CARD",
@@ -203,37 +203,6 @@ def detect_pii(text: str) -> tuple[str, list[dict]]:
             ],
             language="en",
         )
-
-        # Hide recognized companies only from the PERSON detector. Keep the
-        # original email/account detections, and preserve character positions.
-        from src.services.company_registry import company_mentions
-
-        company_spans = company_mentions(text)
-        if company_spans:
-            masked = list(text)
-            for start, end, _ in company_spans:
-                masked[start:end] = " " * (end - start)
-            people = analyzer.analyze(text="".join(masked), entities=["PERSON"], language="en")
-            results = [r for r in results if r.entity_type != "PERSON"] + [
-                r
-                for r in people
-                if r.entity_type == "PERSON"
-                and not any(start <= r.start and r.end <= end for start, end, _ in company_spans)
-            ]
-        # A fiscal-year label is not a person's name. Preserve only exact
-        # year matches; actual names and other PII still go to the anonymizer.
-        results = [
-            r
-            for r in results
-            if not (
-                r.entity_type == "PERSON"
-                and re.fullmatch(
-                    r"(?:FY\s*|fiscal\s+year\s+)?(?:19|20)\d{2}",
-                    text[r.start : r.end],
-                    re.IGNORECASE,
-                )
-            )
-        ]
         if not results:
             return text, []
 

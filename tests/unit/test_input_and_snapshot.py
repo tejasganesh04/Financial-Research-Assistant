@@ -13,20 +13,18 @@ from src.graph.nodes.guardrails import _contextualize_query
 from src.services.guardrails_service import detect_pii
 
 
-def test_company_person_false_positive_is_exempt_but_actual_person_and_email_are_not():
-    text = "Nike revenue for John Smith, john@example.com"
-    person = SimpleNamespace(entity_type="PERSON", start=17, end=27, score=0.9)
-    email = SimpleNamespace(entity_type="EMAIL_ADDRESS", start=29, end=len(text), score=1)
-    company = SimpleNamespace(entity_type="PERSON", start=0, end=4, score=0.9)
+def test_names_are_kept_and_structured_personal_data_is_redacted():
+    text = "Zomato revenue for Lisa Su, lisa@example.com"
+    email = SimpleNamespace(entity_type="EMAIL_ADDRESS", start=28, end=len(text), score=1)
     analyzer = MagicMock()
-    analyzer.analyze.return_value = [company, person, email]
+    analyzer.analyze.return_value = [email]
     anonymizer = MagicMock()
-    anonymizer.anonymize.return_value.text = "Nike revenue for <PERSON>, <EMAIL_ADDRESS>"
+    anonymizer.anonymize.return_value.text = "Zomato revenue for Lisa Su, <EMAIL_ADDRESS>"
     with patch("src.services.guardrails_service._get_presidio_engines", return_value=(analyzer, anonymizer)):
         redacted, entities = detect_pii(text)
-    assert anonymizer.anonymize.call_args.kwargs["analyzer_results"] == [email, person]
-    assert "Nike" in redacted
-    assert {e["type"] for e in entities} == {"PERSON", "EMAIL_ADDRESS"}
+    assert "PERSON" not in analyzer.analyze.call_args.kwargs["entities"]
+    assert redacted == "Zomato revenue for Lisa Su, <EMAIL_ADDRESS>"
+    assert [e["type"] for e in entities] == ["EMAIL_ADDRESS"]
 
 
 def test_contextualization_uses_already_sanitized_history():
@@ -168,20 +166,3 @@ def test_restore_refuses_existing_or_incompatible_collection_before_deleting(tmp
             seed._restore(file, "existing", 1)
     client.delete_collection.assert_not_called()
     client.upsert.assert_not_called()
-
-
-@pytest.mark.parametrize("year", ["fy2016", "FY 2016", "fiscal year 2016", "2016"])
-def test_fiscal_year_false_person_detection_preserves_year_and_redacts_real_pii(year):
-    text = f"microsoft cog {year} for John Smith"
-    year_start = text.index(year)
-    person_start = text.index("John Smith")
-    false_person = SimpleNamespace(entity_type="PERSON", start=year_start, end=year_start + len(year), score=0.9)
-    actual_person = SimpleNamespace(entity_type="PERSON", start=person_start, end=len(text), score=0.9)
-    analyzer, anonymizer = MagicMock(), MagicMock()
-    analyzer.analyze.return_value = [false_person, actual_person]
-    anonymizer.anonymize.return_value.text = f"microsoft cog {year} for <PERSON>"
-    with patch("src.services.guardrails_service._get_presidio_engines", return_value=(analyzer, anonymizer)):
-        redacted, entities = detect_pii(text)
-    assert year in redacted
-    assert anonymizer.anonymize.call_args.kwargs["analyzer_results"] == [actual_person]
-    assert len(entities) == 1
