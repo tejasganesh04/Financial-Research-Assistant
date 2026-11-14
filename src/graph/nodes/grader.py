@@ -68,19 +68,14 @@ def grader_node(state: RAGState) -> dict:
     llm = LLMFactory.get_grader_llm()
     structured_llm = llm.with_structured_output(GradeResult)
 
-    from src.services.result_cache import _KEY_PREFIX, _client, _hash_key
-
-    grader_cache_prefix = _KEY_PREFIX["grader"]
     grader_model = getattr(llm, "model_name", None) or getattr(llm, "model", settings.GRADER_MODEL)
 
-    # Pre-pass (sequential, no LLM): apply stages 1, 2, and the cache lookup
-    # to partition chunks into auto-decided (entity-reject / cache-hit) vs needs-LLM-grading. Index each chunk's outcome
+    # Pre-pass (sequential, no LLM): reject entity mismatches before LLM grading. Index each chunk's outcome
     # into a dict so we can rejoin in original order after the parallel LLM
     # stage completes.
     pending_indices: list[int] = []
     decisions: dict[int, dict] = {}  # chunk_id -> {relevant, reason}
     rejected_by_entity = 0
-    cache_hits = 0
 
     for i, chunk in enumerate(chunks):
         # Stage 1: cheap metadata-based entity check
@@ -93,27 +88,13 @@ def grader_node(state: RAGState) -> dict:
             }
             continue
 
-        # Stage 2.5: result-cache lookup. Skip the LLM call when we've
-        # already evaluated this exact (model, query, chunk) tuple.
-        chunk_text = chunk.get("content", "")
-        cache_key = grader_cache_prefix + _hash_key(grader_model, query, chunk_text)
-        cached = _client.get(cache_key)
-        if isinstance(cached, dict) and "relevant" in cached:
-            decisions[i] = {
-                "relevant": bool(cached["relevant"]),
-                "reason": cached.get("reason", "cache hit"),
-            }
-            cache_hits += 1
-            continue
-
         # Stage 3 candidate — needs an LLM call
         pending_indices.append(i)
 
     # Stage 3 (parallel): LLM topic-relevance grading on the survivors.
     # Each call wrapped in retry_llm_call so transient OpenAI hiccups
     # (connection resets, rate-limit bursts, momentary 5xx) don't silently
-    # turn into false-irrelevant verdicts — which previously corrupted ~1
-    # FinanceBench question per run as a refusal in the cache.
+    # turn into false-irrelevant verdicts.
     stop_grading = Event()
 
     def _grade_one(idx: int) -> tuple[int, dict]:
@@ -134,17 +115,12 @@ def grader_node(state: RAGState) -> dict:
 
         try:
             result: GradeResult = retry_llm_call(_invoke, label=f"grader chunk {idx}")
-            decision = {"relevant": result.relevant, "reason": result.reason}
-            cache_key = grader_cache_prefix + _hash_key(grader_model, query, chunk_text)
-            _client.set(cache_key, decision)
-            return idx, decision
+            return idx, {"relevant": result.relevant, "reason": result.reason}
         except Exception as e:
             if is_rate_limited(e):
                 stop_grading.set()
             raise_if_rate_limited(e, "grader", llm=llm)
             logger.warning(f"Grading failed for chunk {idx} after retries, marking as irrelevant: {e}")
-            # Don't cache errors — a transient failure should not poison
-            # the verdict for future retries.
             return idx, {"relevant": False, "reason": f"Grading error: {type(e).__name__}: {str(e)[:200]}"}
 
     if pending_indices:
@@ -173,10 +149,9 @@ def grader_node(state: RAGState) -> dict:
             relevant_chunks.append(chunk)
 
     entity_msg = f", {rejected_by_entity} rejected by entity mismatch" if rejected_by_entity else ""
-    cache_msg = f", {cache_hits} cache hits" if cache_hits else ""
     logger.info(
         f"Grading: {len(relevant_chunks)}/{len(chunks)} chunks relevant "
-        f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg}{cache_msg}, "
+        f"(min={settings.GRADING_MIN_RELEVANT_CHUNKS}{entity_msg}, "
         f"{len(pending_indices)} sent to LLM in parallel)"
     )
     from src.services.event_log import emit
@@ -186,7 +161,6 @@ def grader_node(state: RAGState) -> dict:
         n_input=len(chunks),
         n_relevant=len(relevant_chunks),
         n_rejected_entity=rejected_by_entity,
-        n_cache_hit=cache_hits,
         n_sent_to_llm=len(pending_indices),
         grader_model=grader_model,
         parallelism=_GRADER_PARALLELISM,

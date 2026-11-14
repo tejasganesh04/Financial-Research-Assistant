@@ -180,8 +180,6 @@ def log_runtime_components() -> dict:
     for k in (
         "RERANKER_DEVICE",
         "GRADER_PARALLELISM",
-        "RESULT_CACHE_REDIS_HOST",
-        "RESULT_CACHE_REDIS_PORT",
         "LANGCHAIN_TRACING_V2",
         "LANGSMITH_TRACING",
         "EVENT_LOG_PATH",
@@ -272,29 +270,6 @@ def log_runtime_components() -> dict:
             "error": f"{type(exc).__name__}: {str(exc)[:200]}",
         }
 
-    # Redis — ping + key count (the rag-cache used by reranker/grader/query-emb caches)
-    try:
-        import redis
-
-        host = os.environ.get("RESULT_CACHE_REDIS_HOST", "localhost")
-        port = int(os.environ.get("RESULT_CACHE_REDIS_PORT", "6379"))
-        db = int(os.environ.get("RESULT_CACHE_REDIS_DB", "1"))
-        r = redis.Redis(host=host, port=port, db=db, socket_connect_timeout=2)
-        n_keys = r.dbsize()
-        banner["external"]["redis"] = {
-            "endpoint": f"{host}:{port}/{db}",
-            "db": db,
-            "connected": True,
-            "n_keys": n_keys,
-        }
-    except Exception as exc:
-        banner["external"]["redis"] = {
-            "endpoint": f"{os.environ.get('RESULT_CACHE_REDIS_HOST', 'localhost')}:"
-            f"{os.environ.get('RESULT_CACHE_REDIS_PORT', '6379')}",
-            "connected": False,
-            "error": f"{type(exc).__name__}: {str(exc)[:120]}",
-        }
-
     # Emit the structured event (one line, fully queryable via jq)
     emit("runtime_components", **banner)
 
@@ -313,7 +288,6 @@ def log_runtime_components() -> dict:
         f"embedding:   {banner['settings'].get('EMBEDDING_PROVIDER')}/{banner['settings'].get('EMBEDDING_MODEL')} "
         f"(dim={banner['settings'].get('EMBEDDING_DIMENSIONS')})",
         f"qdrant:      {banner['external'].get('qdrant', {})}",
-        f"redis:       {banner['external'].get('redis', {})}",
         f"flags:       USE_LLAMA_GRADER={banner['settings'].get('USE_LLAMA_GRADER')}  "
         f"FORCE_GROQ_ONLY={settings.FORCE_GROQ_ONLY}  "
         f"USE_GROQ_FAST_PATH={banner['settings'].get('USE_GROQ_FAST_PATH')}  "

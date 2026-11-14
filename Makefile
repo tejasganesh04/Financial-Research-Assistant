@@ -33,7 +33,7 @@ seed-db:
 
 # --- Docker ---
 docker-up:
-	$(COMPOSE) up -d qdrant postgres redis
+	$(COMPOSE) up -d qdrant postgres
 
 docker-down:
 	$(COMPOSE) down

@@ -168,27 +168,9 @@ def _voyage_embed(texts: list[str], input_type: str) -> list[list[float]]:
 
 
 def embed_text(text: str, input_type: str = "query") -> list[float]:
-    """Embed a search query, reusing its cached vector when available.
+    """Embed one text with the configured provider.
 
-    Keys include provider, model, input type and exact text. Document embeddings
-    are computed directly; the published snapshot already supplies corpus vectors."""
-    if input_type == "query":
-        from src.services.result_cache import get_or_compute
-
-        return get_or_compute(
-            "query-emb",
-            (
-                settings.EMBEDDING_PROVIDER,
-                settings.EMBEDDING_MODEL,
-                input_type,
-                text,
-            ),
-            lambda: _embed_one_uncached(text, input_type),
-        )
-    return _embed_one_uncached(text, input_type)
-
-
-def _embed_one_uncached(text: str, input_type: str) -> list[float]:
+    The published snapshot already supplies corpus vectors, so this is used for queries."""
     try:
         if settings.EMBEDDING_PROVIDER == "voyage":
             return _voyage_embed([text], input_type=input_type)[0]

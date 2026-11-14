@@ -1,7 +1,7 @@
 # Local setup
 
 FastAPI serves the React build and API together at **http://localhost:8000/**.
-Docker also runs Qdrant, PostgreSQL and Redis. Use Docker Desktop and Docker
+Docker also runs Qdrant and PostgreSQL. Use Docker Desktop and Docker
 Compose; Node is needed for the image build, not the running API.
 
 ## 1. Configure the app
@@ -39,7 +39,6 @@ Local bind mounts supply the application source; downloaded model files are
 kept in a separate Docker volume. Initial model loading can take time.
 
 Open **http://localhost:8000/**. API schemas are at **http://localhost:8000/docs**.
-The local Redis port is **16380** to avoid conflicts with another local Redis.
 
 ## 3. Restore an empty knowledge base
 
@@ -84,15 +83,12 @@ Approval releases that answer; it does not permanently change the role.
 
 - **Qdrant:** indexed chunks, metadata, dense vectors and sparse vectors.
 - **PostgreSQL:** graph checkpoints, conversations and approval state.
-- **Redis:** cached query embeddings, reranker scores and relevance judgments.
 - **`logs/traces/`:** local request reports, excluded from Git.
 
 Expand **Request details** beneath a question to find its request ID and report
 path. Provider-reported usage feeds token counts; dollar costs are estimates and
 can be incomplete when a model has no configured price.
 
-Redis caches use database 1. `RAG_RESULT_CACHE_TTL_SECONDS` sets the lifetime of
-new entries, seven days by default. Existing entries keep their current expiry.
 Optional source PDFs belong in `data/sample/`, matching the indexed filename.
 PDFs and downloaded datasets are not included in Git.
 
