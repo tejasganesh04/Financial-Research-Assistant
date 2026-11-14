@@ -1,5 +1,5 @@
 """Selected metadata filters stay intact through searches, retries, grading and research."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from src.graph.nodes import grader, research_agent, retrieval
 from src.services.vector_store import build_retrieval_filter

@@ -1,8 +1,9 @@
 import logging
 
-from src.models.state import RAGState
 from langchain_core.messages import AIMessage
+
 from src.config.settings import settings
+from src.models.state import RAGState
 
 logger = logging.getLogger(__name__)
 

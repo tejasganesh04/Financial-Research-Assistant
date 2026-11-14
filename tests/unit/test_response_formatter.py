@@ -1,6 +1,5 @@
 """Unit tests for the response_formatter_node."""
 
-import pytest
 
 from src.graph.nodes.response_formatter import response_formatter_node
 

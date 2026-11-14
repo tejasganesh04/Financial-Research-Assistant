@@ -1,4 +1,5 @@
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import copy_context
 from threading import Event
@@ -16,9 +17,7 @@ from src.services.provider_errors import is_rate_limited, raise_if_rate_limited
 
 logger = logging.getLogger(__name__)
 
-import os as _os
-
-_GRADER_PARALLELISM = int(_os.environ.get("GRADER_PARALLELISM", "1" if settings.FORCE_GROQ_ONLY else "8"))
+_GRADER_PARALLELISM = int(os.environ.get("GRADER_PARALLELISM", "1" if settings.FORCE_GROQ_ONLY else "8"))
 
 
 def _entity_match(chunk: dict, target_companies: list[str]) -> bool:

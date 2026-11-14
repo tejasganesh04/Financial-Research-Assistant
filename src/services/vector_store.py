@@ -221,7 +221,7 @@ def hybrid_search(
     fusion_candidates_per_arm: int = 50,
 ) -> list[dict]:
     """Search dense and sparse vectors with the same metadata filter and fuse their ranks.
-    
+
     Each prefetch retrieves candidates; Reciprocal Rank Fusion combines the ranked
     lists and returns up to top_k chunks. Access rules are never relaxed."""
     sparse = compute_query_sparse_vector(query_text)

@@ -358,7 +358,7 @@ def research_agent_node(state: RAGState) -> dict:
                  reason=verdict.reason, n_chunks_so_far=len(chunks_by_id))
             break
         if not verdict.follow_up_question:
-            logger.info(f"Agent: 'need_more' but no follow-up — exiting loop")
+            logger.info("Agent: 'need_more' but no follow-up — exiting loop")
             emit("research_agent.sufficiency", decision="need_more_no_followup",
                  round=round_idx, reason=verdict.reason, n_chunks_so_far=len(chunks_by_id))
             break

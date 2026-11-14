@@ -9,9 +9,8 @@ from __future__ import annotations
 import pytest
 
 from src.config.rbac_config import get_permissions
-from src.services.vector_store import build_rbac_filter
-
 from src.config.settings import settings
+from src.services.vector_store import build_rbac_filter
 
 FB_COLLECTION = settings.QDRANT_COLLECTION
 

@@ -251,7 +251,9 @@ class RequestTrace(BaseCallbackHandler):
             row["calls"] += 1
             row["input"] += e.get("input_tokens") or 0
             row["output"] += e.get("output_tokens") or 0
-            count = lambda k: str(e.get(k, "unknown")) if e.get("usage_available") else "unknown"
+            def count(k, e=e):
+                return str(e.get(k, "unknown")) if e.get("usage_available") else "unknown"
+
             lines.append(f"| {e.get('node') or e['stage']} | {e.get('model', 'unknown')} | {count('input_tokens')} | "
                          f"{count('output_tokens')} | {count('cache_read_tokens')} | {count('cache_write_tokens')} | "
                          f"{cost if cost is not None else 'unknown'} |")

@@ -6,7 +6,6 @@ import pytest
 
 from src.services.guardrails_service import check_injection_llm_guard
 
-
 # --- Layer 1: LLM Guard tests (mocked to avoid loading the model in unit tests) ---
 
 
@@ -51,6 +50,7 @@ class TestGuardrailsNode:
 
     def test_clean_query_passes(self):
         from langchain_core.messages import HumanMessage
+
         from src.graph.nodes.guardrails import guardrails_node
 
         state = {"messages": [HumanMessage(content="What is Apple revenue?")]}
@@ -59,6 +59,7 @@ class TestGuardrailsNode:
 
     def test_local_model_rejection_blocks(self, mock_injection_checks):
         from langchain_core.messages import HumanMessage
+
         from src.graph.nodes.guardrails import guardrails_node
 
         local, reviewer = mock_injection_checks
@@ -91,6 +92,7 @@ def test_local_scan_routes_to_third_check_or_contextualization(
 ):
     """Exercise the real service adapter and graph node together; only scanner/model work is mocked."""
     from langchain_core.messages import HumanMessage
+
     from src.graph.nodes.guardrails import guardrails_node
 
     scanner = MagicMock() if scan is not None else None
@@ -113,6 +115,7 @@ def test_local_scan_routes_to_third_check_or_contextualization(
 
 def test_failed_review_stops_the_request_instead_of_passing_it():
     from langchain_core.messages import HumanMessage
+
     from src.graph.nodes.guardrails import guardrails_node
 
     with patch("src.graph.nodes.guardrails.check_injection_llm_guard", return_value="review"), patch(

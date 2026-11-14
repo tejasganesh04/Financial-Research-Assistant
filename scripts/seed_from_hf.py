@@ -68,8 +68,8 @@ def _verify_manifest(manifest_path: Path, dense_dim_expected: int) -> dict:
 def _restore(parquet_path: Path, collection: str, batch_size: int, replace: bool = False) -> int:
     """Create the collection (replacing any existing one) and bulk-upsert
     all rows from the parquet."""
-    import pyarrow.parquet as pq  # noqa: PLC0415
     import pyarrow.compute as pc
+    import pyarrow.parquet as pq  # noqa: PLC0415
     from qdrant_client import QdrantClient  # noqa: PLC0415
     from qdrant_client.http import models as qm  # noqa: PLC0415
 

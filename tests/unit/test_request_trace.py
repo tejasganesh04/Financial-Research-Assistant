@@ -1,8 +1,8 @@
 """Trace tests use fake responses, including real LangGraph callback propagation."""
 import json
 from types import SimpleNamespace
-from uuid import uuid4
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -12,9 +12,9 @@ from langchain_core.runnables import RunnableLambda
 from langgraph.graph import END, START, StateGraph
 
 from src.config.rbac_config import get_permissions
+from src.models.state import RAGState
 from src.services.cost_tracker import RequestScopedCostHandler
 from src.services.request_trace import RequestTrace, active_trace, observe_step
-from src.models.state import RAGState
 
 
 def make_trace():
@@ -91,8 +91,9 @@ class OfflineModel(BaseChatModel):
 @pytest.mark.asyncio
 async def test_parallel_grading_keeps_usage_and_requests_separate(monkeypatch):
     import asyncio
-    from src.graph.nodes import grader
+
     from src.config.settings import settings
+    from src.graph.nodes import grader
     from src.services import result_cache
     monkeypatch.setattr(settings, "ENABLE_DETERMINISTIC_VALIDATOR", False)
     monkeypatch.setattr(grader, "_GRADER_PARALLELISM", 3)
@@ -129,8 +130,8 @@ async def test_parallel_grading_keeps_usage_and_requests_separate(monkeypatch):
 
 
 def test_embedding_usage_and_local_cache_hits(monkeypatch):
-    from src.services import embeddings, result_cache
     from src.config.settings import settings
+    from src.services import embeddings, result_cache
     monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "voyage")
     monkeypatch.setattr(settings, "EMBEDDING_MODEL", "voyage-finance-2")
     client = MagicMock()

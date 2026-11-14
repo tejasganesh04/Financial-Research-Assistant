@@ -9,7 +9,6 @@ from fastapi import HTTPException
 from src.config.settings import settings
 from src.services.auth_service import create_token, decode_token
 
-
 # ── create_token returns a non-empty string ───────────────────────────────
 
 def test_create_token_returns_nonempty_string():
