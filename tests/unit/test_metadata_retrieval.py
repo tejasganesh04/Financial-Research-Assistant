@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from src.graph.nodes import grader, research_agent, retrieval
 from src.services.vector_store import build_retrieval_filter
 
@@ -89,3 +91,30 @@ def test_research_subquestion_keeps_parent_lists():
     assert actual["target_fiscal_years"] == state["target_fiscal_years"]
     assert actual["retrieval_query"] == "Subquestion"
     assert "retrieval_query" not in state
+
+
+@pytest.mark.parametrize(
+    "companies,expected_search_text",
+    [
+        (["american_water_works"], "What were current liabilities in FY2022?"),
+        (["american_water_works", "amd"], "What were American Water Works' current liabilities in FY2022?"),
+    ],
+)
+def test_single_company_search_text_omits_the_filtered_company_name(companies, expected_search_text):
+    question = "What were American Water Works' current liabilities in FY2022?"
+    state = {
+        "contextualized_query": question,
+        "user_role": "analyst",
+        "allowed_doc_types": ["10k"],
+        "target_companies": companies,
+        "target_fiscal_years": [2022],
+    }
+    with (
+        patch.object(retrieval, "embed_text", return_value=[0.0]) as embed,
+        patch.object(retrieval, "get_qdrant_client"),
+        patch.object(retrieval, "hybrid_search", return_value=[]) as search,
+    ):
+        retrieval.retrieval_node(state)
+    embed.assert_called_once_with(expected_search_text)
+    assert search.call_args.kwargs["query_text"] == expected_search_text
+    assert conditions(search.call_args.kwargs["rbac_filter"])["company"] == companies
