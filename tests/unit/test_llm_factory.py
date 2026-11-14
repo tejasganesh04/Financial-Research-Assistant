@@ -86,6 +86,45 @@ class GroqOnlyFactoryTests(unittest.TestCase):
             self.assertIs(llm_factory.LLMFactory.get_generator_llm(), sentinel.claude)
             self.assertIs(llm_factory.LLMFactory.get_hallucination_llm(), sentinel.claude)
 
+    def test_answer_and_check_models_follow_their_configured_provider(self):
+        roles = {
+            "get_generator_llm": "GENERATOR_MODEL",
+            "get_hallucination_llm": "HALLUCINATION_MODEL",
+            "get_high_stakes_hallucination_llm": "HIGH_STAKES_HALLUCINATION_MODEL",
+        }
+        with (
+            patch.multiple(
+                llm_factory.settings,
+                FORCE_GROQ_ONLY=False,
+                FORCE_OPENAI_ONLY=False,
+                ANTHROPIC_API_KEY="test-placeholder",
+                LITELLM_URL="",
+                **dict.fromkeys(roles.values(), "gpt-5.4"),
+            ),
+            patch.object(llm_factory, "ChatOpenAI", return_value=sentinel.openai) as openai,
+            patch.object(llm_factory, "ChatAnthropic", side_effect=AssertionError("Claude selected for a GPT model")),
+        ):
+            for method in roles:
+                with self.subTest(method=method):
+                    self.assertIs(getattr(llm_factory.LLMFactory, method)(), sentinel.openai)
+                    self.assertEqual(openai.call_args.kwargs["model"], "gpt-5.4")
+
+    def test_claude_answer_model_without_key_falls_back_to_openai(self):
+        with (
+            patch.multiple(
+                llm_factory.settings,
+                FORCE_GROQ_ONLY=False,
+                FORCE_OPENAI_ONLY=False,
+                ANTHROPIC_API_KEY="",
+                LITELLM_URL="",
+                GENERATOR_MODEL="claude-sonnet-4-6",
+            ),
+            patch.object(llm_factory, "ChatOpenAI", return_value=sentinel.openai) as openai,
+            patch.object(llm_factory, "ChatAnthropic", side_effect=AssertionError("Claude used without a key")),
+        ):
+            self.assertIs(llm_factory.LLMFactory.get_generator_llm(), sentinel.openai)
+            self.assertEqual(openai.call_args.kwargs["model"], llm_factory.settings.OPENAI_FALLBACK_MODEL)
+
 
 if __name__ == "__main__":
     unittest.main()

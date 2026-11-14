@@ -222,10 +222,10 @@ class LLMFactory:
             return _groq_demo(answer=True, temperature=0.1, max_tokens=2048)
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.1)
-        if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.GENERATOR_MODEL, temperature=0.1, max_tokens=2048)
-        logger.warning("Anthropic API key not set for generator, falling back to OpenAI")
-        return _openai(settings.OPENAI_FALLBACK_MODEL, 0.1)
+        if settings.GENERATOR_MODEL.startswith("claude-") and not settings.ANTHROPIC_API_KEY:
+            logger.warning("Anthropic API key not set for generator, falling back to OpenAI")
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.1)
+        return _llm_for_task(settings.GENERATOR_MODEL, temperature=0.1, max_tokens=2048)
 
     @staticmethod
     def get_hallucination_llm():
@@ -234,13 +234,13 @@ class LLMFactory:
             return _groq_demo(answer=True)
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
-        if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.HALLUCINATION_MODEL, temperature=0.0, max_tokens=2048)
-        _warn_once(
-            "hallucination_no_anthropic",
-            "Anthropic API key not set for hallucination checker, falling back to OpenAI",
-        )
-        return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
+        if settings.HALLUCINATION_MODEL.startswith("claude-") and not settings.ANTHROPIC_API_KEY:
+            _warn_once(
+                "hallucination_no_anthropic",
+                "Anthropic API key not set for hallucination checker, falling back to OpenAI",
+            )
+            return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
+        return _llm_for_task(settings.HALLUCINATION_MODEL, temperature=0.0, max_tokens=2048)
 
     @staticmethod
     def get_high_stakes_hallucination_llm():
@@ -249,13 +249,13 @@ class LLMFactory:
             return _groq_demo(answer=True)
         if settings.FORCE_OPENAI_ONLY:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0, max_tokens=512)
-        if settings.ANTHROPIC_API_KEY:
-            return _anthropic(settings.HIGH_STAKES_HALLUCINATION_MODEL, temperature=0.0, max_tokens=2048)
-        _warn_once(
-            "high_stakes_no_anthropic",
-            "Anthropic API key not set for high-stakes check, falling back to OpenAI",
-        )
-        return LLMFactory.get_hallucination_llm()
+        if settings.HIGH_STAKES_HALLUCINATION_MODEL.startswith("claude-") and not settings.ANTHROPIC_API_KEY:
+            _warn_once(
+                "high_stakes_no_anthropic",
+                "Anthropic API key not set for high-stakes check, falling back to OpenAI",
+            )
+            return LLMFactory.get_hallucination_llm()
+        return _llm_for_task(settings.HIGH_STAKES_HALLUCINATION_MODEL, temperature=0.0, max_tokens=2048)
 
     @staticmethod
     def get_research_decompose_llm():

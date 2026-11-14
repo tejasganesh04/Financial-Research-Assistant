@@ -1,0 +1,19 @@
+# Benchmark model profile: OpenAI models for every workflow step.
+# Start:   docker compose -f compose.minimal.yml -f compose.local.yml -f compose.benchmark.yml up -d api
+# Restore: docker compose -f compose.minimal.yml -f compose.local.yml up -d api
+services:
+  api:
+    environment:
+      FORCE_GROQ_ONLY: "false"
+      FORCE_OPENAI_ONLY: "false"
+      USE_GROQ_FAST_PATH: "false"
+      USE_LLAMA_GRADER: "false"
+      # Routing, filters, injection review, rewriting, grading and research planning.
+      OPENAI_FALLBACK_MODEL: gpt-5.4-mini
+      RESEARCH_AGENT_DECOMPOSE_MODEL: gpt-5.4-mini
+      RESEARCH_AGENT_SUFFICIENCY_MODEL: gpt-5.4-mini
+      # Answers, grounding checks and research synthesis.
+      GENERATOR_MODEL: gpt-5.4
+      HALLUCINATION_MODEL: gpt-5.4
+      HIGH_STAKES_HALLUCINATION_MODEL: gpt-5.4
+      RESEARCH_AGENT_SYNTHESIZE_MODEL: gpt-5.4
