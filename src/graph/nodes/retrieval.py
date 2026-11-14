@@ -6,8 +6,9 @@ from src.config.rbac_config import get_permissions
 from src.config.settings import settings
 from src.models.state import RAGState
 from src.services.embeddings import embed_text
+from src.services.finance_terms import with_statement_terms
 from src.services.request_trace import record
-from src.services.vector_store import build_retrieval_filter, get_qdrant_client, hybrid_search
+from src.services.vector_store import build_retrieval_filter, dense_ranks, get_qdrant_client, hybrid_search
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ def retrieval_node(state: RAGState) -> dict:
     levels = scope.get("confidentiality", permissions["allowed_confidentiality"])
     if state.get("metadata_unavailable"):
         return {"retrieved_chunks": []}
+    # Statement wording lets table chunks match questions that name analyst concepts.
+    search_text = with_statement_terms(query) if settings.SEARCH_STATEMENT_TERMS else query
     try:
         search_filter = build_retrieval_filter(
             allowed_doc_types=allowed_types,
@@ -34,15 +37,22 @@ def retrieval_node(state: RAGState) -> dict:
             "search_filter",
             companies=companies,
             fiscal_years=years,
+            search_text=search_text,
             filter=search_filter.model_dump(mode="json", exclude_none=True) if search_filter else None,
         )
+        client, vector = get_qdrant_client(), embed_text(search_text)
         chunks = hybrid_search(
-            client=get_qdrant_client(),
-            query_text=query,
-            query_dense_vector=embed_text(query),
+            client=client,
+            query_text=search_text,
+            query_dense_vector=vector,
             rbac_filter=search_filter,
             top_k=settings.RETRIEVAL_TOP_K,
         )
+        # The finance-trained dense ranking is kept so the reranker cannot fully overrule it.
+        ranks = dense_ranks(client, vector, search_filter, limit=settings.RETRIEVAL_TOP_K)
+        for chunk in chunks:
+            meta = chunk.get("metadata") or {}
+            chunk["dense_rank"] = ranks.get((meta.get("source_file"), meta.get("chunk_index")))
         # An empty result stays empty. Neither retries nor research may widen selected filters.
         from src.services.event_log import emit
 

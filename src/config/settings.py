@@ -83,6 +83,12 @@ class Settings(BaseSettings):
     RETRIEVAL_TOP_K: int = 50
     # Reranker: cross-encoder narrows to the final set that feeds the grader + generator.
     RERANKER_TOP_K: int = 12
+    # Add statement wording for named financial concepts to the search and reranking text.
+    SEARCH_STATEMENT_TERMS: bool = True
+    # How the final chunks are chosen: "rerank" (reranker order), "fusion" (reranker rank fused with
+    # the dense-search rank) or "protect" (dense top 3 plus reranker order).
+    RERANK_SELECTION: str = "fusion"
+    RERANK_FUSION_K: int = 10
     # Non-LLM post-reranker validation
     ENABLE_DETERMINISTIC_VALIDATOR: bool = True
     EMBEDDING_PROVIDER: str = "openai"

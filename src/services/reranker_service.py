@@ -37,3 +37,22 @@ def rerank(query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:
     scored = [{**chunk, "rerank_score": float(score)} for chunk, score in zip(chunks, scores)]
     scored.sort(key=lambda c: c["rerank_score"], reverse=True)
     return scored[:top_k]
+
+
+def select(scored: list[dict], size: int, how: str = "rerank", fusion_k: int = 10) -> list[dict]:
+    """Choose the final chunks from reranker-sorted candidates.
+
+    rerank: reranker order. fusion: reciprocal rank fusion of reranker and dense-search ranks, so
+    neither model decides alone. protect: dense-search top 3, then reranker order.
+    """
+    if how == "fusion":
+
+        def fused(position_and_chunk):
+            position, chunk = position_and_chunk
+            return 1 / (fusion_k + position) + 1 / (fusion_k + (chunk.get("dense_rank") or 999))
+
+        return [c for _, c in sorted(enumerate(scored, 1), key=fused, reverse=True)[:size]]
+    if how == "protect":
+        protected = sorted((c for c in scored if (c.get("dense_rank") or 999) <= 3), key=lambda c: c["dense_rank"])
+        return protected + [c for c in scored if c not in protected][: size - len(protected)]
+    return scored[:size]

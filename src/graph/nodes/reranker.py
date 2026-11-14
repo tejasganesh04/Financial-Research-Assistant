@@ -10,7 +10,8 @@ import logging
 
 from src.config.settings import settings
 from src.models.state import RAGState
-from src.services.reranker_service import rerank
+from src.services.finance_terms import with_statement_terms
+from src.services.reranker_service import rerank, select
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,9 @@ def reranker_node(state: RAGState) -> dict:
         return {"reranked_chunks": []}
 
     top_k = settings.RERANKER_TOP_K
-    reranked = rerank(query, candidates, top_k=top_k)
+    rerank_text = with_statement_terms(query) if settings.SEARCH_STATEMENT_TERMS else query
+    scored = rerank(rerank_text, candidates, top_k=len(candidates))
+    reranked = select(scored, top_k, settings.RERANK_SELECTION, settings.RERANK_FUSION_K)
     logger.info(
         f"Reranked {len(candidates)} -> {len(reranked)} chunks "
         f"(top score: {reranked[0]['rerank_score']:.3f} | bottom: {reranked[-1]['rerank_score']:.3f})"
