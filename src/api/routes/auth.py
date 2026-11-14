@@ -11,11 +11,9 @@ from src.models.schemas import (
 )
 from src.services.auth_service import create_token
 
-# main.py adds /v1 to this router's /auth prefix: the login URL is POST /v1/auth/login.
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# Simple in-memory users for development. Replace with a real user store in production.
-# Fixed demo accounts live in this dictionary, not a user table in PostgreSQL.
+# Fixed demo accounts. Replace with a real user store in production.
 DEV_USERS = {
     "analyst": {"password": "analyst123", "name": "Test Analyst", "role": "analyst", "department": "Research"},
     "finance": {"password": "finance123", "name": "Test Finance", "role": "finance", "department": "FP&A"},
@@ -25,15 +23,12 @@ DEV_USERS = {
 }
 
 
-# LOGIN: FastAPI validates JSON as LoginRequest; this endpoint checks the account and returns TokenResponse.
 @router.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest):
-    # Look up the submitted username and reject unknown accounts or wrong passwords before creating a token.
     user = DEV_USERS.get(request.username)
     if not user or user["password"] != request.password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    # Sign identity and role with the backend secret; the browser receives the token, never that secret.
     token = create_token(
         user_id=request.username,
         name=user["name"],
@@ -49,7 +44,6 @@ async def login(request: LoginRequest):
     )
 
 
-# WHO AM I: Validate the Bearer token through the dependency, then return identity and configured permissions.
 @router.get("/me", response_model=UserMeResponse)
 async def me(user: User = Depends(get_current_user)) -> UserMeResponse:
     """Return the logged-in identity and fixed role permissions."""

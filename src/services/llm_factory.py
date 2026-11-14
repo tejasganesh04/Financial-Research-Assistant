@@ -167,8 +167,7 @@ class LLMFactory:
                     )
                 _warn_once(
                     "grader_openrouter_llama",
-                    f"Grader: OpenRouter {settings.LLAMA_GRADER_MODEL_OPENROUTER} "
-                    f"(Sprint 7.17 follow-up #3 — full-eval test of +16pp gold-recall lift)",
+                    f"Grader: OpenRouter {settings.LLAMA_GRADER_MODEL_OPENROUTER}",
                 )
                 return ChatOpenAI(
                     model=settings.LLAMA_GRADER_MODEL_OPENROUTER,
@@ -195,8 +194,7 @@ class LLMFactory:
                     )
                 _warn_once(
                     "grader_fireworks_llama",
-                    f"Grader: Fireworks {settings.LLAMA_GRADER_MODEL_FIREWORKS} "
-                    f"(Sprint 7.17 follow-up #3 — full-eval test of +16pp gold-recall lift)",
+                    f"Grader: Fireworks {settings.LLAMA_GRADER_MODEL_FIREWORKS}",
                 )
                 return ChatOpenAI(
                     model=settings.LLAMA_GRADER_MODEL_FIREWORKS,

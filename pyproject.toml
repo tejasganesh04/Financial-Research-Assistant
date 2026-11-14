@@ -107,11 +107,9 @@ exclude = [
   "frontend/dist/**",
   "frontend/test-results/**",
   "frontend/playwright-report/**",
-  "to_be_gone/**",
   "data/raw/**",
   "data/models/**",
   "data/training/**",
-  "docs/required/**",
   "data/sample/*.pdf",
   "logs/**",
   "cost_logs/**",
@@ -121,7 +119,6 @@ exclude = [
 ]
 
 [tool.ruff]
-extend-exclude = ["to_be_gone"]
 target-version = "py312"
 line-length = 120
 
@@ -129,7 +126,7 @@ line-length = 120
 select = ["E", "F", "I", "W"]
 
 [tool.pytest.ini_options]
-norecursedirs = ["to_be_gone", ".git", ".venv", "node_modules", "build", "dist"]
+norecursedirs = [".git", ".venv", "node_modules", "build", "dist"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = ["-W", "ignore:Type google.protobuf.pyext._message:DeprecationWarning"]

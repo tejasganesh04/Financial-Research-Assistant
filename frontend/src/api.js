@@ -2,10 +2,10 @@ import { readEvents } from "./stream.js";
 import axios from "axios";
 
 export const TOKEN_KEY = "financial-research-token";
-// All these paths start with /v1. The browser and API share the same origin in the normal Docker setup.
+// Same-origin API in the Docker setup.
 const client = axios.create({ baseURL: "/v1", timeout: 20000 });
 
-// Before each request, attach the JWT from this tab as Authorization: Bearer <token>. React user state is not sent.
+// Attach this tab's JWT to every request.
 client.interceptors.request.use((config) => {
   const token = sessionStorage.getItem(TOKEN_KEY);
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -46,7 +46,6 @@ export function errorMessage(error) {
   return error.message || "The request could not be completed.";
 }
 
-// HTTP helpers used by App.jsx: login -> identity -> sidebar/history -> question progress/result.
 export const api = {
   login: (username, password) =>
     client.post("/auth/login", { username, password }).then((r) => r.data),
@@ -68,9 +67,8 @@ export const api = {
     client
       .post(`/approvals/${encodeURIComponent(id)}/${decision}`, { reason })
       .then((r) => r.data),
-  // Keep one POST open for SSE stage labels and the complete checked answer. Do not automatically retry paid work.
+  // One streaming POST per question; not retried automatically, to avoid repeating paid work.
   async ask(id, message, onEvent, signal) {
-    // SSE carries stage progress and one complete checked answer. No draft tokens.
     let response;
     try {
       response = await client.post(

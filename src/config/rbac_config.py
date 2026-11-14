@@ -1,4 +1,4 @@
-# ACCESS RULES: The verified JWT role selects these document types and confidentiality levels.
+# Document types and confidentiality levels each role may search.
 ROLE_PERMISSIONS: dict[str, dict] = {
     "analyst": {
         "allowed_doc_types": ["10k", "10q", "8k"],
@@ -23,7 +23,7 @@ ROLE_PERMISSIONS: dict[str, dict] = {
 }
 
 
-# Read fixed role rules; this is not a database lookup. Unknown roles receive the analyst defaults.
+# Unknown roles fall back to analyst permissions.
 def get_permissions(role: str) -> dict:
     """Read the fixed demo role permissions from this file."""
     return ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["analyst"])

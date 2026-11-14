@@ -1,8 +1,4 @@
-# Local archive and private settings
-/to_be_gone/
-/docs/required/
-/notices/
-/run
+# Private settings
 .env
 .env.*
 !.env.example

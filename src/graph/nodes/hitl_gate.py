@@ -11,7 +11,7 @@ from src.services.escalation import is_escalated
 logger = logging.getLogger(__name__)
 
 
-# HUMAN REVIEW: Expanded searches pause here after drafting. The API authorizes Admin before resuming this task.
+# Escalated requests pause here after drafting; the API checks the reviewer before resuming.
 def hitl_gate_node(state: RAGState, config: RunnableConfig | None = None) -> dict:
     metadata = (config or {}).get("metadata", {})
     # Preserve the approve/reject behavior for requests paused before this policy changed.

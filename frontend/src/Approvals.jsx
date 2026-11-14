@@ -9,7 +9,6 @@ import {
   roleName,
 } from "./components.jsx";
 
-// ADMIN REVIEW: Load pending requests and their drafts; submit approve/reject without starting another answer.
 export default function Approvals() {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(null);

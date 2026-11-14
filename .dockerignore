@@ -1,5 +1,4 @@
-to_be_gone/
-docs/required/
+docs/
 .git/
 node_modules/
 **/node_modules/

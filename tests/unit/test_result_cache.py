@@ -1,4 +1,4 @@
-"""Unit tests for the per-stage Redis result cache (Sprint 8e).
+"""Unit tests for the per-stage Redis result cache.
 
 Three concerns to verify:
   1. Cache hit/miss semantics: get_or_compute calls compute() exactly once

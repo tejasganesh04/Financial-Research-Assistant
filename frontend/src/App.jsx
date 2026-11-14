@@ -40,7 +40,6 @@ const suggestions = [
   ],
 ];
 
-// FLOW: restore/login -> load sidebar -> select/new conversation -> send question -> show stages and result.
 export default function App() {
   // React state controls the screen. The backend independently checks the signed JWT and permissions.
   const [user, setUser] = useState(null);
@@ -57,7 +56,7 @@ export default function App() {
   const chatScroll = useRef(null);
   const followLatest = useRef(true);
 
-  // LOGOUT: Clear this tab's token, selected conversation and screen. Saved PostgreSQL conversations remain.
+  // Logout clears this tab's session; saved conversations remain.
   function logout() {
     activeRequest.current?.abort();
     activeRequest.current = null;
@@ -74,7 +73,7 @@ export default function App() {
     setTab("research");
   }
 
-  // PAGE REFRESH: Validate the stored token through /auth/me before restoring the logged-in screen.
+  // On refresh, validate the stored token before restoring the session.
   useEffect(() => {
     let mounted = true;
     const expire = () => logout();
@@ -98,7 +97,6 @@ export default function App() {
     };
   }, []);
 
-  // LOGIN 1: POST credentials, store the returned JWT, GET /auth/me, then populate React user state.
   async function login(username, password) {
     const response = await api.login(username, password);
     sessionStorage.setItem(TOKEN_KEY, response.access_token);
@@ -113,7 +111,6 @@ export default function App() {
     }
   }
 
-  // LOGIN 2: GET /conversations for this token's user; put the returned list in the sidebar.
   async function refreshHistory() {
     const token = sessionStorage.getItem(TOKEN_KEY);
     try {
@@ -125,7 +122,6 @@ export default function App() {
     }
   }
 
-  // OPEN HISTORY: GET this conversation's saved messages/status, display them, and remember its ID in this tab.
   async function openConversation(id) {
     if (activeRequest.current) return;
     const version = ++historyVersion.current;
@@ -148,7 +144,6 @@ export default function App() {
     }
   }
 
-  // LOGIN 3: After user state is set, load the sidebar and reopen the previously selected conversation, if any.
   useEffect(() => {
     if (!user) return;
     refreshHistory();
@@ -227,7 +222,7 @@ export default function App() {
     }
   }, [thread.messages, thread.pending, busy, error, notice, tab]);
 
-  // NEW CONVERSATION: Clear only the view and selected ID. No UUID, API request or database row is created yet.
+  // A new conversation gets its ID on the first question.
   function newConversation() {
     if (activeRequest.current) return;
     historyVersion.current += 1;
@@ -240,16 +235,15 @@ export default function App() {
     sessionStorage.removeItem(THREAD_KEY);
   }
 
-  // SEND: Reuse/create the conversation ID, show a waiting message, then send one authenticated question request.
   async function submit(event) {
     event.preventDefault();
     if (!question.trim() || activeRequest.current || busy || thread.pending)
       return;
     followLatest.current = true;
     const message = question.trim();
-    // Create a random conversation UUID on its first question; reuse it on follow-ups. It does not encode the user.
+    // Create the conversation ID on the first question and reuse it for follow-ups.
     const id = thread.id || crypto.randomUUID();
-    // These two IDs identify temporary React message elements, not conversations or backend request traces.
+    // Temporary IDs for the pending message elements.
     const answerId = crypto.randomUUID();
     const questionId = crypto.randomUUID();
     const controller = new AbortController();
@@ -269,7 +263,7 @@ export default function App() {
       ],
     }));
     try {
-      // SSE: Listen for stage events and one complete response. The backend does not forward answer tokens.
+      // The stream carries stage events and one complete response, never answer tokens.
       await api.ask(
         id,
         message,
@@ -294,7 +288,6 @@ export default function App() {
               ),
             }));
           }
-          // STAGE: Change the waiting label. FINAL: fill in the answer. PENDING: hide the answer and wait for Admin.
           if (event.type === "node_start") {
             setBusy(event.label || "Researching…");
           } else if (event.type === "final") {
@@ -342,7 +335,7 @@ export default function App() {
       if (activeRequest.current === controller) {
         activeRequest.current = null;
         setBusy("");
-        // After the request ends, reload the sidebar so newly checkpointed conversations appear there.
+        // Refresh the sidebar so the new conversation appears.
         refreshHistory();
       }
     }

@@ -110,13 +110,12 @@ def selected_details(output) -> dict:
     return details
 
 
-# Our observer class, attached as a LangChain callback. It records the run but never executes graph/model work.
+# LangChain callback that records the run without executing anything.
 class RequestTrace(BaseCallbackHandler):
     """One question, one ID, one event file. LangChain supplies step callbacks."""
     raise_error = False
     run_inline = True
 
-    # TRACE START: Create one request UUID and output folder for this question; retain the conversation ID separately.
     def __init__(self, conversation_id: str, question: str, role: str, permissions: dict, started=None):
         # This backend UUID becomes the frontend Request details ID. It is different from thread_id and checkpoint_id.
         self.request_id = str(uuid4())
@@ -129,13 +128,11 @@ class RequestTrace(BaseCallbackHandler):
         self.attempts: dict[str, int] = {}
         self.outcome = None
         self.last_step = None
-        # Immediately write the cleaned question, role and ordinary permissions as the first local trace event.
         self.record("request_started", question=question, role=role, permissions=permissions)
         self.record("request_preparation", duration_s=round(time.monotonic() - self.started, 4),
                     includes="ownership checks, graph preparation and initial input redaction")
 
     @contextmanager
-    # For this with-block, let helper functions find this recorder through ContextVar; restore the previous value afterward.
     def activate(self):
         token = active_trace.set(self)
         try:
@@ -143,7 +140,7 @@ class RequestTrace(BaseCallbackHandler):
         finally:
             active_trace.reset(token)
 
-    # Append one timestamped JSON line to events.jsonl. A file-write failure is logged without breaking the answer.
+    # A failed write is logged and never breaks the answer.
     def record(self, stage: str, **details):
         try:
             with self._lock:
@@ -159,7 +156,6 @@ class RequestTrace(BaseCallbackHandler):
         except Exception:
             logger.warning("Request trace write unavailable", exc_info=True)
 
-    # STEP CALLBACK: Remember node/run ID and start time when LangGraph starts an observed step.
     def on_chain_start(self, serialized, inputs, *, run_id, name=None, metadata=None, **kwargs):
         name = name or (serialized or {}).get("name")
         if name not in STEPS:
@@ -171,7 +167,6 @@ class RequestTrace(BaseCallbackHandler):
         self.record("step_started", step=name, attempt=attempt, step_id=str(run_id),
                     prompt=PROMPTS.get(name))
 
-    # STEP CALLBACK: Calculate duration and record selected decisions/counts/sources when the step finishes.
     def on_chain_end(self, outputs, *, run_id, **kwargs):
         with self._lock:
             step = self.steps.pop(str(run_id), None)
@@ -181,7 +176,6 @@ class RequestTrace(BaseCallbackHandler):
             self.record("step_finished", step=name, attempt=attempt, step_id=str(run_id),
                         duration_s=round(time.monotonic() - start, 4), **selected_details(outputs))
 
-    # STEP CALLBACK: Record a failure or interrupt. An approval pause is distinguished from an ordinary step error.
     def on_chain_error(self, error, *, run_id, **kwargs):
         with self._lock:
             step = self.steps.pop(str(run_id), None)
@@ -191,7 +185,6 @@ class RequestTrace(BaseCallbackHandler):
                         step=name, attempt=attempt, step_id=str(run_id),
                         duration_s=round(time.monotonic() - start, 4), error_type=type(error).__name__)
 
-    # TRACE END: Set an outcome once, append total time and generate summary.md. Repeated cleanup calls are harmless.
     def finish(self, outcome: str | None = None):
         try:
             with self._lock:
@@ -207,7 +200,6 @@ class RequestTrace(BaseCallbackHandler):
         except Exception:
             logger.warning("Request trace summary unavailable", exc_info=True)
 
-    # Turn recorded events into the readable report opened through the browser's Request details path.
     def _write_summary(self):
         first, last = self.events[0], self.events[-1]
         lines = ["# Request report", "", f"Request: `{self.request_id}`",

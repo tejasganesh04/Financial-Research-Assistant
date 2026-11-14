@@ -33,8 +33,7 @@ def ts_from_checkpoint_id(cid: str | None) -> str | None:
         return None
 
 
-# SIDEBAR QUERY: Filter checkpoint metadata by owner and group many saved snapshots into one row per thread.
-# There is no separate conversations table; LIMIT/OFFSET paginate these grouped threads.
+# One row per thread from checkpoint metadata; there is no separate conversations table.
 _LIST_SQL = """
 SELECT
     c.thread_id,
@@ -73,7 +72,6 @@ DELETE FROM checkpoint_blobs WHERE thread_id = %s;
 """
 
 
-# Called by GET /conversations: borrow a pool connection and return this user's thread summaries plus a total count.
 async def list_threads_for_user(
     pool, user_id: str, limit: int = 50, offset: int = 0
 ) -> tuple[list[dict[str, Any]], int]:

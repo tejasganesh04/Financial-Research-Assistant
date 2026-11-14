@@ -120,7 +120,7 @@ _anonymizer = None
 _init_failed = False
 
 
-# PRIVACY SETUP: Load/reuse local Presidio engines. Presidio is the detector library; spaCy supplies English analysis.
+# Load Presidio once; spaCy supplies the English language model.
 def _get_presidio_engines():
     """Lazy-initialize Presidio engines (avoids reloading spaCy model on every call)."""
     global _analyzer, _anonymizer, _init_failed
@@ -153,7 +153,6 @@ def _get_presidio_engines():
             else:
                 model_name = "en_core_web_md"
 
-            # Connect the configured local spaCy model (normally en_core_web_md) to Presidio. This is not a paid chat-model call.
             _nlp_provider = NlpEngineProvider(nlp_configuration={
                 "nlp_engine_name": "spacy",
                 "models": [{"lang_code": "en", "model_name": model_name}],
@@ -171,7 +170,6 @@ def _get_presidio_engines():
     return _analyzer, _anonymizer
 
 
-# PRIVACY CALL: Return (redacted text, detection list). This is separate from graph entity extraction of company/year.
 def detect_pii(text: str) -> tuple[str, list[dict]]:
     """Detect and redact PII using Presidio. Returns (sanitized_text, entities)."""
     analyzer, anonymizer = _get_presidio_engines()
@@ -183,7 +181,6 @@ def detect_pii(text: str) -> tuple[str, list[dict]]:
         return text, []
 
     try:
-        # 1. Detect personal names and structured details such as email/phone/account numbers. Results include character spans.
         results = analyzer.analyze(
             text=text,
             entities=[
@@ -202,7 +199,6 @@ def detect_pii(text: str) -> tuple[str, list[dict]]:
         # Hide recognized companies only from the PERSON detector. Keep the
         # original email/account detections, and preserve character positions.
         from src.services.company_registry import company_mentions
-        # 2. Protect known company names from PERSON false positives; retain email/account detections from the original text.
         company_spans = company_mentions(text)
         if company_spans:
             masked = list(text)
@@ -224,9 +220,7 @@ def detect_pii(text: str) -> tuple[str, list[dict]]:
         if not results:
             return text, []
 
-        # 3. Replace detected spans with labels such as <PERSON> and <EMAIL_ADDRESS>; leave the rest of the question intact.
         anonymized = anonymizer.anonymize(text=text, analyzer_results=results)
-        # Return detection type, start/end offsets and confidence score alongside the cleaned text. The route discards this list.
         entities = [{"type": r.entity_type, "start": r.start, "end": r.end, "score": r.score} for r in results]
         return anonymized.text, entities
 

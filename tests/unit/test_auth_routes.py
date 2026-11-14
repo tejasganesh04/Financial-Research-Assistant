@@ -1,7 +1,7 @@
 """Unit tests for the auth routes — login + /v1/auth/me.
 
-Sprint 9.0 extended TokenResponse with user_id/name/department for the
-frontend handoff, and added GET /v1/auth/me. These tests pin the contract.
+TokenResponse includes user_id, name and department, and GET /v1/auth/me
+returns the caller's identity. These tests pin that contract.
 """
 from __future__ import annotations
 

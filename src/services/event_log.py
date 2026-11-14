@@ -115,11 +115,7 @@ def log_runtime_components() -> dict:
         "external": {},
     }
 
-    # Git state — prefer GIT_SHA env (set by Dockerfile ARG → ENV) before
-    # subprocess. 0.1.5 fixed `src/api/main.py:_git_sha()` to use the env var
-    # but this second call site was missed; the container has no .git/, so
-    # subprocess failed every boot and the audit log carried git={'error': ...}
-    # for every run_id. 0.1.6: same pattern here.
+    # Prefer GIT_SHA from the image; containers have no .git directory.
     env_sha = os.environ.get("GIT_SHA", "").strip()
     if env_sha and env_sha != "unknown":
         banner["git"] = {
@@ -208,12 +204,8 @@ def log_runtime_components() -> dict:
             "status": str(info.status),
         }
 
-        # Track 2 hardening: read the actual vector dim from the collection
-        # config and compare to settings.EMBEDDING_DIMENSIONS. Catches the
-        # silent-failure class the fingerprint check missed for pre-fingerprint
-        # collections — qdrant returns HTTP 400 on every retrieval, the
-        # exception is swallowed by retrieval_node's broad try/except, and the
-        # pipeline cascades to no_info refusals.
+        # Compare the collection's vector size with EMBEDDING_DIMENSIONS;
+        # a mismatch makes every search fail.
         try:
             vectors_cfg = info.config.params.vectors
             if isinstance(vectors_cfg, dict):
@@ -315,15 +307,11 @@ def log_runtime_components() -> dict:
             "WARNING: current EMBEDDING_PROVIDER is %s (%s, dim=%s)",
             live["provider"], live["model"], live["dim"],
         )
-        logger.warning("WARNING: queries will return garbage or fail with VectorDimensionError.")
+        logger.warning("WARNING: queries will return wrong results or fail with VectorDimensionError.")
         logger.warning("WARNING: re-ingest the corpus with the new embedding to fix.")
         logger.warning(sep)
 
-    # Hard-fail boot if the collection's vector dim doesn't match the runtime
-    # embedding dim. This is THE bug that consistently masqueraded as "first
-    # query returns no_info refusal" — every retrieval call HTTP 400s but the
-    # exception gets swallowed silently. Better to refuse to start than to
-    # return garbage answers all day.
+    # Refuse to start on a dimension mismatch rather than return empty answers.
     dim_mismatch = qdrant_state.get("dim_mismatch")
     if isinstance(dim_mismatch, dict):
         logger.critical(sep)

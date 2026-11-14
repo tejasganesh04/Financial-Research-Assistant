@@ -27,11 +27,9 @@ from src.graph.nodes.terminal_nodes import blocked_response_node, clarification_
 from src.models.state import RAGState
 
 
-# BUILD ONLY: Register functions and paths, then compile. Nodes execute later through ainvoke/astream_events.
 def build_graph(checkpointer=None) -> StateGraph:
     """Build the full RAG agent graph. Pass a checkpointer for HITL persistence."""
 
-    # Use RAGState to define state fields and reducers such as add_messages.
     graph = StateGraph(RAGState)
 
     # --- Add all nodes ---
@@ -54,11 +52,9 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_node("response_formatter", response_formatter_node)
 
     # --- Edges ---
-    # ENTRY: A new question begins with permissions, then safety checks, company/year extraction and routing.
     graph.add_edge(START, "rbac_gate")
     graph.add_edge("rbac_gate", "guardrails")
 
-    # A conditional-edge function reads updated state and returns a label; this mapping selects the next node.
     graph.add_conditional_edges(
         "guardrails",
         route_after_guardrails,
@@ -120,5 +116,4 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_edge("response_formatter", END)
 
     # --- Compile ---
-    # Attach persistence here. Runtime config.configurable.thread_id selects the conversation; the saver manages checkpoints.
     return graph.compile(checkpointer=checkpointer)
