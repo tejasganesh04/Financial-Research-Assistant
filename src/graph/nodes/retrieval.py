@@ -5,7 +5,6 @@ import logging
 from src.config.rbac_config import get_permissions
 from src.config.settings import settings
 from src.models.state import RAGState
-from src.services.company_registry import remove_company_mentions
 from src.services.embeddings import embed_text
 from src.services.request_trace import record
 from src.services.vector_store import build_retrieval_filter, get_qdrant_client, hybrid_search
@@ -24,9 +23,6 @@ def retrieval_node(state: RAGState) -> dict:
     levels = scope.get("confidentiality", permissions["allowed_confidentiality"])
     if state.get("metadata_unavailable"):
         return {"retrieved_chunks": []}
-    # The filter already restricts one company's documents; its name in the search text only favours
-    # passages that repeat the name over tables that never do. Comparisons keep names to separate companies.
-    search_text = remove_company_mentions(query, companies[0]) if len(companies) == 1 else query
     try:
         search_filter = build_retrieval_filter(
             allowed_doc_types=allowed_types,
@@ -38,13 +34,12 @@ def retrieval_node(state: RAGState) -> dict:
             "search_filter",
             companies=companies,
             fiscal_years=years,
-            search_text=search_text,
             filter=search_filter.model_dump(mode="json", exclude_none=True) if search_filter else None,
         )
         chunks = hybrid_search(
             client=get_qdrant_client(),
-            query_text=search_text,
-            query_dense_vector=embed_text(search_text),
+            query_text=query,
+            query_dense_vector=embed_text(query),
             rbac_filter=search_filter,
             top_k=settings.RETRIEVAL_TOP_K,
         )

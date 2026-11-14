@@ -69,7 +69,7 @@ def arm_rank(client, search_filter, query, using: str, evidence_ids: set, total:
     return next((rank for rank, point in enumerate(hits, 1) if point.id in evidence_ids), None)
 
 
-def diagnose(question: dict, baseline: dict, client, reranker) -> dict:
+def diagnose(question: dict, baseline: dict, client, reranker, config: str) -> dict:
     evidence_pages = {(e["doc_name"] + ".pdf", e["evidence_page_num"] + 1) for e in question["evidence"]}
     filings = [filing_metadata(client, source) for source, _ in evidence_pages]
     companies = sorted({f["company"] for f in filings})
@@ -93,8 +93,8 @@ def diagnose(question: dict, baseline: dict, client, reranker) -> dict:
         "case_id": question["financebench_id"],
         "question_type": question["question_type"],
         "question": question["question"],
-        "lost_at": "search" if baseline["as_asked"]["search_rank"] is None else "rerank",
-        "baseline_rerank_rank": baseline["as_asked"]["rerank_rank"],
+        "lost_at": "search" if not baseline[config]["in_pool"] else "rerank",
+        "baseline_rerank_rank": baseline[config]["rerank_rank"],
         "scope_chunks": len(points),
         "evidence_chunks": len(evidence_chunks),
         "evidence_numbers": len(numbers),
@@ -137,6 +137,8 @@ def diagnose(question: dict, baseline: dict, client, reranker) -> dict:
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run", required=True)
+    parser.add_argument("--config", default="filing_year/fused50", help="Filter/pool setting to diagnose")
+    parser.add_argument("--top", type=int, default=settings.RERANKER_TOP_K)
     args = parser.parse_args()
     run_dir = RESULTS / args.run
     baseline = {r["case_id"]: r for r in map(json.loads, (run_dir / "retrieval.jsonl").read_text().splitlines())}
@@ -144,13 +146,13 @@ def main():
         q
         for q in load_source()
         if baseline[q["financebench_id"]]["status"] == "measured"
-        and (baseline[q["financebench_id"]]["as_asked"]["rerank_rank"] or 99) > settings.RERANKER_TOP_K
+        and (baseline[q["financebench_id"]][args.config]["rerank_rank"] or 999) > args.top
     ]
     print(f"Diagnosing {len(misses)} misses.", flush=True)
     client, reranker = get_qdrant_client(), get_reranker()
     with (run_dir / "diagnosis.jsonl").open("w") as output:
         for index, question in enumerate(misses, 1):
-            row = diagnose(question, baseline[question["financebench_id"]], client, reranker)
+            row = diagnose(question, baseline[question["financebench_id"]], client, reranker, args.config)
             output.write(json.dumps(row, ensure_ascii=False) + "\n")
             output.flush()
             print(f"[{index}/{len(misses)}] {row['case_id']} lost at {row['lost_at']}", flush=True)
