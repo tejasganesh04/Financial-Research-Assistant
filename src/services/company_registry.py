@@ -103,24 +103,6 @@ def company_mentions(text: str) -> list[tuple[int, int, str]]:
     return matches
 
 
-def remove_company_mentions(text: str, company: str) -> str:
-    """Remove one company's names and tickers, including possessives, from text.
-
-    Returns the text unchanged if nothing would remain."""
-    spans = sorted((start, end) for start, end, slug in company_mentions(text) if slug == company)
-    pieces, cursor = [], 0
-    for start, end in spans:
-        if start < cursor:  # Overlapping aliases such as "MGM" inside "MGM Resorts".
-            cursor = max(cursor, end)
-            continue
-        pieces.append(text[cursor:start])
-        possessive = re.match(r"['’]s?\b|['’]", text[end:])
-        cursor = end + (possessive.end() if possessive else 0)
-    pieces.append(text[cursor:])
-    cleaned = re.sub(r"\s+([?.,;:!])", r"\1", re.sub(r"\s+", " ", "".join(pieces))).strip()
-    return cleaned or text
-
-
 def _normalize(value: str) -> str:
     text = (value or "").strip().lower()
     text = re.sub(r"[^\w\s&.-]", " ", text)
