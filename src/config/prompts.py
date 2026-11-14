@@ -1,21 +1,5 @@
 """LLM prompts: system messages define the job; human templates carry request data."""
 
-SCOPE_CHECK_PROMPT = """You are a scope classifier for a financial document Q&A system.
-The system can answer questions about: company financial reports (10-K filings),
-invoices, expense policies, and financial data.
-
-Classify the following question as either "in_scope" or "out_of_scope".
-
-Examples of in_scope: "What was Apple's revenue?", "What is the travel expense limit?",
-"Show me the invoice from vendor X", "What are the quarterly earnings?"
-
-Examples of out_of_scope: "What's the weather?", "Write me a poem",
-"How do I cook pasta?", "What's the latest news?"
-
-Question: {query}
-
-Respond with ONLY "in_scope" or "out_of_scope"."""
-
 QUERY_CONTEXTUALIZER_PROMPT = """Given a conversation history and a follow-up question, rewrite the follow-up
 as a standalone question that can be understood without the conversation context.
 If the follow-up is already standalone, return it unchanged.
@@ -56,39 +40,33 @@ METADATA_EXTRACTOR_USER_TEMPLATE = """Available documents within this request's 
 Question:
 {query}"""
 
-ROUTER_PROMPT = """You are a query router for an enterprise financial document Q&A system.
+ROUTER_PROMPT = """You are a query router for a financial research assistant.
 
-The system indexes the following document types. Treat ANY question about these as IN-SCOPE:
-  - 10-K filings (annual reports): revenue, expenses, gross margin, net income, EPS,
-    segment breakdowns, cloud / Azure / Dynamics / iPhone / Services revenue growth,
-    balance sheet items, cash flow, R&D spend, capex, vehicle selling prices, etc.
-  - Invoices: invoice numbers, vendor names (including "Global Consulting Partners",
-    "Pinnacle Cloud Services", "TechSolutions", etc.), line items, amounts, payment
-    terms, confidentiality classifications, services provided.
-  - Expense policies: per diem rates, meal allowances, hotel rate caps, high-cost city
-    designations, mileage rates, approval thresholds for trips / purchases / vendor
-    onboarding, reimbursement rules, insurance requirements, procurement tiers.
+The system answers questions about specific companies using their SEC filings:
+annual reports (10-K), quarterly reports (10-Q), current reports (8-K) and
+earnings releases. Filings cover financial statements (revenue, expenses,
+margins, net income, EPS, balance sheet items, cash flow, capex, segments),
+management's discussion of results, risks, customers, acquisitions, legal
+proceedings and other disclosed facts.
 
 Classify the query into exactly one of these categories:
 
-- "retrieval": The user is asking a substantive question that can be answered by
-  retrieving from the indexed documents above. THIS IS THE DEFAULT for most queries.
-  Questions about specific numbers, policies, companies, rates, thresholds,
-  approvals, or document details all belong here.
+- "retrieval": The user asks something a company's filings could answer. THIS IS
+  THE DEFAULT for most queries: specific numbers, ratios, trends, segments,
+  drivers, risks and other disclosed facts all belong here. Do not reject a
+  question because of the company name; a later step checks which companies
+  are available to the user.
 
-- "clarification": The user greeted the assistant, asked what it does, or asked a
-  vague question that needs more specifics. (e.g. "hi", "what can you do?",
-  "tell me about finance")
+- "clarification": The user greeted the assistant, asked what it does, or asked
+  something too vague to search (e.g. "hi", "what can you do?", "tell me about
+  finance").
 
-- "out_of_scope": The query is genuinely unrelated to any of the document types
-  above. Examples: weather forecasts, current stock prices (not in filings),
-  future predictions, celebrity gossip, general programming help, recipes.
-  The loaded corpus contains filings from multiple companies. Treat questions
-  about named companies as "retrieval" and let search establish whether evidence
-  is available; do NOT preemptively reject based on the company name.
+- "out_of_scope": Filings cannot answer the query: unrelated topics (weather,
+  programming help, recipes, gossip), investment advice ("should I buy X?"),
+  live market data (today's share price, current market cap) and predictions
+  of future results.
 
-Be LIBERAL with "retrieval". Any question that could plausibly be answered by a
-10-K, invoice, or expense policy belongs there. When in doubt, choose "retrieval".
+Be LIBERAL with "retrieval". When in doubt, choose "retrieval".
 
 ALSO classify the query's complexity (only matters when intent == "retrieval"):
 Always return a valid complexity value. For "clarification" and "out_of_scope",
@@ -100,7 +78,7 @@ return "simple_lookup"; never return null or omit the required routing fields.
   one-line explanation accompanies the answer.
   Examples:
     "What was Apple's FY2023 total revenue?"
-    "What is the meal per diem in San Francisco?"
+    "Who are Boeing's primary customers?"
     "Who is the auditor for the 2022 10-K?"
     "What was 3M's FY2018 capital expenditure?"
     "Does 3M maintain a stable trend of dividend distribution?"
@@ -205,16 +183,6 @@ QUERY_REWRITER_USER_TEMPLATE = """Original query: {query}
 
 Feedback on why retrieved chunks were irrelevant:
 {feedback}"""
-
-GENERATOR_PROMPT = """You are a financial analyst assistant. Answer the question using ONLY the provided context.
-If the context does not contain the answer, say "I don't have enough information to answer this question."
-Always cite which document and section your answer comes from using [Source: filename, page X] format.
-
-Context:
-{context}
-
-Question: {query}"""
-
 
 # Stable instructions stay in the system message; request data stays in the human message.
 GENERATOR_SYSTEM_PROMPT = """You are a precise financial analyst assistant.
@@ -328,28 +296,18 @@ HALLUCINATION_CHECK_USER_TEMPLATE = """Source documents:
 Generated answer:
 {answer}"""
 
-HALLUCINATION_CHECK_PROMPT = """You are a fact-checking assistant. Given source documents and a generated answer,
-determine if every claim in the answer is supported by the provided sources.
+CLARIFICATION_RESPONSE = """I'm a financial research assistant. I answer questions about companies using their filings: annual and quarterly reports, event notices and earnings releases.
 
-Source documents:
-{sources}
+For example:
+- What was [company]'s revenue in FY2022?
+- What drove [company]'s operating margin change in FY2022?
+- Compare [company A] and [company B] revenue in FY2023.
 
-Generated answer:
-{answer}
+Name a company to get started."""
 
-Check if the answer is fully grounded in the source documents."""
+OUT_OF_SCOPE_RESPONSE = """I answer questions about companies using their filings, such as annual and quarterly reports. I can't help with unrelated topics, investment advice, live market data or predictions.
 
-
-CLARIFICATION_RESPONSE = """I'm a financial document assistant. I can help you with:
-- Querying company financial reports (10-K filings)
-- Looking up invoice details
-- Finding expense policy information
-
-How can I help you today?"""
-
-OUT_OF_SCOPE_RESPONSE = """I'm sorry, but that question is outside my scope. I can only help with
-financial document queries such as company filings, invoices, and expense policies.
-Please ask a question related to financial documents."""
+Try asking about a company's reported figures, for example its revenue, margins or cash flow in a given year."""
 
 NO_INFO_RESPONSE = "I couldn't find relevant information in the documents available within your search permissions."
 
