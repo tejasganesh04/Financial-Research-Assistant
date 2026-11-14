@@ -17,7 +17,7 @@ from src.graph.nodes import (
     router,
 )
 from src.models.schemas import GradeResult, HallucinationCheck, InjectionCheck, MetadataExtraction, RouterDecision
-from src.services import guardrails_service, result_cache
+from src.services import guardrails_service
 
 QUESTION = "REQUEST_QUESTION_7F2: compare revenue"
 EVIDENCE = "REQUEST_EVIDENCE_7F2: revenue was $10 million."
@@ -137,9 +137,6 @@ def test_each_sync_call_separates_rules_from_request_material(monkeypatch, stage
         assert research_agent._synthesize(QUESTION, PLAN, [CHUNK]) == "Result"
         expected += [EVIDENCE, PLAN.required_quantities[0], PLAN.qualifiers[0]]
     elif stage == "grader":
-        cache = MagicMock()
-        cache.get.return_value = None
-        monkeypatch.setattr(result_cache, "_client", cache)
         structured.invoke.return_value = GradeResult(relevant=True, reason="Supports question")
         assert grader.grader_node({"contextualized_query": QUESTION, "reranked_chunks": [CHUNK]})[
             "relevant_chunks"

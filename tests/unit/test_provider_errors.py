@@ -128,9 +128,6 @@ def test_model_fallbacks_never_hide_rate_limits(stage, monkeypatch):
     monkeypatch.setattr(metadata_extractor, "available_metadata", lambda state: [])
     monkeypatch.setattr(grader.settings, "ENABLE_DETERMINISTIC_VALIDATOR", False)
     monkeypatch.setattr(grader, "_GRADER_PARALLELISM", 1)
-    from src.services import result_cache
-
-    monkeypatch.setattr(result_cache._client, "get", lambda key: None)
     monkeypatch.setattr(query_rewriter, "retry_llm_call", lambda fn, **kw: fn())
     chunk = {"content": "Financial evidence", "metadata": {}}
     state = {
@@ -211,13 +208,11 @@ def test_voyage_limit_has_model_and_does_not_sleep(monkeypatch):
 
 def test_rate_limited_grader_does_not_call_remaining_queued_chunks(monkeypatch):
     from src.graph.nodes import grader
-    from src.services import result_cache
 
     model = failing_model()
     monkeypatch.setattr(grader.LLMFactory, "get_grader_llm", lambda: model)
     monkeypatch.setattr(grader.settings, "ENABLE_DETERMINISTIC_VALIDATOR", False)
     monkeypatch.setattr(grader, "_GRADER_PARALLELISM", 1)
-    monkeypatch.setattr(result_cache._client, "get", lambda key: None)
     chunks = [{"content": f"Evidence {i}", "metadata": {}} for i in range(8)]
     with pytest.raises(ProviderRateLimitError):
         grader.grader_node({"contextualized_query": "Revenue?", "reranked_chunks": chunks})

@@ -112,14 +112,10 @@ async def test_parallel_grading_keeps_usage_and_requests_separate(monkeypatch):
 
     from src.config.settings import settings
     from src.graph.nodes import grader
-    from src.services import result_cache
 
     monkeypatch.setattr(settings, "ENABLE_DETERMINISTIC_VALIDATOR", False)
     monkeypatch.setattr(grader, "_GRADER_PARALLELISM", 3)
     monkeypatch.setattr(grader.LLMFactory, "get_grader_llm", lambda: OfflineModel())
-    cache = MagicMock()
-    cache.get.return_value = None
-    monkeypatch.setattr(result_cache, "_client", cache)
     graph = StateGraph(RAGState)
     graph.add_node("grader", grader.grader_node)
     graph.add_edge(START, "grader")
@@ -152,28 +148,23 @@ async def test_parallel_grading_keeps_usage_and_requests_separate(monkeypatch):
     assert active_trace.get() is None
 
 
-def test_embedding_usage_and_local_cache_hits(monkeypatch):
+def test_embedding_usage_is_recorded(monkeypatch):
     from src.config.settings import settings
-    from src.services import embeddings, result_cache
+    from src.services import embeddings
 
     monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "voyage")
     monkeypatch.setattr(settings, "EMBEDDING_MODEL", "voyage-finance-2")
     client = MagicMock()
     client.embed.return_value = SimpleNamespace(embeddings=[[0.1, 0.2]], total_tokens=12)
     monkeypatch.setattr(embeddings, "_get_voyage_client", lambda: client)
-    cache = MagicMock()
-    cache.get.side_effect = [None, [0.1, 0.2]]
-    monkeypatch.setattr(result_cache, "_client", cache)
     trace = make_trace()
     with trace.activate():
-        assert embeddings.embed_text("revenue") == [0.1, 0.2]
         assert embeddings.embed_text("revenue") == [0.1, 0.2]
     trace.finish()
     calls = [e for e in events(trace) if e["stage"] == "embedding_call"]
     assert len(calls) == 1
     assert calls[0]["input_tokens"] == 12
     assert calls[0]["cost_usd"] is not None
-    assert [e["hit"] for e in events(trace) if e["stage"] == "local_cache"] == [False, True]
 
 
 def test_research_substeps_are_timed_without_saving_synthesis(monkeypatch):

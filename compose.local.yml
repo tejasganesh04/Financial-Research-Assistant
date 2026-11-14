@@ -1,5 +1,5 @@
 # Local development: mount the application source and preserve local service data.
-# Include after compose.minimal.yml; keep the other local project's Redis port free.
+# Include after compose.minimal.yml.
 services:
   api:
     image: financial-research-assistant-api:local
@@ -26,6 +26,3 @@ services:
   postgres:
     ports: !override
       - "127.0.0.1:5432:5432"
-  redis:
-    ports: !override
-      - "127.0.0.1:16380:6379"

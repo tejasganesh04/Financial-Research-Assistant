@@ -347,8 +347,8 @@ class RequestTrace(BaseCallbackHandler):
             f"Known estimated cost: **${total:.6f}**" + (" (incomplete)" if incomplete else ""),
             "",
             "Provider-reported usage is measured; dollars use configured rates, not invoices.",
-            "Failed calls may have unknown billed usage. Local cache hits make no new provider call;",
-            "provider prompt-cache tokens are still usage. No full prompts, document text or drafts are saved.",
+            "Failed calls may have unknown billed usage. Provider prompt-cache tokens are still usage.",
+            "No full prompts, document text or drafts are saved.",
             "",
         ]
         self.directory.mkdir(parents=True, exist_ok=True)
