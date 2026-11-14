@@ -2,7 +2,8 @@
 
 from langchain_core.messages import AIMessage
 
-from src.config.prompts import BLOCKED_RESPONSE, CLARIFICATION_RESPONSE, NO_INFO_RESPONSE, OUT_OF_SCOPE_RESPONSE
+from src.config.prompts import BLOCKED_RESPONSE, CLARIFICATION_RESPONSE, OUT_OF_SCOPE_RESPONSE
+from src.graph.nodes.response_formatter import not_found_message, scope_note
 from src.models.state import RAGState
 
 
@@ -54,7 +55,7 @@ def clarification_node(state: RAGState) -> dict:
 
 def no_info_node(state: RAGState) -> dict:
     """Report no relevant evidence in the permitted search scope. Never probe outside it."""
-    answer = NO_INFO_RESPONSE
+    answer = not_found_message(state) + scope_note(state)
     if state.get("metadata_unavailable"):
         answer = state.get("unavailable_message") or (
             "I couldn't find the requested company or filing year in the documents available within your access."

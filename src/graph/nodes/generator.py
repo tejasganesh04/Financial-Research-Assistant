@@ -125,6 +125,15 @@ async def generator_node(state: RAGState) -> dict:
     if prior_qa:
         context = f"## Recent conversation (for context):\n\n{prior_qa}\n\n---\n\n{context}"
     user_prompt = GENERATOR_USER_TEMPLATE.format(context=context, query=query)
+    scope_notes = state.get("scope_notes") or []
+    if scope_notes:
+        # A partial or defaulted scope must not turn into a refusal of the parts that are available.
+        user_prompt = (
+            "Scope of this answer: "
+            + " ".join(scope_notes)
+            + " Answer for the companies and years that are available; do not refuse because another"
+            " company or year is unavailable.\n\n" + user_prompt
+        )
 
     # First attempts keep the normal prompt. Only a failed-check retry receives the prior draft and feedback.
     feedback = state.get("hallucination_feedback", "")
