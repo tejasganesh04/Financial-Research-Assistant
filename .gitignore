@@ -30,6 +30,7 @@ data/training/
 data/sample/*.pdf
 logs/
 cost_logs/
+tests/evaluation/results/
 qdrant_data/
 pg_data/
 Docker-backup-*.raw

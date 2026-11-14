@@ -1,0 +1,32 @@
+{
+  "source_url": "https://raw.githubusercontent.com/patronus-ai/financebench/main/data/financebench_open_source.jsonl",
+  "source_sha256": "a5a2aa673e573e55675fc3c0f9aa38c1cf59d2abc91edb077534f71f10a71877",
+  "seed": 42,
+  "ids": [
+    "financebench_id_01858",
+    "financebench_id_03856",
+    "financebench_id_01865",
+    "financebench_id_01474",
+    "financebench_id_03849",
+    "financebench_id_00070",
+    "financebench_id_03069",
+    "financebench_id_01935",
+    "financebench_id_01490",
+    "financebench_id_00476",
+    "financebench_id_04672",
+    "financebench_id_00438",
+    "financebench_id_00288",
+    "financebench_id_02987",
+    "financebench_id_00684",
+    "financebench_id_00669",
+    "financebench_id_00591",
+    "financebench_id_06655",
+    "financebench_id_02981",
+    "financebench_id_00566",
+    "financebench_id_01226",
+    "financebench_id_01079",
+    "financebench_id_01912",
+    "financebench_id_10499",
+    "financebench_id_00222"
+  ]
+}
