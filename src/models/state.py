@@ -38,6 +38,9 @@ class RAGState(TypedDict):
     target_companies: list[str]
     target_fiscal_years: list[int]
     metadata_filter_reason: str
+    # Why no search ran (user-facing), and notes about companies or years left out of a partial answer.
+    unavailable_message: str
+    scope_notes: list[str]
     metadata_unavailable: bool
 
     # --- Retrieval ---

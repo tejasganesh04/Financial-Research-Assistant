@@ -9,11 +9,12 @@ from src.services.vector_store import get_qdrant_client
 
 
 @lru_cache(maxsize=1)
-def load_metadata_catalog() -> tuple[tuple[str, int | None, str, str], ...]:
+def load_metadata_catalog() -> tuple[tuple[str, int | None, str, str, str], ...]:
     """Read metadata only, once per API process. Restart after restoring/changing the corpus.
 
     No chunk text or vectors are downloaded. Only successful reads are cached.
-    Keep type/confidentiality so each request sees only its effective search scope.
+    Keep type/confidentiality so each request sees only its effective search scope, and
+    the company's display name for user-facing messages.
     """
     client = get_qdrant_client()
     entries = set()
@@ -25,7 +26,7 @@ def load_metadata_catalog() -> tuple[tuple[str, int | None, str, str], ...]:
                 limit=1000,
                 offset=offset,
                 with_vectors=False,
-                with_payload=["company", "fiscal_year", "doc_type", "confidentiality"],
+                with_payload=["company", "fiscal_year", "doc_type", "confidentiality", "fb_company"],
             )
             for point in points:
                 meta = point.payload or {}
@@ -36,7 +37,13 @@ def load_metadata_catalog() -> tuple[tuple[str, int | None, str, str], ...]:
                 if year is not None:
                     year = int(year)
                 entries.add(
-                    (company.strip(), year, str(meta.get("doc_type", "")), str(meta.get("confidentiality", "")))
+                    (
+                        company.strip(),
+                        year,
+                        str(meta.get("doc_type", "")),
+                        str(meta.get("confidentiality", "")),
+                        str(meta.get("fb_company") or company.strip()),
+                    )
                 )
             if offset is None:
                 break
@@ -46,22 +53,32 @@ def load_metadata_catalog() -> tuple[tuple[str, int | None, str, str], ...]:
 
 
 def available_metadata(state: dict) -> list[dict]:
-    """Company -> filing years within the same role-plus-escalation scope as retrieval."""
+    """Companies, filing years and documents within the same role-plus-escalation scope as retrieval."""
     permissions = get_permissions(state.get("user_role", "analyst"))
     scope = state.get("access_scope") or {}
     doc_types = scope.get("doc_types", permissions["allowed_doc_types"])
     levels = scope.get("confidentiality", permissions["allowed_confidentiality"])
     companies: dict[str, set[int]] = {}
-    for company, year, doc_type, level in load_metadata_catalog():
+    documents: dict[str, set[tuple[int, str]]] = {}
+    names: dict[str, str] = {}
+    for company, year, doc_type, level, name in load_metadata_catalog():
         if "*" not in doc_types and doc_type not in doc_types:
             continue
         if "*" not in levels and level not in levels:
             continue
         years = companies.setdefault(company, set())
+        names.setdefault(company, name)
         if year is not None:
             years.add(year)
+            documents.setdefault(company, set()).add((year, doc_type))
     aliases = build_company_alias_map()
     return [
-        {"company": company, "aliases": sorted(aliases.get(company, set())), "fiscal_years": sorted(years)}
+        {
+            "company": company,
+            "name": names[company],
+            "aliases": sorted(aliases.get(company, set())),
+            "fiscal_years": sorted(years),
+            "documents": sorted(documents.get(company, set())),
+        }
         for company, years in sorted(companies.items())
     ]

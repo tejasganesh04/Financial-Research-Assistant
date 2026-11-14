@@ -82,6 +82,8 @@ def _build_initial_state(
         "target_fiscal_years": [],
         "metadata_filter_reason": "",
         "metadata_unavailable": False,
+        "unavailable_message": "",
+        "scope_notes": [],
         "retrieved_chunks": [],
         "reranked_chunks": [],
         "retrieval_query": "",

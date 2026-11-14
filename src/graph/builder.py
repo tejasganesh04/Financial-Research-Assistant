@@ -58,23 +58,28 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_conditional_edges(
         "guardrails",
         route_after_guardrails,
-        {"clean": "metadata_extractor", "blocked": "blocked_response"},
-    )
-    graph.add_conditional_edges(
-        "metadata_extractor",
-        route_after_metadata_extraction,
-        {"continue": "router", "unavailable": "no_info_response"},
+        {"clean": "router", "blocked": "blocked_response"},
     )
     graph.add_edge("blocked_response", END)
 
+    # Only document questions reach company/year selection; greetings and out-of-scope questions skip it.
     graph.add_conditional_edges(
         "router",
         route_after_router,
         {
-            "retrieval": "retrieval",
-            "research_required": "research_agent",
+            "retrieval": "metadata_extractor",
+            "research_required": "metadata_extractor",
             "clarification": "clarification_response",
             "out_of_scope": "out_of_scope_response",
+        },
+    )
+    graph.add_conditional_edges(
+        "metadata_extractor",
+        route_after_metadata_extraction,
+        {
+            "retrieval": "retrieval",
+            "research_required": "research_agent",
+            "unavailable": "no_info_response",
         },
     )
     graph.add_edge("out_of_scope_response", END)

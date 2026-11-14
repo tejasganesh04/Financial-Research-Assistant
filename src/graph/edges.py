@@ -13,8 +13,10 @@ def route_after_guardrails(state: RAGState) -> str:
 
 
 def route_after_metadata_extraction(state: RAGState) -> str:
-    """An unavailable explicit filing exits without broadening the search or calling more models."""
-    return "unavailable" if state.get("metadata_unavailable") else "continue"
+    """Stop when no requested company or year is available; otherwise take the router's search path."""
+    if state.get("metadata_unavailable"):
+        return "unavailable"
+    return "research_required" if state.get("query_complexity") == "research_required" else "retrieval"
 
 
 def route_after_router(state: RAGState) -> str:
