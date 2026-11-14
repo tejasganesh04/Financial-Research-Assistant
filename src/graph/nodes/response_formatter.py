@@ -2,10 +2,45 @@ import logging
 
 from langchain_core.messages import AIMessage
 
+from src.config.prompts import NO_INFO_RESPONSE
 from src.config.settings import settings
 from src.models.state import RAGState
+from src.services.metadata_catalog import available_metadata
 
 logger = logging.getLogger(__name__)
+
+# The generator's exact wording when its evidence cannot answer the question.
+REFUSAL = "I don't have enough information"
+DOC_LABELS = {"10k": "10-K", "10q": "10-Q", "8k": "8-K"}
+
+
+def is_refusal(answer: str) -> bool:
+    text = answer.strip()
+    return text.startswith(REFUSAL) and len(text) < 300
+
+
+def scope_note(state: RAGState) -> str:
+    notes = state.get("scope_notes") or []
+    return "\n\n**Note:** " + " ".join(notes) if notes else ""
+
+
+def not_found_message(state: RAGState) -> str:
+    """Say what was searched, limited to the documents this user can access."""
+    companies = state.get("target_companies") or []
+    try:
+        rows = [row for row in available_metadata(state) if row["company"] in companies]
+    except Exception:  # noqa: BLE001 - the generic message is still correct without the document list.
+        rows = []
+    if not rows:
+        return NO_INFO_RESPONSE
+    searched = "; ".join(
+        f"{row['name']} ({', '.join(f'FY{year} {DOC_LABELS.get(kind, kind)}' for year, kind in row['documents'])})"
+        for row in rows
+    )
+    return (
+        f"I couldn't find this in the filings available to you for {searched}. "
+        "Some details are disclosed only in other filings, such as proxy statements, which aren't included."
+    )
 
 
 def source_references(chunks: list[dict]) -> list[dict]:
@@ -40,12 +75,17 @@ def response_formatter_node(state: RAGState) -> dict:
 
     sources = source_references(chunks)
 
-    # Add disclaimer if hallucination check was uncertain
-    if answer and (hallucination_status != "grounded" or hallucination_score < settings.HALLUCINATION_THRESHOLD):
-        answer = (
-            "**Note:** This answer could not be fully verified against source documents. "
-            "Please verify the information independently.\n\n" + answer
-        )
+    if is_refusal(answer):
+        # Nothing to verify or cite in a refusal; say what was searched instead.
+        answer, sources = not_found_message(state) + scope_note(state), []
+    else:
+        # Add disclaimer if hallucination check was uncertain
+        if answer and (hallucination_status != "grounded" or hallucination_score < settings.HALLUCINATION_THRESHOLD):
+            answer = (
+                "**Note:** This answer could not be fully verified against source documents. "
+                "Please verify the information independently.\n\n" + answer
+            )
+        answer += scope_note(state)
 
     metadata = {
         "sources": sources,
