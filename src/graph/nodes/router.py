@@ -28,17 +28,16 @@ def router_node(state: RAGState) -> dict:
             structured_options["method"] = (
                 "json_schema" if llm.model_name.startswith("openai/gpt-oss-") else "function_calling"
             )
-        structured_llm = llm.with_structured_output(
-            RouterDecision, **structured_options
+        structured_llm = llm.with_structured_output(RouterDecision, **structured_options)
+        result: RouterDecision = structured_llm.invoke(
+            [
+                SystemMessage(content=ROUTER_PROMPT),
+                HumanMessage(content=ROUTER_USER_TEMPLATE.format(query=query)),
+            ]
         )
-        result: RouterDecision = structured_llm.invoke([
-            SystemMessage(content=ROUTER_PROMPT),
-            HumanMessage(content=ROUTER_USER_TEMPLATE.format(query=query)),
-        ])
-        logger.info(
-            f"Router decision: intent={result.intent}, complexity={result.complexity}, reason={result.reason}"
-        )
+        logger.info(f"Router decision: intent={result.intent}, complexity={result.complexity}, reason={result.reason}")
         from src.services.event_log import emit
+
         emit("router", intent=result.intent, complexity=result.complexity, reason=result.reason)
         return {
             "query_intent": result.intent,
@@ -48,5 +47,6 @@ def router_node(state: RAGState) -> dict:
         raise_if_rate_limited(e, "router", llm=llm)
         logger.error(f"Router failed, defaulting to retrieval/simple_lookup: {e}")
         from src.services.request_trace import record
+
         record("router_fallback", error_type=type(e).__name__, intent="retrieval", complexity="simple_lookup")
         return {"query_intent": "retrieval", "query_complexity": "simple_lookup"}

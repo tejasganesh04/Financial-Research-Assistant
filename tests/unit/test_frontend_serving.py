@@ -1,4 +1,5 @@
 """Serving the UI must preserve the API and work without a frontend build."""
+
 from fastapi.testclient import TestClient
 
 from src.api import main

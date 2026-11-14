@@ -14,6 +14,7 @@ Voyage's SDK does not auto-retry transient errors, so we wrap calls with
 exponential backoff for rate limits, 5xx, timeouts, and network drops.
 AbaciNLP uses OpenAI's SDK which has built-in retries.
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,9 +36,7 @@ VOYAGE_MAX_RETRIES = 5
 VOYAGE_INITIAL_BACKOFF_S = 2.0
 
 ABACI_BASE_URL = "https://abacinlp.com/v1"
-ABACI_QUERY_INSTRUCTION = (
-    "Given a financial question, retrieve relevant passages that answer the query."
-)
+ABACI_QUERY_INSTRUCTION = "Given a financial question, retrieve relevant passages that answer the query."
 
 
 @contextmanager
@@ -45,6 +44,7 @@ def _measure_embedding(provider: str):
     """Observe an SDK call without changing its inputs, result or retry policy."""
     from src.services.cost_tracker import MODEL_PRICING, compute_cost
     from src.services.request_trace import record
+
     start = time.monotonic()
     measurement = {}
     error_type = None
@@ -61,12 +61,19 @@ def _measure_embedding(provider: str):
             tokens = getattr(usage, "total_tokens", None)
         available = isinstance(tokens, int)
         model = settings.EMBEDDING_MODEL
-        record("embedding_call", provider=provider, model=model,
-               duration_s=round(time.monotonic() - start, 4), error_type=error_type,
-               usage_available=available, input_tokens=tokens if available else None,
-               output_tokens=0, cache_read_tokens=0, cache_write_tokens=0,
-               cost_usd=compute_cost(model, input_tokens=tokens)
-               if available and model in MODEL_PRICING else None)
+        record(
+            "embedding_call",
+            provider=provider,
+            model=model,
+            duration_s=round(time.monotonic() - start, 4),
+            error_type=error_type,
+            usage_available=available,
+            input_tokens=tokens if available else None,
+            output_tokens=0,
+            cache_read_tokens=0,
+            cache_write_tokens=0,
+            cost_usd=compute_cost(model, input_tokens=tokens) if available and model in MODEL_PRICING else None,
+        )
 
 
 def _get_openai_client() -> OpenAI:
@@ -111,9 +118,7 @@ def _abaci_embed(texts: list[str], input_type: str) -> list[list[float]]:
     else:
         formatted = texts
     with _measure_embedding("abaci") as measurement:
-        response = _get_abaci_client().embeddings.create(
-            input=formatted, model=settings.EMBEDDING_MODEL
-        )
+        response = _get_abaci_client().embeddings.create(input=formatted, model=settings.EMBEDDING_MODEL)
         measurement["response"] = response
     return [item.embedding for item in response.data]
 
@@ -152,13 +157,14 @@ def _voyage_embed(texts: list[str], input_type: str) -> list[list[float]]:
                 break
             logger.warning(
                 "Voyage transient error (attempt %d/%d): %s — retrying in %.1fs",
-                attempt, VOYAGE_MAX_RETRIES, type(err).__name__, backoff,
+                attempt,
+                VOYAGE_MAX_RETRIES,
+                type(err).__name__,
+                backoff,
             )
             time.sleep(backoff)
             backoff *= 2
-    raise RuntimeError(
-        f"Voyage embed failed after {VOYAGE_MAX_RETRIES} attempts: {last_err}"
-    )
+    raise RuntimeError(f"Voyage embed failed after {VOYAGE_MAX_RETRIES} attempts: {last_err}")
 
 
 def embed_text(text: str, input_type: str = "query") -> list[float]:
@@ -189,14 +195,16 @@ def _embed_one_uncached(text: str, input_type: str) -> list[float]:
         if settings.EMBEDDING_PROVIDER == "abaci":
             return _abaci_embed([text], input_type=input_type)[0]
         with _measure_embedding("openai") as measurement:
-            response = _get_openai_client().embeddings.create(
-                input=text, model=settings.EMBEDDING_MODEL
-            )
+            response = _get_openai_client().embeddings.create(input=text, model=settings.EMBEDDING_MODEL)
             measurement["response"] = response
         return response.data[0].embedding
     except Exception as error:
-        raise_if_rate_limited(error, "retrieval" if input_type == "query" else "embedding",
-                             provider=settings.EMBEDDING_PROVIDER.title(), model=settings.EMBEDDING_MODEL)
+        raise_if_rate_limited(
+            error,
+            "retrieval" if input_type == "query" else "embedding",
+            provider=settings.EMBEDDING_PROVIDER.title(),
+            model=settings.EMBEDDING_MODEL,
+        )
         raise
 
 
@@ -207,8 +215,6 @@ def embed_texts(texts: list[str], input_type: str = "document") -> list[list[flo
     if settings.EMBEDDING_PROVIDER == "abaci":
         return _abaci_embed(texts, input_type=input_type)
     with _measure_embedding("openai") as measurement:
-        response = _get_openai_client().embeddings.create(
-            input=texts, model=settings.EMBEDDING_MODEL
-        )
+        response = _get_openai_client().embeddings.create(input=texts, model=settings.EMBEDDING_MODEL)
         measurement["response"] = response
     return [item.embedding for item in response.data]

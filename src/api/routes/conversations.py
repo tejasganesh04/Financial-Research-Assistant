@@ -51,10 +51,14 @@ def _get_graph(checkpointer=None):
 
 # Supply only the new message; add_messages appends it to the saved history.
 # Reset temporary evidence, answers, retries, approval details and escalation so they do not leak into the next turn.
-def _build_initial_state(message: str, user: User, request_id: str | None = None, access_scope: dict | None = None) -> dict:
+def _build_initial_state(
+    message: str, user: User, request_id: str | None = None, access_scope: dict | None = None
+) -> dict:
     """Build the initial RAGState for a chat request."""
     return {
-        "messages": [HumanMessage(content=message, additional_kwargs={"request_id": request_id, "access_scope": access_scope})],
+        "messages": [
+            HumanMessage(content=message, additional_kwargs={"request_id": request_id, "access_scope": access_scope})
+        ],
         "request_id": request_id,
         "access_scope": access_scope,
         "original_query": message,
@@ -125,7 +129,14 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
         "configurable": {"thread_id": thread_id},
         "run_name": "rag_query",
         "tags": ["api", f"role:{user.role}"],
-        "metadata": {"user_id": user.user_id, "name": user.name, "department": user.department, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
+        "metadata": {
+            "user_id": user.user_id,
+            "name": user.name,
+            "department": user.department,
+            "role": user.role,
+            "thread_id": thread_id,
+            "hitl_enabled": checkpointer is not None,
+        },
         "callbacks": [req_cost, trace],
     }
 
@@ -145,7 +156,13 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
                             headers["Retry-After"] = str(limit["retry_after_seconds"])
                         raise HTTPException(status_code=429, detail=limit["message"], headers=headers) from e
                     logger.error(f"Graph execution failed: {e}", exc_info=True)
-                    raise HTTPException(status_code=503, detail="The answer could not be completed. Check service status and conversation history before retrying.")
+                    raise HTTPException(
+                        status_code=503,
+                        detail=(
+                            "The answer could not be completed. "
+                            "Check service status and conversation history before retrying."
+                        ),
+                    )
 
                 # Check if graph was interrupted by HITL (via graph state, not return values)
                 if checkpointer is not None:
@@ -155,17 +172,22 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
                             for task in graph_state.tasks:
                                 if hasattr(task, "interrupts") and task.interrupts:
                                     interrupt_value = task.interrupts[0].value
-                                    trace.record("approval_pending", submitted_at=interrupt_value.get("submitted_at"),
-                                                 access_scope=interrupt_value.get("access_scope"),
-                                                 approvers=approvers_for(user.role))
+                                    trace.record(
+                                        "approval_pending",
+                                        submitted_at=interrupt_value.get("submitted_at"),
+                                        access_scope=interrupt_value.get("access_scope"),
+                                        approvers=approvers_for(user.role),
+                                    )
                                     trace.finish("awaiting_approval")
                                     return ChatResponse(
                                         response="This answer is waiting for approval.",
                                         sources=[],
                                         confidence=None,
                                         requires_approval=True,
-                                        thread_id=thread_id, request_id=trace.request_id,
-                                        sanitized_message=sanitized_message, access_scope=access_scope,
+                                        thread_id=thread_id,
+                                        request_id=trace.request_id,
+                                        sanitized_message=sanitized_message,
+                                        access_scope=access_scope,
                                     )
                     except Exception as e:
                         raise HTTPException(status_code=503, detail="Unable to check approval status.") from e
@@ -177,8 +199,10 @@ async def chat(request: ChatRequest, user: User = Depends(get_current_user), htt
                     sources=metadata.get("sources", []),
                     confidence=metadata.get("confidence"),
                     requires_approval=result.get("requires_human_approval", False),
-                    thread_id=thread_id, request_id=trace.request_id,
-                    sanitized_message=sanitized_message, access_scope=access_scope,
+                    thread_id=thread_id,
+                    request_id=trace.request_id,
+                    sanitized_message=sanitized_message,
+                    access_scope=access_scope,
                     cost_usd=cost_summary["cost_usd"],
                     tokens=cost_summary["tokens"],
                 )
@@ -202,6 +226,7 @@ async def chat_result(
         raise HTTPException(status_code=503, detail="Result polling unavailable (no checkpointer)")
 
     from src.services.thread_service import get_thread_owner_role
+
     pool = getattr(http_request.app.state, "pool", None)
     if pool is None:
         raise HTTPException(status_code=503, detail="Conversation ownership is unavailable.")
@@ -217,7 +242,7 @@ async def chat_result(
     if gs is None or not gs.values:
         return {"status": "pending", "thread_id": thread_id}
 
-    for task in (gs.tasks or []):
+    for task in gs.tasks or []:
         if getattr(task, "interrupts", None):
             v = task.interrupts[0].value
             return {
@@ -295,7 +320,7 @@ def _is_interrupted(graph_state) -> tuple[bool, dict | None]:
     """Return pending status and the first recorded task interrupt payload."""
     interrupted = False
     payload: dict | None = None
-    for task in (graph_state.tasks or []):
+    for task in graph_state.tasks or []:
         if getattr(task, "interrupts", None):
             interrupt_value = task.interrupts[0].value
             interrupted = True
@@ -315,9 +340,13 @@ def _messages_from_state(state_values: dict[str, Any] | None, interrupted: bool 
     if not state_values:
         return []
     from langchain_core.messages import AIMessage, HumanMessage
+
     messages = state_values.get("messages") or []
-    pending = (interrupted or state_values.get("requires_human_approval")
-               and state_values.get("human_decision") not in ("approved", "rejected"))
+    pending = (
+        interrupted
+        or state_values.get("requires_human_approval")
+        and state_values.get("human_decision") not in ("approved", "rejected")
+    )
     last_question = max((i for i, msg in enumerate(messages) if isinstance(msg, HumanMessage)), default=-1)
     result = []
     for i, msg in enumerate(messages):
@@ -333,9 +362,15 @@ def _messages_from_state(state_values: dict[str, Any] | None, interrupted: bool 
             # single question. Only the last assistant message is final.
             if i + 1 < len(messages) and isinstance(messages[i + 1], AIMessage):
                 continue
-            result.append({"role": "assistant", "content": msg.content,
-                           "sources": msg.additional_kwargs.get("sources", []),
-                           "confidence": msg.additional_kwargs.get("confidence"), **trace_fields})
+            result.append(
+                {
+                    "role": "assistant",
+                    "content": msg.content,
+                    "sources": msg.additional_kwargs.get("sources", []),
+                    "confidence": msg.additional_kwargs.get("confidence"),
+                    **trace_fields,
+                }
+            )
     if result:
         return result
     # Compatibility for old checkpoints that stored only the last Q&A.
@@ -343,8 +378,14 @@ def _messages_from_state(state_values: dict[str, Any] | None, interrupted: bool 
         result.append({"role": "user", "content": state_values["original_query"]})
     if state_values.get("final_response") and not pending:
         meta = state_values.get("response_metadata") or {}
-        result.append({"role": "assistant", "content": state_values["final_response"],
-                       "sources": meta.get("sources", []), "confidence": meta.get("confidence")})
+        result.append(
+            {
+                "role": "assistant",
+                "content": state_values["final_response"],
+                "sources": meta.get("sources", []),
+                "confidence": meta.get("confidence"),
+            }
+        )
     return result
 
 
@@ -387,20 +428,22 @@ async def list_threads(
             interrupted, _ = _is_interrupted(gs)
         except Exception as e:
             logger.warning("aget_state failed for thread %s: %s", r["thread_id"], e)
-        threads.append({
-            "thread_id": r["thread_id"],
-            "title": title,
-            "checkpoint_count": r["checkpoint_count"],
-            "is_interrupted": interrupted,
-            "owner": {
-                "user_id": r["user_id"],
-                "name": r["name"],
-                "role": r["role"],
-                "department": r["department"],
-            },
-            "created_at": r["created_at"],
-            "last_activity_at": r["last_activity_at"],
-        })
+        threads.append(
+            {
+                "thread_id": r["thread_id"],
+                "title": title,
+                "checkpoint_count": r["checkpoint_count"],
+                "is_interrupted": interrupted,
+                "owner": {
+                    "user_id": r["user_id"],
+                    "name": r["name"],
+                    "role": r["role"],
+                    "department": r["department"],
+                },
+                "created_at": r["created_at"],
+                "last_activity_at": r["last_activity_at"],
+            }
+        )
 
     return {
         "threads": threads,
@@ -422,6 +465,7 @@ async def get_thread(
     pool = _pool_or_503(http_request)
 
     from src.services.thread_service import get_thread_owner_role
+
     owner_user_id, owner_role, owner_name, owner_dept = await get_thread_owner_role(pool, thread_id)
     if owner_user_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
@@ -457,6 +501,7 @@ async def get_thread(
 
     try:
         from langchain_core.messages import HumanMessage
+
         turn_count = sum(1 for m in (values.get("messages") or []) if isinstance(m, HumanMessage))
     except Exception:
         turn_count = 0
@@ -481,7 +526,9 @@ async def get_thread(
         "thread_id": thread_id,
         "messages": _messages_from_state(gs.values, interrupted=interrupted),
         "is_interrupted": interrupted,
-        "interrupt_payload": {k: payload.get(k) for k in ("reason", "access_scope", "request_id", "submitted_at")} if payload else None,
+        "interrupt_payload": {k: payload.get(k) for k in ("reason", "access_scope", "request_id", "submitted_at")}
+        if payload
+        else None,
         "owner": owner_block,
         "turn_count": turn_count,
         "audit": audit,
@@ -510,8 +557,9 @@ async def delete_thread_endpoint(
 
 
 @router.post("/{thread_id}/messages", response_model=ChatResponse)
-async def conversation_message(thread_id: str, body: ChatRequest, http_request: Request,
-                               user: User = Depends(get_current_user)):
+async def conversation_message(
+    thread_id: str, body: ChatRequest, http_request: Request, user: User = Depends(get_current_user)
+):
     return await chat(body.model_copy(update={"thread_id": thread_id}), user, http_request)
 
 
@@ -572,7 +620,14 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
         "configurable": {"thread_id": thread_id},
         "run_name": "rag_query_stream",
         "tags": ["api", "streaming", f"role:{user.role}"],
-        "metadata": {"user_id": user.user_id, "name": user.name, "department": user.department, "role": user.role, "thread_id": thread_id, "hitl_enabled": checkpointer is not None},
+        "metadata": {
+            "user_id": user.user_id,
+            "name": user.name,
+            "department": user.department,
+            "role": user.role,
+            "thread_id": thread_id,
+            "hitl_enabled": checkpointer is not None,
+        },
         "callbacks": [req_cost, trace],
     }
 
@@ -583,26 +638,27 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
         final_state = None
 
         import time as _time
+
         _wall_start = _time.monotonic()
         _node_starts: dict[str, float] = {}
         _stage_timings_ms: dict[str, int] = {}
 
         try:
             # aclosing closes the event iterator on early exit.
-            async with aclosing(graph.astream_events(
-                initial_state, config=config, version="v2"
-            )) as graph_events:
+            async with aclosing(graph.astream_events(initial_state, config=config, version="v2")) as graph_events:
                 async for event in graph_events:
                     kind = event.get("event", "")
                     name = event.get("name", "")
 
                     if kind == "on_chain_start" and name in _NODE_LABELS:
                         _node_starts[name] = _time.monotonic()
-                        yield json.dumps({
-                            "type": "node_start",
-                            "node": name,
-                            "label": _NODE_LABELS[name],
-                        })
+                        yield json.dumps(
+                            {
+                                "type": "node_start",
+                                "node": name,
+                                "label": _NODE_LABELS[name],
+                            }
+                        )
 
                     elif kind == "on_chain_end" and name in _NODE_LABELS:
                         if name in _node_starts:
@@ -610,10 +666,12 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                         output = event.get("data", {}).get("output")
                         if isinstance(output, dict):
                             final_state = output
-                        yield json.dumps({
-                            "type": "node_end",
-                            "node": name,
-                        })
+                        yield json.dumps(
+                            {
+                                "type": "node_end",
+                                "node": name,
+                            }
+                        )
 
             # Interrupted tasks mean the answer is waiting for approval.
             if checkpointer is not None:
@@ -624,15 +682,17 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                             if hasattr(task, "interrupts") and task.interrupts:
                                 interrupt_value = task.interrupts[0].value
                                 # Send approval details without the draft or citations.
-                                yield json.dumps({
-                                    "type": "pending_approval",
-                                    "reason": interrupt_value.get("reason", "Approval required"),
-                                    "access_scope": interrupt_value.get("access_scope"),
-                                    "thread_id": thread_id,
-                                    "submitted_at": interrupt_value.get("submitted_at"),
-                                    "approvers": approvers_for(user.role),
-                                    "requester_role": user.role,
-                                })
+                                yield json.dumps(
+                                    {
+                                        "type": "pending_approval",
+                                        "reason": interrupt_value.get("reason", "Approval required"),
+                                        "access_scope": interrupt_value.get("access_scope"),
+                                        "thread_id": thread_id,
+                                        "submitted_at": interrupt_value.get("submitted_at"),
+                                        "approvers": approvers_for(user.role),
+                                        "requester_role": user.role,
+                                    }
+                                )
                                 return
                 # The HTTP status is already sent, so failures become SSE error events.
                 except Exception as e:
@@ -642,31 +702,35 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
             _wall_clock_s = round(_time.monotonic() - _wall_start, 1)
             if final_state:
                 metadata = final_state.get("response_metadata", {})
-                yield json.dumps({
-                    "type": "final",
-                    "response": final_state.get("final_response", ""),
-                    "sources": metadata.get("sources", []),
-                    "confidence": metadata.get("confidence"),
-                    "requires_approval": final_state.get("requires_human_approval", False),
-                    "thread_id": thread_id,
-                    "cost_usd": cost_summary["cost_usd"],
-                    "tokens": cost_summary["tokens"],
-                    "wall_clock_s": _wall_clock_s,
-                    "stage_timings_ms": _stage_timings_ms,
-                })
+                yield json.dumps(
+                    {
+                        "type": "final",
+                        "response": final_state.get("final_response", ""),
+                        "sources": metadata.get("sources", []),
+                        "confidence": metadata.get("confidence"),
+                        "requires_approval": final_state.get("requires_human_approval", False),
+                        "thread_id": thread_id,
+                        "cost_usd": cost_summary["cost_usd"],
+                        "tokens": cost_summary["tokens"],
+                        "wall_clock_s": _wall_clock_s,
+                        "stage_timings_ms": _stage_timings_ms,
+                    }
+                )
             else:
-                yield json.dumps({
-                    "type": "final",
-                    "response": "No response generated.",
-                    "sources": [],
-                    "confidence": None,
-                    "requires_approval": False,
-                    "thread_id": thread_id,
-                    "cost_usd": cost_summary["cost_usd"],
-                    "tokens": cost_summary["tokens"],
-                    "wall_clock_s": _wall_clock_s,
-                    "stage_timings_ms": _stage_timings_ms,
-                })
+                yield json.dumps(
+                    {
+                        "type": "final",
+                        "response": "No response generated.",
+                        "sources": [],
+                        "confidence": None,
+                        "requires_approval": False,
+                        "thread_id": thread_id,
+                        "cost_usd": cost_summary["cost_usd"],
+                        "tokens": cost_summary["tokens"],
+                        "wall_clock_s": _wall_clock_s,
+                        "stage_timings_ms": _stage_timings_ms,
+                    }
+                )
 
         except Exception as e:
             limit = rate_limit_payload(e)
@@ -675,10 +739,12 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                 yield json.dumps(limit)
                 return
             logger.error(f"Streaming graph execution failed: {e}", exc_info=True)
-            yield json.dumps({
-                "type": "error",
-                "message": "An error occurred processing your request.",
-            })
+            yield json.dumps(
+                {
+                    "type": "error",
+                    "message": "An error occurred processing your request.",
+                }
+            )
 
     # Owns the request context and conversation reservation, and tags events with the request ID.
     async def event_generator():
@@ -689,16 +755,26 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
                     # Recheck ownership/pending status inside the reservation, in case it changed since the first check.
                     if checkpointer is not None:
                         await check_chat_access(graph, thread_id, user.user_id)
-                    yield json.dumps({"type": "request_started", "request_id": trace.request_id,
-                                      "thread_id": thread_id, "access_scope": access_scope,
-                                      "sanitized_message": sanitized_message})
+                    yield json.dumps(
+                        {
+                            "type": "request_started",
+                            "request_id": trace.request_id,
+                            "thread_id": thread_id,
+                            "access_scope": access_scope,
+                            "sanitized_message": sanitized_message,
+                        }
+                    )
                     async with aclosing(unlocked_event_generator()) as events:
                         async for event in events:
                             payload = json.loads(event)
                             payload["request_id"] = trace.request_id
                             if payload.get("type") == "pending_approval":
-                                trace.record("approval_pending", submitted_at=payload.get("submitted_at"),
-                                             access_scope=payload.get("access_scope"), approvers=payload.get("approvers"))
+                                trace.record(
+                                    "approval_pending",
+                                    submitted_at=payload.get("submitted_at"),
+                                    access_scope=payload.get("access_scope"),
+                                    approvers=payload.get("approvers"),
+                                )
                                 trace.finish("awaiting_approval")
                             elif payload.get("type") == "error":
                                 trace.finish("failed")
@@ -706,8 +782,9 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
             # The response is already open, so access failures become SSE errors.
             except HTTPException as exc:
                 trace.finish("failed")
-                yield json.dumps({"type": "error", "message": exc.detail, "status": exc.status_code,
-                                  "request_id": trace.request_id})
+                yield json.dumps(
+                    {"type": "error", "message": exc.detail, "status": exc.status_code, "request_id": trace.request_id}
+                )
             except BaseException:
                 trace.finish("interrupted")
                 raise
@@ -718,7 +795,7 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
 
 
 @router.post("/{thread_id}/messages/stream")
-async def conversation_message_stream(thread_id: str, body: ChatRequest, http_request: Request,
-                                      user: User = Depends(get_current_user)):
+async def conversation_message_stream(
+    thread_id: str, body: ChatRequest, http_request: Request, user: User = Depends(get_current_user)
+):
     return await chat_stream(body.model_copy(update={"thread_id": thread_id}), user, http_request)
-

@@ -13,6 +13,7 @@ Three concerns to verify:
 
 These tests stub the redis client so they run with no Redis container.
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -22,6 +23,7 @@ import pytest
 from src.services import result_cache
 
 # ── Fake in-memory redis client ───────────────────────────────────────────
+
 
 class _FakeRedis:
     """Minimal stand-in for redis.Redis that supports get/set/ping in-memory."""
@@ -64,6 +66,7 @@ def fake_redis(monkeypatch):
 
 # ── Round-trip: compute called once on miss, zero on subsequent hits ──────
 
+
 def test_get_or_compute_calls_once_on_miss_zero_on_hit(fake_redis):
     call_count = {"n": 0}
 
@@ -96,11 +99,14 @@ def test_get_or_compute_recomputes_on_different_key(fake_redis):
 
 # ── Key isolation: same (query, chunk) collides across cache types? ───────
 
+
 def test_caches_with_distinct_names_do_not_collide(fake_redis):
     # Reranker score and grader verdict for the same (q, chunk) are
     # different shapes — must not share a key.
     rerank_v = result_cache.get_or_compute("reranker", ("model-x", "q", "chunk-text"), lambda: 0.85)
-    grader_v = result_cache.get_or_compute("grader", ("model-x", "q", "chunk-text"), lambda: {"relevant": True, "reason": "matches"})
+    grader_v = result_cache.get_or_compute(
+        "grader", ("model-x", "q", "chunk-text"), lambda: {"relevant": True, "reason": "matches"}
+    )
 
     assert rerank_v == 0.85
     assert grader_v == {"relevant": True, "reason": "matches"}
@@ -115,16 +121,19 @@ def test_unknown_cache_name_raises():
 
 # ── Fail-open paths ───────────────────────────────────────────────────────
 
+
 def test_compute_runs_when_redis_connect_fails(monkeypatch):
     """If redis.Redis.ping() raises (e.g. container down), the cache must
     silently disable itself and every get_or_compute() must run compute().
     """
+
     class _BrokenRedisModule:
         @staticmethod
         def Redis(**kwargs):  # noqa: ARG004
             class _BrokenClient:
                 def ping(self):
                     raise ConnectionError("redis container is down")
+
             return _BrokenClient()
 
     monkeypatch.setitem(__import__("sys").modules, "redis", _BrokenRedisModule)
@@ -194,12 +203,18 @@ def test_disabled_via_env_skips_redis_entirely(monkeypatch):
         @staticmethod
         def Redis(**kwargs):  # noqa: ARG004
             sentinel_module_calls["n"] += 1
+
             class _Stub:
-                def ping(self): return True
+                def ping(self):
+                    return True
+
                 def get(self, _):
                     sentinel_module_calls["n"] += 1
                     return None
-                def set(self, *a, **kw): sentinel_module_calls["n"] += 1
+
+                def set(self, *a, **kw):
+                    sentinel_module_calls["n"] += 1
+
             return _Stub()
 
     monkeypatch.setitem(__import__("sys").modules, "redis", _SentinelRedisModule)
@@ -220,6 +235,7 @@ def test_disabled_via_env_skips_redis_entirely(monkeypatch):
 
 
 # ── Hash stability — same input produces same key across runs ─────────────
+
 
 def test_hash_key_is_stable():
     a = result_cache._hash_key("foo", "bar", "baz")

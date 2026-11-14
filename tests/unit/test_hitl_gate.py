@@ -1,4 +1,5 @@
 """Explicit scope requests and release decisions, with no provider calls."""
+
 from unittest.mock import patch
 
 import pytest
@@ -13,13 +14,20 @@ from src.services.escalation import parse_escalation
 
 def test_normal_large_amount_never_requires_review():
     assert parse_escalation("Revenue $500 billion", "finance")[1] is None
-    assert hitl_gate_node({"user_role": "finance", "generated_answer": "$500 billion"}) == {"requires_human_approval": False, "human_decision": None}
+    assert hitl_gate_node({"user_role": "finance", "generated_answer": "$500 billion"}) == {
+        "requires_human_approval": False,
+        "human_decision": None,
+    }
 
 
 def test_hr_filings_request_adds_to_existing_permissions():
     question, scope = parse_escalation("/escalate doc_type=filings confidentiality=public\nMicrosoft revenue?", "hr")
     assert question == "Microsoft revenue?"
-    assert scope == {"doc_types": ["expense_policy", "10k", "10q", "8k"], "confidentiality": ["public", "internal"], "escalated": True}
+    assert scope == {
+        "doc_types": ["expense_policy", "10k", "10q", "8k"],
+        "confidentiality": ["public", "internal"],
+        "escalated": True,
+    }
     assert rbac_gate({"user_role": "hr", "access_scope": scope})["allowed_doc_types"] == scope["doc_types"]
     assert rbac_gate({"user_role": "hr"})["allowed_doc_types"] == ["expense_policy"]
 
@@ -38,7 +46,19 @@ def test_omitted_dimension_keeps_existing_role_limits():
     assert scope["escalated"]
 
 
-@pytest.mark.parametrize("command", ["/escalate", "/escalate doc_type=*\nQ", "/escalate doc_type=unknown\nQ", "/escalate confidentiality=secret\nQ", "/escalate doc_type=10k doc_type=8k\nQ", "/escalate doc_type=10k", "/escalate role=admin\nQ", "/escalate doc_type=10k,\nQ"])
+@pytest.mark.parametrize(
+    "command",
+    [
+        "/escalate",
+        "/escalate doc_type=*\nQ",
+        "/escalate doc_type=unknown\nQ",
+        "/escalate confidentiality=secret\nQ",
+        "/escalate doc_type=10k doc_type=8k\nQ",
+        "/escalate doc_type=10k",
+        "/escalate role=admin\nQ",
+        "/escalate doc_type=10k,\nQ",
+    ],
+)
 def test_invalid_commands_rejected(command):
     with pytest.raises(ValueError):
         parse_escalation(command, "hr")
@@ -49,7 +69,10 @@ def test_invalid_commands_rejected(command):
 def test_admin_decision_is_honored_including_old_pending_checkpoints(decision, legacy):
     state = {} if legacy else {"access_scope": {"escalated": True}}
     config = {"metadata": {"hitl_enabled": True, "resuming_approval": legacy}}
-    with patch("src.graph.nodes.hitl_gate.interrupt", return_value={"decision": decision, "decided_by": "admin", "submitted_at": "original"}) as pause:
+    with patch(
+        "src.graph.nodes.hitl_gate.interrupt",
+        return_value={"decision": decision, "decided_by": "admin", "submitted_at": "original"},
+    ) as pause:
         result = hitl_gate_node(state, config)
     assert pause.call_args.args[0]["type"] == "approval_required"
     assert result["human_decision"] == decision
@@ -65,8 +88,19 @@ def test_only_admin_can_review():
 
 def test_search_keeps_requested_scope_without_relaxation():
     _, scope = parse_escalation("/escalate doc_type=filings confidentiality=confidential\nRevenue?", "hr")
-    state = {"user_role": "hr", "access_scope": scope, "contextualized_query": "Revenue?", "target_companies": ["microsoft"], "target_fiscal_years": [2023], **rbac_gate({"user_role": "hr", "access_scope": scope})}
-    with patch("src.graph.nodes.retrieval.get_qdrant_client"), patch("src.graph.nodes.retrieval.embed_text", return_value=[0.0]), patch("src.graph.nodes.retrieval.hybrid_search", return_value=[]) as search:
+    state = {
+        "user_role": "hr",
+        "access_scope": scope,
+        "contextualized_query": "Revenue?",
+        "target_companies": ["microsoft"],
+        "target_fiscal_years": [2023],
+        **rbac_gate({"user_role": "hr", "access_scope": scope}),
+    }
+    with (
+        patch("src.graph.nodes.retrieval.get_qdrant_client"),
+        patch("src.graph.nodes.retrieval.embed_text", return_value=[0.0]),
+        patch("src.graph.nodes.retrieval.hybrid_search", return_value=[]) as search,
+    ):
         retrieval_node(state)
     assert search.call_count == 1
     for call in search.call_args_list:
@@ -81,6 +115,7 @@ def test_search_keeps_requested_scope_without_relaxation():
 def test_empty_search_never_probes_outside_requested_scope(scope):
     # No search/embedding dependency is available to this terminal node.
     from src.graph.nodes import terminal_nodes
+
     assert not hasattr(terminal_nodes, "hybrid_search")
     assert not hasattr(terminal_nodes, "embed_text")
     result = no_info_node({"access_scope": scope, "user_role": "hr"})
@@ -93,6 +128,7 @@ def test_empty_search_never_probes_outside_requested_scope(scope):
 
 def test_internal_request_keeps_public_access_and_does_not_mutate_role():
     from src.config.rbac_config import get_permissions
+
     _, scope = parse_escalation("/escalate doc_type=filings confidentiality=internal\nMicrosoft FY2016 revenue?", "hr")
     assert scope["doc_types"] == ["expense_policy", "10k", "10q", "8k"]
     assert scope["confidentiality"] == ["public", "internal"]

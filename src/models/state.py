@@ -76,11 +76,11 @@ class RAGState(TypedDict):
     requires_human_approval: bool
     human_decision: Optional[str]  # "approved", "rejected", None
     # Reviewer identity, timestamp and reason are returned through the conversation result/history endpoints.
-    human_decision_at: Optional[str]      # ISO-8601 timestamp
-    human_decision_by: Optional[str]      # approver user_id
-    human_decision_by_role: Optional[str] # approver role
+    human_decision_at: Optional[str]  # ISO-8601 timestamp
+    human_decision_by: Optional[str]  # approver user_id
+    human_decision_by_role: Optional[str]  # approver role
     human_decision_reason: Optional[str]  # rejection reason (mandatory on reject)
-    hitl_submitted_at: Optional[str]      # ISO-8601 when the gate fired
+    hitl_submitted_at: Optional[str]  # ISO-8601 when the gate fired
 
     # --- Control Flow ---
     retrieval_retry_count: int

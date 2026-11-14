@@ -1,4 +1,5 @@
 """Rank retrieved chunks with the standard BGE cross-encoder and cache scores."""
+
 import logging
 import os
 from functools import lru_cache
@@ -11,9 +12,7 @@ DEFAULT_DEVICE = "cpu"
 
 @lru_cache(maxsize=1)
 def get_reranker():
-    """Load the cross-encoder once and cache it. First call downloads the model.
-
-    """
+    """Load the cross-encoder once and cache it. First call downloads the model."""
     device = os.environ.get("RERANKER_DEVICE", DEFAULT_DEVICE)
     from sentence_transformers import CrossEncoder
 
@@ -52,6 +51,7 @@ def rerank(query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:
 
     # Compute scores only for misses, then store them.
     from src.services.request_trace import record
+
     record("local_cache", cache="reranker", hits=len(cached_scores), misses=len(pending_pairs))
     if pending_pairs:
         reranker = get_reranker()
@@ -63,9 +63,6 @@ def rerank(query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:
             key = cache_prefix + _hash_key(model_id, query, chunk_text)
             _client.set(key, score_f)
 
-    scored = [
-        {**chunk, "rerank_score": cached_scores[i]}
-        for i, chunk in enumerate(chunks)
-    ]
+    scored = [{**chunk, "rerank_score": cached_scores[i]} for i, chunk in enumerate(chunks)]
     scored.sort(key=lambda c: c["rerank_score"], reverse=True)
     return scored[:top_k]

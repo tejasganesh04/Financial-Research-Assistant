@@ -61,7 +61,8 @@ def build_graph(checkpointer=None) -> StateGraph:
         {"clean": "metadata_extractor", "blocked": "blocked_response"},
     )
     graph.add_conditional_edges(
-        "metadata_extractor", route_after_metadata_extraction,
+        "metadata_extractor",
+        route_after_metadata_extraction,
         {"continue": "router", "unavailable": "no_info_response"},
     )
     graph.add_edge("blocked_response", END)

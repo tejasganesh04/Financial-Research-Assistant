@@ -3,6 +3,7 @@
 It never executes the workflow or records full prompts, chunks or draft answers.
 All writes are best-effort so a tracing failure cannot break an answer.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,8 @@ from uuid import uuid4
 from langchain_core.callbacks import BaseCallbackHandler
 
 logger = logging.getLogger(__name__)
-# Request-local pointer to the active recorder; helpers access it without sharing one mutable global trace between users.
+# Request-local pointer to the active recorder, so helpers never share one
+# mutable global trace between users.
 active_trace: ContextVar[RequestTrace | None] = ContextVar("request_trace", default=None)
 active_step: ContextVar[str | None] = ContextVar("trace_step", default=None)
 
@@ -37,17 +39,36 @@ PROMPTS = {
     "research.synthesize": "AGENT_SYNTHESIZER_SYSTEM_PROMPT / AGENT_SYNTHESIZER_USER_TEMPLATE",
 }
 STEPS = set(PROMPTS) | {
-    "rbac_gate", "retrieval", "reranker", "hitl_gate", "response_formatter",
-    "no_info_response", "blocked_response", "out_of_scope_response", "clarification_response",
+    "rbac_gate",
+    "retrieval",
+    "reranker",
+    "hitl_gate",
+    "response_formatter",
+    "no_info_response",
+    "blocked_response",
+    "out_of_scope_response",
+    "clarification_response",
 }
 DETAIL_FIELDS = {
     "access_scope",
-    "allowed_doc_types", "query_intent", "query_complexity", "target_companies", "target_fiscal_years",
-    "metadata_filter_reason", "metadata_unavailable",
-    "guardrail_status", "retrieval_retry_count", "generation_retry_count",
-    "hallucination_status", "hallucination_score", "requires_human_approval", "human_decision",
-    "agent_sub_questions", "agent_turns_used",
-    "contextualized_query", "retrieval_query",
+    "allowed_doc_types",
+    "query_intent",
+    "query_complexity",
+    "target_companies",
+    "target_fiscal_years",
+    "metadata_filter_reason",
+    "metadata_unavailable",
+    "guardrail_status",
+    "retrieval_retry_count",
+    "generation_retry_count",
+    "hallucination_status",
+    "hallucination_score",
+    "requires_human_approval",
+    "human_decision",
+    "agent_sub_questions",
+    "agent_turns_used",
+    "contextualized_query",
+    "retrieval_query",
 }
 
 
@@ -100,8 +121,10 @@ def selected_details(output) -> dict:
             chunks = output[field] or []
             details[field + "_count"] = len(chunks)
             details[field + "_sources"] = [
-                {k: (c.get("metadata") or {}).get(k) for k in
-                 ("source_file", "page_number", "company", "fiscal_year", "doc_type", "confidentiality")}
+                {
+                    k: (c.get("metadata") or {}).get(k)
+                    for k in ("source_file", "page_number", "company", "fiscal_year", "doc_type", "confidentiality")
+                }
                 for c in chunks
             ]
     # Verdicts are structured decisions, not text chunks or generated answers.
@@ -113,6 +136,7 @@ def selected_details(output) -> dict:
 # LangChain callback that records the run without executing anything.
 class RequestTrace(BaseCallbackHandler):
     """One question, one ID, one event file. LangChain supplies step callbacks."""
+
     raise_error = False
     run_inline = True
 
@@ -129,8 +153,11 @@ class RequestTrace(BaseCallbackHandler):
         self.outcome = None
         self.last_step = None
         self.record("request_started", question=question, role=role, permissions=permissions)
-        self.record("request_preparation", duration_s=round(time.monotonic() - self.started, 4),
-                    includes="ownership checks, graph preparation and initial input redaction")
+        self.record(
+            "request_preparation",
+            duration_s=round(time.monotonic() - self.started, 4),
+            includes="ownership checks, graph preparation and initial input redaction",
+        )
 
     @contextmanager
     def activate(self):
@@ -144,11 +171,15 @@ class RequestTrace(BaseCallbackHandler):
     def record(self, stage: str, **details):
         try:
             with self._lock:
-                event = {"sequence": len(self.events) + 1,
-                         "timestamp": datetime.now(timezone.utc).isoformat(),
-                         "request_id": self.request_id, "conversation_id": self.conversation_id,
-                         "elapsed_s": round(time.monotonic() - self.started, 4),
-                         "stage": stage, **details}
+                event = {
+                    "sequence": len(self.events) + 1,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "request_id": self.request_id,
+                    "conversation_id": self.conversation_id,
+                    "elapsed_s": round(time.monotonic() - self.started, 4),
+                    "stage": stage,
+                    **details,
+                }
                 self.events.append(event)
                 self.directory.mkdir(parents=True, exist_ok=True)
                 with (self.directory / "events.jsonl").open("a", encoding="utf-8") as stream:
@@ -164,8 +195,7 @@ class RequestTrace(BaseCallbackHandler):
             attempt = self.attempts.get(name, 0) + 1
             self.attempts[name] = attempt
             self.steps[str(run_id)] = (name, time.monotonic(), attempt)
-        self.record("step_started", step=name, attempt=attempt, step_id=str(run_id),
-                    prompt=PROMPTS.get(name))
+        self.record("step_started", step=name, attempt=attempt, step_id=str(run_id), prompt=PROMPTS.get(name))
 
     def on_chain_end(self, outputs, *, run_id, **kwargs):
         with self._lock:
@@ -173,17 +203,28 @@ class RequestTrace(BaseCallbackHandler):
         if step:
             name, start, attempt = step
             self.last_step = name
-            self.record("step_finished", step=name, attempt=attempt, step_id=str(run_id),
-                        duration_s=round(time.monotonic() - start, 4), **selected_details(outputs))
+            self.record(
+                "step_finished",
+                step=name,
+                attempt=attempt,
+                step_id=str(run_id),
+                duration_s=round(time.monotonic() - start, 4),
+                **selected_details(outputs),
+            )
 
     def on_chain_error(self, error, *, run_id, **kwargs):
         with self._lock:
             step = self.steps.pop(str(run_id), None)
         if step:
             name, start, attempt = step
-            self.record("step_interrupted" if type(error).__name__ == "GraphInterrupt" else "step_failed",
-                        step=name, attempt=attempt, step_id=str(run_id),
-                        duration_s=round(time.monotonic() - start, 4), error_type=type(error).__name__)
+            self.record(
+                "step_interrupted" if type(error).__name__ == "GraphInterrupt" else "step_failed",
+                step=name,
+                attempt=attempt,
+                step_id=str(run_id),
+                duration_s=round(time.monotonic() - start, 4),
+                error_type=type(error).__name__,
+            )
 
     def finish(self, outcome: str | None = None):
         try:
@@ -191,35 +232,62 @@ class RequestTrace(BaseCallbackHandler):
                 if self.outcome is not None:
                     return
                 self.outcome = outcome or {
-                    "no_info_response": "no_evidence", "blocked_response": "blocked",
-                    "clarification_response": "clarification", "out_of_scope_response": "out_of_scope",
+                    "no_info_response": "no_evidence",
+                    "blocked_response": "blocked",
+                    "clarification_response": "clarification",
+                    "out_of_scope_response": "out_of_scope",
                 }.get(self.last_step, "answered")
-                self.record("request_finished", outcome=self.outcome,
-                            duration_s=round(time.monotonic() - self.started, 4))
+                self.record(
+                    "request_finished", outcome=self.outcome, duration_s=round(time.monotonic() - self.started, 4)
+                )
                 self._write_summary()
         except Exception:
             logger.warning("Request trace summary unavailable", exc_info=True)
 
     def _write_summary(self):
         first, last = self.events[0], self.events[-1]
-        lines = ["# Request report", "", f"Request: `{self.request_id}`",
-                 f"Conversation: `{self.conversation_id}`", f"Role: **{first['role']}**",
-                 f"Question (sanitized): {first['question']}", f"Outcome: **{self.outcome}**",
-                 f"Elapsed: **{last['duration_s']} seconds**", "",
-                 "Permissions: `" + json.dumps(first["permissions"]) + "`", "",
-                 "## Path and decisions", "", "| Step | Attempt | Seconds | Prompt definition (if used) |",
-                 "| --- | --- | --- | --- |"]
+        lines = [
+            "# Request report",
+            "",
+            f"Request: `{self.request_id}`",
+            f"Conversation: `{self.conversation_id}`",
+            f"Role: **{first['role']}**",
+            f"Question (sanitized): {first['question']}",
+            f"Outcome: **{self.outcome}**",
+            f"Elapsed: **{last['duration_s']} seconds**",
+            "",
+            "Permissions: `" + json.dumps(first["permissions"]) + "`",
+            "",
+            "## Path and decisions",
+            "",
+            "| Step | Attempt | Seconds | Prompt definition (if used) |",
+            "| --- | --- | --- | --- |",
+        ]
         for e in self.events:
             if e["stage"] in ("step_finished", "step_failed", "step_interrupted"):
                 prompt = PROMPTS.get(e["step"])
                 reference = f"[{prompt}](../../../src/config/prompts.py)" if prompt else "No prompt"
                 lines.append(f"| {e['step']} | {e['attempt']} | {e['duration_s']} | {reference} |")
-        lines += ["", "Step times overlap during parallel work; their sum is not elapsed time.", "",
-                  "Prompt definitions: [prompts.py](../../../src/config/prompts.py).", ""]
+        lines += [
+            "",
+            "Step times overlap during parallel work; their sum is not elapsed time.",
+            "",
+            "Prompt definitions: [prompts.py](../../../src/config/prompts.py).",
+            "",
+        ]
         for e in self.events:
-            if e["stage"] not in ("request_started", "request_finished", "step_started", "model_call", "embedding_call"):
-                details = {k: v for k, v in e.items() if k not in
-                           {"sequence", "timestamp", "request_id", "conversation_id", "elapsed_s", "stage"}}
+            if e["stage"] not in (
+                "request_started",
+                "request_finished",
+                "step_started",
+                "model_call",
+                "embedding_call",
+            ):
+                details = {
+                    k: v
+                    for k, v in e.items()
+                    if k not in {"sequence", "timestamp", "request_id", "conversation_id", "elapsed_s", "stage"}
+                }
                 label = e["stage"] + (f" · {e['step']}" if e.get("step") else "")
                 lines += [f"### {label}", ""]
                 for key, value in details.items():
@@ -232,12 +300,17 @@ class RequestTrace(BaseCallbackHandler):
                         if value and all(v.get("agent_curated") for v in value):
                             value = f"{len(value)} evidence items curated by research"
                         else:
-                            value = f"{sum(bool(v.get('relevant')) for v in value)} relevant verdicts; details in events.jsonl"
+                            relevant = sum(bool(v.get("relevant")) for v in value)
+                            value = f"{relevant} relevant verdicts; details in events.jsonl"
                     text = json.dumps(value, default=str) if not isinstance(value, str) else value
                     lines.append(f"- **{key}:** {text[:600]}" + ("… (see events.jsonl)" if len(text) > 600 else ""))
                 lines.append("")
-        lines += ["## Provider usage", "", "| Step | Model | Input | Output | Cache read | Cache write | Estimated USD |",
-                  "| --- | --- | --- | --- | --- | --- | --- |"]
+        lines += [
+            "## Provider usage",
+            "",
+            "| Step | Model | Input | Output | Cache read | Cache write | Estimated USD |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
         total = 0.0
         incomplete = self.outcome in {"interrupted", "cancelled", "failed"}
         by_model = {}
@@ -251,20 +324,33 @@ class RequestTrace(BaseCallbackHandler):
             row["calls"] += 1
             row["input"] += e.get("input_tokens") or 0
             row["output"] += e.get("output_tokens") or 0
+
             def count(k, e=e):
                 return str(e.get(k, "unknown")) if e.get("usage_available") else "unknown"
 
-            lines.append(f"| {e.get('node') or e['stage']} | {e.get('model', 'unknown')} | {count('input_tokens')} | "
-                         f"{count('output_tokens')} | {count('cache_read_tokens')} | {count('cache_write_tokens')} | "
-                         f"{cost if cost is not None else 'unknown'} |")
-        lines += ["", "### Known tokens by model", "", "| Model | Calls | Input | Output |",
-                  "| --- | --- | --- | --- |"]
+            lines.append(
+                f"| {e.get('node') or e['stage']} | {e.get('model', 'unknown')} | {count('input_tokens')} | "
+                f"{count('output_tokens')} | {count('cache_read_tokens')} | {count('cache_write_tokens')} | "
+                f"{cost if cost is not None else 'unknown'} |"
+            )
+        lines += [
+            "",
+            "### Known tokens by model",
+            "",
+            "| Model | Calls | Input | Output |",
+            "| --- | --- | --- | --- |",
+        ]
         for model, row in by_model.items():
             lines.append(f"| {model} | {row['calls']} | {row['input']} | {row['output']} |")
-        lines += ["", f"Known estimated cost: **${total:.6f}**" + (" (incomplete)" if incomplete else ""),
-                  "", "Provider-reported usage is measured; dollars use configured rates, not invoices.",
-                  "Failed calls may have unknown billed usage. Local cache hits make no new provider call;",
-                  "provider prompt-cache tokens are still usage. No full prompts, document text or drafts are saved.", ""]
+        lines += [
+            "",
+            f"Known estimated cost: **${total:.6f}**" + (" (incomplete)" if incomplete else ""),
+            "",
+            "Provider-reported usage is measured; dollars use configured rates, not invoices.",
+            "Failed calls may have unknown billed usage. Local cache hits make no new provider call;",
+            "provider prompt-cache tokens are still usage. No full prompts, document text or drafts are saved.",
+            "",
+        ]
         self.directory.mkdir(parents=True, exist_ok=True)
         (self.directory / "summary.md").write_text("\n".join(lines), encoding="utf-8")
 

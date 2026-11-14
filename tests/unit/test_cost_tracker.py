@@ -1,4 +1,5 @@
 """Unit tests for the cost tracker."""
+
 from __future__ import annotations
 
 import json
@@ -121,9 +122,33 @@ def test_callback_records_to_jsonl(_isolated_log: Path):
 def test_summarize_aggregates_across_records(_isolated_log: Path):
     """Two records, same run, same model → summed."""
     records = [
-        {"run_id": "r1", "model": "gpt-4o-mini", "cost_usd": 0.001, "input_tokens": 100, "output_tokens": 50, "cache_read_tokens": 0, "cache_write_tokens": 0},
-        {"run_id": "r1", "model": "gpt-4o-mini", "cost_usd": 0.002, "input_tokens": 200, "output_tokens": 75, "cache_read_tokens": 0, "cache_write_tokens": 0},
-        {"run_id": "r2", "model": "claude-sonnet-4-6", "cost_usd": 0.05, "input_tokens": 5000, "output_tokens": 1000, "cache_read_tokens": 0, "cache_write_tokens": 0},
+        {
+            "run_id": "r1",
+            "model": "gpt-4o-mini",
+            "cost_usd": 0.001,
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+        },
+        {
+            "run_id": "r1",
+            "model": "gpt-4o-mini",
+            "cost_usd": 0.002,
+            "input_tokens": 200,
+            "output_tokens": 75,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+        },
+        {
+            "run_id": "r2",
+            "model": "claude-sonnet-4-6",
+            "cost_usd": 0.05,
+            "input_tokens": 5000,
+            "output_tokens": 1000,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+        },
     ]
     with _isolated_log.open("w") as f:
         for rec in records:

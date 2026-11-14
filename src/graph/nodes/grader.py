@@ -125,10 +125,12 @@ def grader_node(state: RAGState) -> dict:
         prompt = GRADER_USER_TEMPLATE.format(query=query, chunk=chunk_text)
 
         def _invoke() -> GradeResult:
-            return structured_llm.invoke([
-                SystemMessage(content=GRADER_PROMPT),
-                HumanMessage(content=prompt),
-            ])
+            return structured_llm.invoke(
+                [
+                    SystemMessage(content=GRADER_PROMPT),
+                    HumanMessage(content=prompt),
+                ]
+            )
 
         try:
             result: GradeResult = retry_llm_call(_invoke, label=f"grader chunk {idx}")
@@ -178,10 +180,17 @@ def grader_node(state: RAGState) -> dict:
         f"{len(pending_indices)} sent to LLM in parallel)"
     )
     from src.services.event_log import emit
-    emit("grader", n_input=len(chunks), n_relevant=len(relevant_chunks),
-         n_rejected_entity=rejected_by_entity, n_cache_hit=cache_hits,
-         n_sent_to_llm=len(pending_indices),
-         grader_model=grader_model, parallelism=_GRADER_PARALLELISM)
+
+    emit(
+        "grader",
+        n_input=len(chunks),
+        n_relevant=len(relevant_chunks),
+        n_rejected_entity=rejected_by_entity,
+        n_cache_hit=cache_hits,
+        n_sent_to_llm=len(pending_indices),
+        grader_model=grader_model,
+        parallelism=_GRADER_PARALLELISM,
+    )
 
     return {
         "relevant_chunks": relevant_chunks,

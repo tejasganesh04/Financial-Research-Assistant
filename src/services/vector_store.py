@@ -72,10 +72,7 @@ def get_sparse_embedder():
 def compute_sparse_vectors(texts: list[str]) -> list[SparseVector]:
     """Return document-side BM25 vectors, one per input text."""
     embedder = get_sparse_embedder()
-    return [
-        SparseVector(indices=list(e.indices), values=list(e.values))
-        for e in embedder.embed(texts)
-    ]
+    return [SparseVector(indices=list(e.indices), values=list(e.values)) for e in embedder.embed(texts)]
 
 
 def compute_query_sparse_vector(text: str) -> SparseVector:
@@ -102,9 +99,7 @@ def ensure_collection(client: QdrantClient, collection_name: str | None = None) 
     client.create_collection(
         collection_name=target,
         vectors_config={
-            DENSE_VECTOR_NAME: VectorParams(
-                size=settings.EMBEDDING_DIMENSIONS, distance=Distance.COSINE
-            ),
+            DENSE_VECTOR_NAME: VectorParams(size=settings.EMBEDDING_DIMENSIONS, distance=Distance.COSINE),
         },
         sparse_vectors_config={SPARSE_VECTOR_NAME: SPARSE_VECTOR_PARAMS},
     )

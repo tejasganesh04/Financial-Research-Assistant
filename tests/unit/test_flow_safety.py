@@ -1,4 +1,5 @@
 """Regression checks for the conversation flow. No external services or API calls."""
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -29,18 +30,28 @@ def token(user="finance", role="finance"):
 
 
 def snapshot(pending=False):
-    return SimpleNamespace(values={"user_id": "finance", "user_role": "finance"}, tasks=[
-        SimpleNamespace(interrupts=[SimpleNamespace(value={"type": "approval_required", "submitted_at": "original"})])
-    ] if pending else [])
+    return SimpleNamespace(
+        values={"user_id": "finance", "user_role": "finance"},
+        tasks=[
+            SimpleNamespace(
+                interrupts=[SimpleNamespace(value={"type": "approval_required", "submitted_at": "original"})]
+            )
+        ]
+        if pending
+        else [],
+    )
 
 
 @pytest.mark.parametrize("message", ["", " \t\n", "\u2003"])
-@pytest.mark.parametrize("path", [
-    "/v1/conversations/messages",
-    "/v1/conversations/messages/stream",
-    "/v1/conversations/test-thread/messages",
-    "/v1/conversations/test-thread/messages/stream",
-])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/v1/conversations/messages",
+        "/v1/conversations/messages/stream",
+        "/v1/conversations/test-thread/messages",
+        "/v1/conversations/test-thread/messages/stream",
+    ],
+)
 def test_blank_questions_rejected_before_graph_preparation(message, path):
     with patch("src.api.routes.conversations._get_graph") as get_graph:
         response = TestClient(app).post(path, json={"message": message}, headers=token())
@@ -50,12 +61,15 @@ def test_blank_questions_rejected_before_graph_preparation(message, path):
 
 
 @pytest.mark.parametrize("message", ["x" * 2001, "\U0001fa99" * 2001, "/escalate doc_type=filings\n" + "x" * 2000])
-@pytest.mark.parametrize("path", [
-    "/v1/conversations/messages",
-    "/v1/conversations/messages/stream",
-    "/v1/conversations/test-thread/messages",
-    "/v1/conversations/test-thread/messages/stream",
-])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/v1/conversations/messages",
+        "/v1/conversations/messages/stream",
+        "/v1/conversations/test-thread/messages",
+        "/v1/conversations/test-thread/messages/stream",
+    ],
+)
 def test_overlong_messages_rejected_before_graph_preparation(message, path):
     with patch("src.api.routes.conversations._get_graph") as get_graph:
         response = TestClient(app).post(path, json={"message": message}, headers=token())
@@ -72,21 +86,27 @@ def test_message_at_character_limit_is_valid(message):
     assert ChatRequest(message=message).message == message
 
 
-@pytest.mark.parametrize("path", [
-    "/v1/conversations/messages",
-    "/v1/conversations/messages/stream",
-    "/v1/conversations/test-thread/messages",
-    "/v1/conversations/test-thread/messages/stream",
-])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/v1/conversations/messages",
+        "/v1/conversations/messages/stream",
+        "/v1/conversations/test-thread/messages",
+        "/v1/conversations/test-thread/messages/stream",
+    ],
+)
 def test_full_conversation_rejected_before_redaction_or_graph_execution(path, monkeypatch):
     saved = snapshot()
     saved.values["messages"] = [HumanMessage(content=f"Question {i}") for i in range(20)]
     graph = SimpleNamespace(aget_state=AsyncMock(return_value=saved), ainvoke=AsyncMock(), astream_events=MagicMock())
     monkeypatch.setattr(app.state, "checkpointer", object(), raising=False)
-    with patch("src.api.routes.conversations._get_graph", return_value=graph), patch(
-        "src.api.routes.conversations.detect_pii"
-    ) as redact:
-        response = TestClient(app).post(path, json={"message": "Next question", "thread_id": "test-thread"}, headers=token())
+    with (
+        patch("src.api.routes.conversations._get_graph", return_value=graph),
+        patch("src.api.routes.conversations.detect_pii") as redact,
+    ):
+        response = TestClient(app).post(
+            path, json={"message": "Next question", "thread_id": "test-thread"}, headers=token()
+        )
     assert response.status_code == 409
     assert "20 questions" in response.json()["detail"]
     redact.assert_not_called()
@@ -109,12 +129,14 @@ def test_question_limit_rechecked_inside_write_reservation(streaming, monkeypatc
     before, after = snapshot(), snapshot()
     before.values["messages"] = [HumanMessage(content="Question") for _ in range(19)]
     after.values["messages"] = [HumanMessage(content="Question") for _ in range(20)]
-    graph = SimpleNamespace(aget_state=AsyncMock(side_effect=[before, after]),
-                            ainvoke=AsyncMock(), astream_events=MagicMock())
+    graph = SimpleNamespace(
+        aget_state=AsyncMock(side_effect=[before, after]), ainvoke=AsyncMock(), astream_events=MagicMock()
+    )
     monkeypatch.setattr(app.state, "checkpointer", object(), raising=False)
     path = "/v1/conversations/messages" + ("/stream" if streaming else "")
-    with patch("src.api.routes.conversations._get_graph", return_value=graph), patch(
-        "src.api.routes.conversations.detect_pii", return_value=("Question", [])
+    with (
+        patch("src.api.routes.conversations._get_graph", return_value=graph),
+        patch("src.api.routes.conversations.detect_pii", return_value=("Question", [])),
     ):
         response = TestClient(app).post(path, json={"message": "Question", "thread_id": "thread"}, headers=token())
     if streaming:
@@ -142,10 +164,9 @@ def test_failed_or_low_confidence_checks_stop_retrying(checker_failure):
         llm.with_structured_output.return_value.invoke.side_effect = RuntimeError("offline failure")
     else:
         llm.with_structured_output.return_value.invoke.return_value = HallucinationCheck(
-            grounded=True, score=0.1, explanation="Uncertain")
-    with patch(
-        "src.graph.nodes.hallucination.LLMFactory.get_hallucination_llm", return_value=llm
-    ):
+            grounded=True, score=0.1, explanation="Uncertain"
+        )
+    with patch("src.graph.nodes.hallucination.LLMFactory.get_hallucination_llm", return_value=llm):
         for _ in range(10):
             state.update(hallucination_checker_node(state))
             if route_after_hallucination(state) != "retry":
@@ -196,8 +217,12 @@ async def test_same_thread_rejects_overlapping_writes_and_unlocks_after_error():
 
 
 def test_pending_history_hides_current_draft_but_keeps_previous_answer():
-    messages = [HumanMessage(content="old question"), AIMessage(content="released answer"),
-                HumanMessage(content="new question"), AIMessage(content="secret draft")]
+    messages = [
+        HumanMessage(content="old question"),
+        AIMessage(content="released answer"),
+        HumanMessage(content="new question"),
+        AIMessage(content="secret draft"),
+    ]
     history = _messages_from_state({"messages": messages, "requires_human_approval": True})
     assert [m["content"] for m in history] == ["old question", "released answer", "new question"]
 
@@ -231,8 +256,11 @@ def test_http_chat_rejects_wrong_owner_or_pending_thread(url, pending, expected)
     app.state.checkpointer = object()
     try:
         with patch("src.api.routes.conversations._get_graph", return_value=graph):
-            response = TestClient(app).post(url, json={"message": "Question", "thread_id": "thread"},
-                headers=token("finance" if pending else "stranger"))
+            response = TestClient(app).post(
+                url,
+                json={"message": "Question", "thread_id": "thread"},
+                headers=token("finance" if pending else "stranger"),
+            )
         assert response.status_code == expected
         graph.ainvoke.assert_not_called()
     finally:
@@ -247,6 +275,8 @@ def test_warmup_requires_explicit_admin_post_without_calling_providers():
 
 
 def test_old_pending_checkpoint_hides_draft_even_before_gate_flag_is_written():
-    values = {"messages": [HumanMessage(content="Question"), AIMessage(content="Secret draft")],
-              "requires_human_approval": False}
+    values = {
+        "messages": [HumanMessage(content="Question"), AIMessage(content="Secret draft")],
+        "requires_human_approval": False,
+    }
     assert _messages_from_state(values, interrupted=True) == [{"role": "user", "content": "Question"}]

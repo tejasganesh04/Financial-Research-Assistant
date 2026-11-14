@@ -19,12 +19,14 @@ def source_references(chunks: list[dict]) -> list[dict]:
         source_key = (source_file, meta.get("page_number"))
         if source_key not in seen:
             seen.add(source_key)
-            sources.append({
-                "file": source_file,
-                "page": meta.get("page_number"),
-                "section": meta.get("section_header", ""),
-                "doc_type": meta.get("doc_type", ""),
-            })
+            sources.append(
+                {
+                    "file": source_file,
+                    "page": meta.get("page_number"),
+                    "section": meta.get("section_header", ""),
+                    "doc_type": meta.get("doc_type", ""),
+                }
+            )
 
     return sources
 
@@ -54,7 +56,15 @@ def response_formatter_node(state: RAGState) -> dict:
 
     return {
         "final_response": answer,
-        "messages": [AIMessage(content=answer, additional_kwargs={"sources": sources, "confidence": hallucination_score,
-                                                                "request_id": state.get("request_id")})],
+        "messages": [
+            AIMessage(
+                content=answer,
+                additional_kwargs={
+                    "sources": sources,
+                    "confidence": hallucination_score,
+                    "request_id": state.get("request_id"),
+                },
+            )
+        ],
         "response_metadata": metadata,
     }

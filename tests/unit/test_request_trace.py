@@ -1,4 +1,5 @@
 """Trace tests use fake responses, including real LangGraph callback propagation."""
+
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -53,10 +54,15 @@ def test_write_failure_and_summary_failure_do_not_change_result(monkeypatch):
 def test_missing_usage_unknown_pricing_and_failed_call_are_explicit():
     trace = make_trace()
     handler = RequestScopedCostHandler(trace)
-    for model, usage in [("gpt-4o-mini", None), ("unknown-model", {"input_tokens": 8, "output_tokens": 2, "total_tokens": 10})]:
+    for model, usage in [
+        ("gpt-4o-mini", None),
+        ("unknown-model", {"input_tokens": 8, "output_tokens": 2, "total_tokens": 10}),
+    ]:
         run = uuid4()
         handler.on_llm_start({"kwargs": {"model": model}}, [], run_id=run)
-        handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=AIMessage(content="", usage_metadata=usage))]]), run_id=run)
+        handler.on_llm_end(
+            LLMResult(generations=[[ChatGeneration(message=AIMessage(content="", usage_metadata=usage))]]), run_id=run
+        )
     run = uuid4()
     handler.on_llm_start({"kwargs": {"model": "gpt-4o-mini"}}, [], run_id=run)
     handler.on_llm_error(TimeoutError(), run_id=run)
@@ -75,16 +81,28 @@ class OfflineModel(BaseChatModel):
         return "offline-test"
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
-        return ChatResult(generations=[ChatGeneration(message=AIMessage(
-            content="relevant", response_metadata={"model_name": "gpt-4o-mini"},
-            usage_metadata={"input_tokens": 10, "output_tokens": 2, "total_tokens": 12,
-                            "input_token_details": {"cache_read": 4}},
-        ))])
+        return ChatResult(
+            generations=[
+                ChatGeneration(
+                    message=AIMessage(
+                        content="relevant",
+                        response_metadata={"model_name": "gpt-4o-mini"},
+                        usage_metadata={
+                            "input_tokens": 10,
+                            "output_tokens": 2,
+                            "total_tokens": 12,
+                            "input_token_details": {"cache_read": 4},
+                        },
+                    )
+                )
+            ]
+        )
 
     def with_structured_output(self, schema, **kwargs):
         def grade(messages):
             self.invoke(messages)
             return schema(relevant=True, reason="Relevant financial evidence")
+
         return RunnableLambda(grade)
 
 
@@ -95,6 +113,7 @@ async def test_parallel_grading_keeps_usage_and_requests_separate(monkeypatch):
     from src.config.settings import settings
     from src.graph.nodes import grader
     from src.services import result_cache
+
     monkeypatch.setattr(settings, "ENABLE_DETERMINISTIC_VALIDATOR", False)
     monkeypatch.setattr(grader, "_GRADER_PARALLELISM", 3)
     monkeypatch.setattr(grader.LLMFactory, "get_grader_llm", lambda: OfflineModel())
@@ -111,9 +130,13 @@ async def test_parallel_grading_keeps_usage_and_requests_separate(monkeypatch):
         trace = make_trace()
         handler = RequestScopedCostHandler(trace)
         with trace.activate():
-            result = await graph.ainvoke({"contextualized_query": "revenue", "reranked_chunks": [
-                {"content": f"Financial evidence {i}", "metadata": {}} for i in range(3)
-            ]}, config={"callbacks": [trace, handler]})
+            result = await graph.ainvoke(
+                {
+                    "contextualized_query": "revenue",
+                    "reranked_chunks": [{"content": f"Financial evidence {i}", "metadata": {}} for i in range(3)],
+                },
+                config={"callbacks": [trace, handler]},
+            )
         trace.finish()
         assert "relevant_chunks" in result, repr(result)
         assert len(result["relevant_chunks"]) == 3
@@ -132,6 +155,7 @@ async def test_parallel_grading_keeps_usage_and_requests_separate(monkeypatch):
 def test_embedding_usage_and_local_cache_hits(monkeypatch):
     from src.config.settings import settings
     from src.services import embeddings, result_cache
+
     monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "voyage")
     monkeypatch.setattr(settings, "EMBEDDING_MODEL", "voyage-finance-2")
     client = MagicMock()
@@ -154,13 +178,21 @@ def test_embedding_usage_and_local_cache_hits(monkeypatch):
 
 def test_research_substeps_are_timed_without_saving_synthesis(monkeypatch):
     from src.graph.nodes import research_agent as agent
+
     chunk = {"content": "PRIVATE DOCUMENT TEXT", "metadata": {"source_file": "filing.pdf", "page_number": 3}}
-    monkeypatch.setattr(agent, "_decompose", lambda *a: agent._Decomposition(
-        qualifiers=[], required_quantities=["revenue"], sub_questions=["Find revenue"]))
+    monkeypatch.setattr(
+        agent,
+        "_decompose",
+        lambda *a: agent._Decomposition(qualifiers=[], required_quantities=["revenue"], sub_questions=["Find revenue"]),
+    )
     monkeypatch.setattr(agent, "retrieval_node", lambda s: {"retrieved_chunks": [chunk]})
     monkeypatch.setattr(agent, "reranker_node", lambda s: {"reranked_chunks": [chunk]})
     monkeypatch.setattr(agent, "grader_node", lambda s: {"relevant_chunks": [chunk]})
-    monkeypatch.setattr(agent, "_judge_sufficiency", lambda *a: agent._SufficiencyVerdict(decision="sufficient", reason="Enough evidence"))
+    monkeypatch.setattr(
+        agent,
+        "_judge_sufficiency",
+        lambda *a: agent._SufficiencyVerdict(decision="sufficient", reason="Enough evidence"),
+    )
     monkeypatch.setattr(agent, "_synthesize", lambda *a: "PRIVATE SYNTHESIS")
     trace = make_trace()
     with trace.activate():
@@ -168,7 +200,14 @@ def test_research_substeps_are_timed_without_saving_synthesis(monkeypatch):
     trace.finish()
     assert result["agent_synthesis"] == "PRIVATE SYNTHESIS"
     path = [e["step"] for e in events(trace) if e["stage"] == "step_finished"]
-    assert path == ["research.decompose", "retrieval", "reranker", "grader", "research.sufficiency", "research.synthesize"]
+    assert path == [
+        "research.decompose",
+        "retrieval",
+        "reranker",
+        "grader",
+        "research.sufficiency",
+        "research.synthesize",
+    ]
     report = (trace.directory / "summary.md").read_text()
     assert "filing.pdf" in report
     assert "PRIVATE" not in report

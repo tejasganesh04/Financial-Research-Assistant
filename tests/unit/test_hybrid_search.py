@@ -1,4 +1,5 @@
 """Hybrid search sends BM25 query weights and the collection applies IDF."""
+
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 

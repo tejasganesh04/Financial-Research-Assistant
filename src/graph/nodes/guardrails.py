@@ -20,7 +20,7 @@ def _format_history(messages: list, max_turns: int = 3) -> str:
     if not prior:
         return ""
     # Keep only the last max_turns*2 messages (human+ai pairs)
-    recent = prior[-(max_turns * 2):]
+    recent = prior[-(max_turns * 2) :]
     lines = []
     for msg in recent:
         if isinstance(msg, HumanMessage):
@@ -48,10 +48,12 @@ def _contextualize_query(query: str, messages: list) -> str:
     try:
         llm = LLMFactory.get_router_llm()
         prompt = QUERY_CONTEXTUALIZER_USER_TEMPLATE.format(history=history, query=query)
-        result = llm.invoke([
-            SystemMessage(content=QUERY_CONTEXTUALIZER_PROMPT),
-            HumanMessage(content=prompt),
-        ])
+        result = llm.invoke(
+            [
+                SystemMessage(content=QUERY_CONTEXTUALIZER_PROMPT),
+                HumanMessage(content=prompt),
+            ]
+        )
         rewritten = result.content.strip().strip('"').strip("'")
         if rewritten and rewritten.lower() != query.lower():
             logger.info("Contextualized a follow-up question")

@@ -1,4 +1,5 @@
 """Small, cached catalog of company/year metadata actually present in Qdrant."""
+
 from functools import lru_cache
 
 from src.config.rbac_config import get_permissions
@@ -21,7 +22,9 @@ def load_metadata_catalog() -> tuple[tuple[str, int | None, str, str], ...]:
         while True:
             points, offset = client.scroll(
                 collection_name=settings.QDRANT_COLLECTION,
-                limit=1000, offset=offset, with_vectors=False,
+                limit=1000,
+                offset=offset,
+                with_vectors=False,
                 with_payload=["company", "fiscal_year", "doc_type", "confidentiality"],
             )
             for point in points:
@@ -32,8 +35,9 @@ def load_metadata_catalog() -> tuple[tuple[str, int | None, str, str], ...]:
                 year = meta.get("fiscal_year")
                 if year is not None:
                     year = int(year)
-                entries.add((company.strip(), year, str(meta.get("doc_type", "")),
-                             str(meta.get("confidentiality", ""))))
+                entries.add(
+                    (company.strip(), year, str(meta.get("doc_type", "")), str(meta.get("confidentiality", "")))
+                )
             if offset is None:
                 break
     except Exception as error:
@@ -57,5 +61,7 @@ def available_metadata(state: dict) -> list[dict]:
         if year is not None:
             years.add(year)
     aliases = build_company_alias_map()
-    return [{"company": company, "aliases": sorted(aliases.get(company, set())),
-             "fiscal_years": sorted(years)} for company, years in sorted(companies.items())]
+    return [
+        {"company": company, "aliases": sorted(aliases.get(company, set())), "fiscal_years": sorted(years)}
+        for company, years in sorted(companies.items())
+    ]

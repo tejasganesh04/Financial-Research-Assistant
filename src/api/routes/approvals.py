@@ -34,7 +34,7 @@ def _pool_or_503(http_request: Request):
 
 
 def _is_interrupted(graph_state) -> tuple[bool, dict | None]:
-    for task in (graph_state.tasks or []):
+    for task in graph_state.tasks or []:
         if getattr(task, "interrupts", None):
             v = task.interrupts[0].value
             return True, v if isinstance(v, dict) else {"value": str(v)}
@@ -54,6 +54,7 @@ async def list_approvals(
     graph = getattr(http_request.app.state, "graph", None)
     if graph is None:
         from src.api.routes.conversations import _get_graph
+
         graph = _get_graph(checkpointer=http_request.app.state.checkpointer)
 
     pending: list[dict[str, Any]] = []
@@ -83,19 +84,21 @@ async def list_approvals(
             sources_count = len(source_references(gs.values.get("relevant_chunks") or []))
             confidence = gs.values.get("hallucination_score")
 
-        pending.append({
-            "thread_id": thread_id,
-            "requester_user_id": requester_user_id,
-            "requester_name": r.get("name"),
-            "requester_department": r.get("department"),
-            "requester_role": requester_role,
-            "query": query[:200],
-            "reason": (payload or {}).get("reason"),
-            "access_scope": (payload or {}).get("access_scope"),
-            "submitted_at": (payload or {}).get("submitted_at"),
-            "sources_count": sources_count,
-            "confidence": confidence,
-        })
+        pending.append(
+            {
+                "thread_id": thread_id,
+                "requester_user_id": requester_user_id,
+                "requester_name": r.get("name"),
+                "requester_department": r.get("department"),
+                "requester_role": requester_role,
+                "query": query[:200],
+                "reason": (payload or {}).get("reason"),
+                "access_scope": (payload or {}).get("access_scope"),
+                "submitted_at": (payload or {}).get("submitted_at"),
+                "sources_count": sources_count,
+                "confidence": confidence,
+            }
+        )
 
     return {"approvals": pending, "count": len(pending)}
 
@@ -111,6 +114,7 @@ async def show_approval(
     pool = _pool_or_503(http_request)
 
     from src.services.thread_service import get_thread_owner_role
+
     owner, requester_role, requester_name, requester_dept = await get_thread_owner_role(pool, thread_id)
     if owner is None:
         raise HTTPException(status_code=404, detail="Thread not found")
@@ -124,6 +128,7 @@ async def show_approval(
     graph = getattr(http_request.app.state, "graph", None)
     if graph is None:
         from src.api.routes.conversations import _get_graph
+
         graph = _get_graph(checkpointer=http_request.app.state.checkpointer)
 
     cfg = {"configurable": {"thread_id": thread_id}}
@@ -150,6 +155,7 @@ async def show_approval(
     if submitted_at_str:
         try:
             from datetime import datetime, timezone
+
             submitted_dt = datetime.fromisoformat(submitted_at_str)
             if submitted_dt.tzinfo is None:
                 submitted_dt = submitted_dt.replace(tzinfo=timezone.utc)
@@ -199,38 +205,61 @@ async def _decide(body: HITLDecisionRequest, request: Request, user: User, decis
         if owner == user.user_id or not can_approve(user.role, role or ""):
             raise HTTPException(status_code=403, detail="You cannot approve this request or your own answer.")
         graph = _get_graph(checkpointer=checkpointer)
-        config = {"configurable": {"thread_id": body.thread_id}, "metadata": {
-            "user_id": owner, "role": role, "name": name, "department": department,
-            "thread_id": body.thread_id, "hitl_enabled": True,
-        }}
+        config = {
+            "configurable": {"thread_id": body.thread_id},
+            "metadata": {
+                "user_id": owner,
+                "role": role,
+                "name": name,
+                "department": department,
+                "thread_id": body.thread_id,
+                "hitl_enabled": True,
+            },
+        }
         snapshot = await graph.aget_state(config)
         pending = pending_approval(snapshot)
         if pending is None:
             raise HTTPException(status_code=409, detail="This conversation is not waiting for approval.")
-        # Trusted backend flag also preserves approve/reject handling for older paused checkpoints without an escalation scope.
+        # Trusted backend flag; also keeps approve/reject working for older paused
+        # checkpoints that have no escalation scope.
         config["metadata"]["resuming_approval"] = True
         payload = {
             "decision": decision,
             "decided_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "decided_by": user.user_id, "decided_by_role": user.role,
-            "reason": (body.reason or "").strip(), "submitted_at": pending.get("submitted_at"),
+            "decided_by": user.user_id,
+            "decided_by_role": user.role,
+            "reason": (body.reason or "").strip(),
+            "submitted_at": pending.get("submitted_at"),
         }
         try:
             # Resume the paused checkpoint; interrupt() in hitl_gate returns this payload.
             result = await graph.ainvoke(Command(resume=payload), config=config)
         except Exception as exc:
             logger.exception("Failed to resume approval for thread %s", body.thread_id)
-            raise HTTPException(status_code=503, detail="Unable to complete approval. Check its status before retrying.") from exc
+            raise HTTPException(
+                status_code=503, detail="Unable to complete approval. Check its status before retrying."
+            ) from exc
         metadata = result.get("response_metadata") or {}
         from src.services.request_trace import record_approval
-        record_approval(body.thread_id, decision=decision, decided_at=payload["decided_at"],
-                        submitted_at=payload["submitted_at"], reviewer_role=user.role)
+
+        record_approval(
+            body.thread_id,
+            decision=decision,
+            decided_at=payload["decided_at"],
+            submitted_at=payload["submitted_at"],
+            reviewer_role=user.role,
+        )
         return {
-            "status": decision, "thread_id": body.thread_id,
-            "approver_user_id": user.user_id, "approver_role": user.role,
-            "decided_at": payload["decided_at"], "submitted_at": payload["submitted_at"],
-            "reason": payload["reason"], "response": result.get("final_response", ""),
-            "sources": metadata.get("sources", []), "confidence": metadata.get("confidence"),
+            "status": decision,
+            "thread_id": body.thread_id,
+            "approver_user_id": user.user_id,
+            "approver_role": user.role,
+            "decided_at": payload["decided_at"],
+            "submitted_at": payload["submitted_at"],
+            "reason": payload["reason"],
+            "response": result.get("final_response", ""),
+            "sources": metadata.get("sources", []),
+            "confidence": metadata.get("confidence"),
         }
 
 
@@ -239,13 +268,17 @@ class DecisionRequest(BaseModel):
 
 
 @router.post("/{thread_id}/approve")
-async def approve_response(thread_id: str, http_request: Request,
-                           body: DecisionRequest = DecisionRequest(),
-                           user: User = Depends(get_current_user)):
+async def approve_response(
+    thread_id: str,
+    http_request: Request,
+    body: DecisionRequest = DecisionRequest(),
+    user: User = Depends(get_current_user),
+):
     return await _decide(HITLDecisionRequest(thread_id=thread_id, reason=body.reason), http_request, user, "approved")
 
 
 @router.post("/{thread_id}/reject")
-async def reject_response(thread_id: str, body: DecisionRequest, http_request: Request,
-                          user: User = Depends(get_current_user)):
+async def reject_response(
+    thread_id: str, body: DecisionRequest, http_request: Request, user: User = Depends(get_current_user)
+):
     return await _decide(HITLDecisionRequest(thread_id=thread_id, reason=body.reason), http_request, user, "rejected")

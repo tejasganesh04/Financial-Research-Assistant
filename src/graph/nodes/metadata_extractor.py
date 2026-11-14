@@ -1,4 +1,5 @@
 """Ask the small model for justified company/year filters, then validate against real metadata."""
+
 import json
 import logging
 
@@ -22,16 +23,27 @@ def metadata_extractor_node(state: RAGState) -> dict:
     """One selection call on the contextualized question; no regex extraction or history fallback."""
     query = state.get("contextualized_query") or ""
     if not query:
-        return {"target_companies": [], "target_fiscal_years": [],
-                "metadata_filter_reason": "Empty working question.", "metadata_unavailable": False}
+        return {
+            "target_companies": [],
+            "target_fiscal_years": [],
+            "metadata_filter_reason": "Empty working question.",
+            "metadata_unavailable": False,
+        }
 
     catalog = available_metadata(state)
-    record("metadata_catalog", companies=len(catalog),
-           company_years={row["company"]: row["fiscal_years"] for row in catalog})
+    record(
+        "metadata_catalog",
+        companies=len(catalog),
+        company_years={row["company"]: row["fiscal_years"] for row in catalog},
+    )
     llm = None
     try:
         llm = LLMFactory.get_router_llm()
-        kwargs = {"method": "json_schema"} if isinstance(llm, ChatGroq) and llm.model_name.startswith("openai/gpt-oss-") else {}
+        kwargs = (
+            {"method": "json_schema"}
+            if isinstance(llm, ChatGroq) and llm.model_name.startswith("openai/gpt-oss-")
+            else {}
+        )
         structured = llm.with_structured_output(MetadataExtraction, **kwargs)
         messages = [
             SystemMessage(content=METADATA_EXTRACTOR_PROMPT),
@@ -67,8 +79,19 @@ def metadata_extractor_node(state: RAGState) -> dict:
     reason = selected.reason
     if unavailable:
         reason += " Requested metadata unavailable within the effective search scope."
-    record("metadata_filter_selection", proposed_companies=selected.companies, proposed_fiscal_years=years,
-           missing_companies=missing_companies, missing_years=missing_years,
-           companies_without_requested_year=companies_without_year, reason=reason, unavailable=unavailable)
-    return {"target_companies": companies, "target_fiscal_years": years,
-            "metadata_filter_reason": reason, "metadata_unavailable": unavailable}
+    record(
+        "metadata_filter_selection",
+        proposed_companies=selected.companies,
+        proposed_fiscal_years=years,
+        missing_companies=missing_companies,
+        missing_years=missing_years,
+        companies_without_requested_year=companies_without_year,
+        reason=reason,
+        unavailable=unavailable,
+    )
+    return {
+        "target_companies": companies,
+        "target_fiscal_years": years,
+        "metadata_filter_reason": reason,
+        "metadata_unavailable": unavailable,
+    }
