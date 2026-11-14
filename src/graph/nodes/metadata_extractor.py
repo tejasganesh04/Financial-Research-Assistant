@@ -10,6 +10,7 @@ from src.models.schemas import MetadataExtraction
 from src.models.state import RAGState
 from src.services.company_registry import canonical_company_slug
 from src.services.llm_factory import LLMFactory
+from src.services.llm_retry import retry_llm_call
 from src.services.metadata_catalog import available_metadata
 from src.services.provider_errors import raise_if_rate_limited
 from src.services.request_trace import record
@@ -32,10 +33,12 @@ def metadata_extractor_node(state: RAGState) -> dict:
         llm = LLMFactory.get_router_llm()
         kwargs = {"method": "json_schema"} if isinstance(llm, ChatGroq) and llm.model_name.startswith("openai/gpt-oss-") else {}
         structured = llm.with_structured_output(MetadataExtraction, **kwargs)
-        result = structured.invoke([
+        messages = [
             SystemMessage(content=METADATA_EXTRACTOR_PROMPT),
             HumanMessage(content=METADATA_EXTRACTOR_USER_TEMPLATE.format(catalog=json.dumps(catalog), query=query)),
-        ])
+        ]
+        # Retry transient failures; never fall back to unfiltered search.
+        result = retry_llm_call(lambda: structured.invoke(messages), label="metadata extractor")
         # Validate even a provider/test returning a dictionary rather than a Pydantic object.
         selected = result if isinstance(result, MetadataExtraction) else MetadataExtraction.model_validate(result)
     except Exception as error:

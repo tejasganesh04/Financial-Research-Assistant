@@ -60,6 +60,25 @@ def test_selection_failure_does_not_fall_back_to_unrestricted_search(failure):
         metadata_extractor_node({"contextualized_query": "Microsoft revenue"})
 
 
+@pytest.mark.parametrize("outcomes,calls,succeeds", [
+    ([TimeoutError("Request timed out"), MetadataExtraction(companies=["microsoft"], reason="Named company")], 2, True),
+    ([TimeoutError("Request timed out")] * 3, 3, False),
+])
+def test_transient_selection_failures_are_retried_without_relaxing_filters(outcomes, calls, succeeds):
+    model = MagicMock()
+    invoke = model.with_structured_output.return_value.invoke
+    invoke.side_effect = outcomes
+    with patch("src.graph.nodes.metadata_extractor.available_metadata", return_value=CATALOG), patch(
+        "src.graph.nodes.metadata_extractor.LLMFactory.get_router_llm", return_value=model
+    ), patch("src.services.llm_retry.time.sleep"):
+        if succeeds:
+            assert metadata_extractor_node({"contextualized_query": "Microsoft revenue"})["target_companies"] == ["microsoft"]
+        else:
+            with pytest.raises(RuntimeError, match="selection is unavailable"):
+                metadata_extractor_node({"contextualized_query": "Microsoft revenue"})
+    assert invoke.call_count == calls
+
+
 def test_catalog_failure_stops_before_model_call():
     with patch("src.graph.nodes.metadata_extractor.available_metadata", side_effect=RuntimeError("Catalog unavailable")), patch(
         "src.graph.nodes.metadata_extractor.LLMFactory.get_router_llm"
