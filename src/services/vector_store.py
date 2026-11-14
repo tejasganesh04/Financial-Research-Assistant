@@ -221,6 +221,7 @@ def hybrid_search(
     rbac_filter: Filter | None = None,
     top_k: int = 50,
     fusion_candidates_per_arm: int = 50,
+    collection: str | None = None,
 ) -> list[dict]:
     """Search dense and sparse vectors with the same metadata filter and fuse their ranks.
 
@@ -229,7 +230,7 @@ def hybrid_search(
     sparse = compute_query_sparse_vector(query_text)
 
     results = client.query_points(
-        collection_name=settings.QDRANT_COLLECTION,
+        collection_name=collection or settings.QDRANT_COLLECTION,
         prefetch=[
             Prefetch(
                 query=query_dense_vector,
