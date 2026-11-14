@@ -27,6 +27,7 @@ from qdrant_client.models import (
 )
 
 from src.config.settings import settings
+from src.services.model_loading import MODEL_LOAD_LOCK
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +61,15 @@ def create_payload_indexes(client: QdrantClient, collection_name: str) -> None:
         client.create_payload_index(collection_name=collection_name, field_name=field, field_schema=schema, wait=True)
 
 
-@lru_cache(maxsize=1)
 def get_sparse_embedder():
-    """Lazily load the BM25 sparse embedder (fastembed). Cached — loading is not cheap."""
+    """Return the cached BM25 sparse embedder, loading it under the shared model lock."""
+    with MODEL_LOAD_LOCK:
+        return _load_sparse_embedder()
+
+
+@lru_cache(maxsize=1)
+def _load_sparse_embedder():
+    """Load the BM25 sparse embedder (fastembed) once; loading is not cheap."""
     from fastembed import SparseTextEmbedding
 
     logger.info(f"Loading sparse embedder: {BM25_MODEL_NAME}")

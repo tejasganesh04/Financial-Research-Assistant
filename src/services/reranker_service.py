@@ -4,15 +4,23 @@ import logging
 import os
 from functools import lru_cache
 
+from src.services.model_loading import MODEL_LOAD_LOCK
+
 logger = logging.getLogger(__name__)
 
 RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
 DEFAULT_DEVICE = "cpu"
 
 
-@lru_cache(maxsize=1)
 def get_reranker():
-    """Load the cross-encoder once and cache it. First call downloads the model."""
+    """Return the cached cross-encoder, loading it under the shared model lock."""
+    with MODEL_LOAD_LOCK:
+        return _load_reranker()
+
+
+@lru_cache(maxsize=1)
+def _load_reranker():
+    """Load the cross-encoder once. First call downloads the model."""
     device = os.environ.get("RERANKER_DEVICE", DEFAULT_DEVICE)
     from sentence_transformers import CrossEncoder
 
