@@ -1,4 +1,4 @@
-"""Company aliases for privacy exemptions and metadata-name normalization."""
+"""Company aliases for metadata-name normalization."""
 
 from __future__ import annotations
 
@@ -85,22 +85,6 @@ CORPUS_COMPANIES = [
     "verizon",
     "walmart",
 ]
-
-# These ticker strings are also common words. Require uppercase or a $ prefix.
-AMBIGUOUS_TICKERS = {"cost", "ba", "ko", "pep", "sq", "fb"}
-
-
-def company_mentions(text: str) -> list[tuple[int, int, str]]:
-    matches = []
-    for slug, aliases in build_company_alias_map().items():
-        for alias in aliases:
-            for match in re.finditer(rf"\b{re.escape(alias)}\b", text, re.IGNORECASE):
-                if alias in AMBIGUOUS_TICKERS:
-                    dollar_prefix = match.start() > 0 and text[match.start() - 1] == "$"
-                    if match.group() != alias.upper() and not dollar_prefix:
-                        continue
-                matches.append((match.start(), match.end(), slug))
-    return matches
 
 
 def _normalize(value: str) -> str:
