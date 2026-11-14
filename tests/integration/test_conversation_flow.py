@@ -13,7 +13,8 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from src.api.main import app
-from src.api.routes import conversations as chat, approvals as hitl
+from src.api.routes import approvals as hitl
+from src.api.routes import conversations as chat
 from src.config.rbac_config import ROLE_PERMISSIONS
 from src.graph import builder
 from src.models.schemas import HallucinationCheck
@@ -41,8 +42,8 @@ async def flow(monkeypatch, request):
         if not url:
             pytest.skip("An isolated test PostgreSQL URL was not supplied")
         import psycopg
-        from psycopg_pool import AsyncConnectionPool
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        from psycopg_pool import AsyncConnectionPool
         async with await psycopg.AsyncConnection.connect(url, autocommit=True) as conn:
             await AsyncPostgresSaver(conn).setup()
         pool = AsyncConnectionPool(url, open=False, kwargs={"autocommit": True, "prepare_threshold": 0})
@@ -156,6 +157,7 @@ async def test_request_review_decision_and_requester_result(flow, decision):
 async def test_real_metadata_node_controls_search_and_records_trace(flow, monkeypatch, case):
     import json
     from pathlib import Path
+
     from src.graph.nodes import metadata_extractor, retrieval
     from src.models.schemas import MetadataExtraction
 
@@ -212,6 +214,7 @@ async def test_real_metadata_node_controls_search_and_records_trace(flow, monkey
 async def test_old_query_field_checkpoint_still_supports_review_and_new_questions(flow, monkeypatch):
     """Load a pre-rename pause with the new schema without rewriting stored history."""
     from typing import TypedDict
+
     from src.models.auth import User
     from src.models.state import RAGState
 
@@ -254,6 +257,7 @@ async def test_old_query_field_checkpoint_still_supports_review_and_new_question
 @pytest.mark.parametrize("decision", [None, "approve", "reject"])
 async def test_twentieth_question_is_allowed_then_history_and_review_remain_available(flow, decision):
     from langchain_core.messages import AIMessage, HumanMessage
+
     from src.models.auth import User
 
     thread = str(uuid4())
@@ -331,7 +335,9 @@ async def test_checker_outage_finishes_with_warning_instead_of_recursion_error(f
 @pytest.mark.parametrize("flow", ["postgres"], indirect=True)
 async def test_pending_approval_and_completed_history_survive_fresh_process(flow):
     """Resume with a new Python process and database connection, with no models."""
-    import subprocess,sys,json
+    import json
+    import subprocess
+    import sys
     initial=await flow.client.post('/v1/conversations/messages',headers=headers('finance'),json={'message':ESCALATE+'lookup amount'})
     assert initial.status_code==200
     thread=initial.json()['thread_id']
@@ -379,7 +385,8 @@ async def test_failed_request_is_clear_and_same_conversation_can_recover(flow,mo
     attempts=[]
     async def flaky(state):
         attempts.append(1)
-        if len(attempts)==1:raise RuntimeError('Simulated provider outage')
+        if len(attempts)==1:
+            raise RuntimeError('Simulated provider outage')
         return {'generated_answer':'Recovered answer with source'}
     monkeypatch.setattr(builder,'generator_node',flaky)
     graph=builder.build_graph(app.state.checkpointer)
@@ -433,8 +440,9 @@ async def test_history_store_outage_never_starts_generation(flow,monkeypatch):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("flow", ["memory"], indirect=True)
 async def test_approval_database_outage_is_clear_and_does_not_release_answer(flow,monkeypatch):
-    import psycopg
     from unittest.mock import AsyncMock
+
+    import psycopg
     initial=await flow.client.post('/v1/conversations/messages',headers=headers('finance'),json={'message':ESCALATE+'lookup amount'})
     thread=initial.json()['thread_id']
     with monkeypatch.context() as patcher:
@@ -449,8 +457,9 @@ async def test_approval_database_outage_is_clear_and_does_not_release_answer(flo
 @pytest.mark.asyncio
 @pytest.mark.parametrize("flow", ["memory"], indirect=True)
 async def test_search_outage_is_not_reported_as_missing_information(flow,monkeypatch):
-    from src.graph.nodes.retrieval import retrieval_node
     from unittest.mock import MagicMock
+
+    from src.graph.nodes.retrieval import retrieval_node
     monkeypatch.setattr(builder,'retrieval_node',retrieval_node)
     monkeypatch.setattr('src.graph.nodes.retrieval.get_permissions',lambda role:ROLE_PERMISSIONS[role])
     monkeypatch.setattr('src.graph.nodes.retrieval.get_qdrant_client',MagicMock(side_effect=ConnectionError('Simulated search outage')))
@@ -494,10 +503,12 @@ async def test_admin_only_and_escalation_does_not_carry_into_followup(flow):
 @pytest.mark.parametrize("flow", ["memory"], indirect=True)
 @pytest.mark.parametrize("progress", [False, True])
 async def test_complete_answer_preserves_redaction_usage_and_trace(flow, monkeypatch, progress):
+    from pathlib import Path
+
     from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
     from langchain_core.messages import AIMessage
+
     from src.graph.nodes.generator import generator_node
-    from pathlib import Path
     monkeypatch.setattr(chat, "detect_pii", lambda text: (text.replace("tejas@example.com", "<EMAIL_ADDRESS>"), []))
     model = FakeMessagesListChatModel(responses=[AIMessage(
         content="The reported amount is $200K. [Source: filing.pdf, Page 8]",
@@ -563,7 +574,9 @@ async def test_stage_events_never_send_partial_answers(flow, escalated):
 async def test_provider_limit_reaches_api_and_trace_without_releasing_answer(flow, monkeypatch, node, streaming):
     import json
     from pathlib import Path
+
     from langchain_core.messages import AIMessage
+
     from src.services.provider_errors import ProviderRateLimitError
 
     model = "voyage-finance-2" if node == "retrieval" else "openai/gpt-oss-20b"

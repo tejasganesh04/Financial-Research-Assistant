@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any
-import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from langgraph.types import Command
@@ -17,7 +17,6 @@ from src.graph.nodes.response_formatter import source_references
 from src.models.auth import User
 from src.services.conversation_access import conversation_write, pending_approval
 from src.services.thread_service import count_hitl_decisions_on_thread, get_thread_owner_role, list_all_threads
-
 
 logger = logging.getLogger(__name__)
 

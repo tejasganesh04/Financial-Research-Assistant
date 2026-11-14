@@ -8,8 +8,7 @@ from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
 
 from src.api.main import app
-from src.api.routes.conversations import _build_initial_state
-from src.api.routes.conversations import _messages_from_state
+from src.api.routes.conversations import _build_initial_state, _messages_from_state
 from src.config.rbac_config import ROLE_PERMISSIONS
 from src.graph.edges import route_after_hallucination, route_after_hitl
 from src.graph.nodes.hallucination import hallucination_checker_node

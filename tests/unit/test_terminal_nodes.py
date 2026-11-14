@@ -1,6 +1,5 @@
 """Unit tests for terminal graph nodes (blocked, out-of-scope, clarification, no-info)."""
 
-import pytest
 
 from src.config.prompts import (
     BLOCKED_RESPONSE,
@@ -14,7 +13,6 @@ from src.graph.nodes.terminal_nodes import (
     no_info_node,
     out_of_scope_node,
 )
-
 
 # --- blocked_response_node ---
 

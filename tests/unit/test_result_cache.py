@@ -21,7 +21,6 @@ import pytest
 
 from src.services import result_cache
 
-
 # ── Fake in-memory redis client ───────────────────────────────────────────
 
 class _FakeRedis:
@@ -197,7 +196,9 @@ def test_disabled_via_env_skips_redis_entirely(monkeypatch):
             sentinel_module_calls["n"] += 1
             class _Stub:
                 def ping(self): return True
-                def get(self, _): sentinel_module_calls["n"] += 1; return None
+                def get(self, _):
+                    sentinel_module_calls["n"] += 1
+                    return None
                 def set(self, *a, **kw): sentinel_module_calls["n"] += 1
             return _Stub()
 

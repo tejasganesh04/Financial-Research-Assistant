@@ -87,9 +87,10 @@ def test_matching_snapshot_is_accepted(tmp_path):
 
 @pytest.mark.parametrize("model", ["openai/gpt-oss-20b", "llama-3.3-70b-versatile"])
 def test_groq_router_parses_native_and_tool_output_without_calling_provider(model):
-    from langchain_groq import ChatGroq
     from langchain_core.messages import AIMessage
     from langchain_core.outputs import ChatGeneration, ChatResult
+    from langchain_groq import ChatGroq
+
     from src.graph.nodes.router import router_node
     llm = ChatGroq(model=model, api_key="offline-placeholder")
     decision = {"intent": "retrieval", "reason": "Comparison", "complexity": "research_required"}

@@ -163,7 +163,7 @@ def _voyage_embed(texts: list[str], input_type: str) -> list[list[float]]:
 
 def embed_text(text: str, input_type: str = "query") -> list[float]:
     """Embed a search query, reusing its cached vector when available.
-    
+
     Keys include provider, model, input type and exact text. Document embeddings
     are computed directly; the published snapshot already supplies corpus vectors."""
     if input_type == "query":

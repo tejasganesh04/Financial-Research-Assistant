@@ -3,12 +3,12 @@ from unittest.mock import patch
 
 import pytest
 
-from src.services.escalation import parse_escalation
+from src.config.rbac_config import can_approve
 from src.graph.nodes.hitl_gate import hitl_gate_node
 from src.graph.nodes.rbac_gate import rbac_gate
 from src.graph.nodes.retrieval import retrieval_node
-from src.graph.nodes.terminal_nodes import no_info_node, blocked_response_node
-from src.config.rbac_config import can_approve
+from src.graph.nodes.terminal_nodes import blocked_response_node, no_info_node
+from src.services.escalation import parse_escalation
 
 
 def test_normal_large_amount_never_requires_review():

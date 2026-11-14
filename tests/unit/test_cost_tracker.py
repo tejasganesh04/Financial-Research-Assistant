@@ -71,9 +71,10 @@ def test_pricing_table_has_required_models():
 
 def test_callback_records_to_jsonl(_isolated_log: Path):
     """Simulate an LLM call by driving the callback handler directly."""
+    from uuid import uuid4
+
     from langchain_core.messages import AIMessage
     from langchain_core.outputs import ChatGeneration, LLMResult
-    from uuid import uuid4
 
     handler = CostCallbackHandler()
     run_uuid = uuid4()
@@ -138,9 +139,10 @@ def test_summarize_aggregates_across_records(_isolated_log: Path):
 
 def test_run_context_writes_summary(_isolated_log: Path):
     """Entering CostTracker.run + emitting one record + exiting → per-run summary file."""
+    from uuid import uuid4
+
     from langchain_core.messages import AIMessage
     from langchain_core.outputs import ChatGeneration, LLMResult
-    from uuid import uuid4
 
     handler = CostCallbackHandler()
     run_uuid = uuid4()

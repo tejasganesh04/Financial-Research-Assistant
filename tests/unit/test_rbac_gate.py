@@ -1,9 +1,7 @@
 """Unit tests for the RBAC gate node in src/graph/nodes/rbac_gate.py."""
 
-import pytest
 
 from src.graph.nodes.rbac_gate import rbac_gate
-
 
 # ---------------------------------------------------------------------------
 # Role-specific permission tests

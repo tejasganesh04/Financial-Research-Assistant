@@ -23,7 +23,7 @@ def get_reranker():
 
 def rerank(query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:
     """Score query/chunk pairs with BGE and return the highest-ranked results.
-    
+
     Reuse a score only for the same model, query and chunk text. Compute missing
     scores locally, sort candidates, and attach rerank_score metadata."""
     if not chunks:

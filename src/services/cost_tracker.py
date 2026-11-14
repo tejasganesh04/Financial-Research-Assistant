@@ -22,7 +22,6 @@ from langchain_core.outputs import LLMResult
 
 from src.services.request_trace import active_step
 
-
 # Pricing in USD per 1M tokens. Source: provider pricing pages, ~2026-04.
 # Cache columns are Anthropic-specific (write = creation cost premium, read =
 # discounted hit cost). OpenAI applies its cache discount on `input_token_details.cache_read`.

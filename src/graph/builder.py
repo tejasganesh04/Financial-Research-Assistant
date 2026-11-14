@@ -3,23 +3,23 @@
 from langgraph.graph import END, START, StateGraph
 
 from src.graph.edges import (
-    route_after_metadata_extraction,
     route_after_grading,
     route_after_guardrails,
     route_after_hallucination,
     route_after_hitl,
+    route_after_metadata_extraction,
     route_after_router,
 )
-from src.graph.nodes.metadata_extractor import metadata_extractor_node
 from src.graph.nodes.generator import generator_node
 from src.graph.nodes.grader import grader_node
 from src.graph.nodes.guardrails import guardrails_node
 from src.graph.nodes.hallucination import hallucination_checker_node
 from src.graph.nodes.hitl_gate import hitl_gate_node
+from src.graph.nodes.metadata_extractor import metadata_extractor_node
 from src.graph.nodes.query_rewriter import query_rewriter_node
 from src.graph.nodes.rbac_gate import rbac_gate
-from src.graph.nodes.research_agent import research_agent_node
 from src.graph.nodes.reranker import reranker_node
+from src.graph.nodes.research_agent import research_agent_node
 from src.graph.nodes.response_formatter import response_formatter_node
 from src.graph.nodes.retrieval import retrieval_node
 from src.graph.nodes.router import router_node
