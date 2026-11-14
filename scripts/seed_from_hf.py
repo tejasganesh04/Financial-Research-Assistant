@@ -20,7 +20,8 @@ from pathlib import Path
 
 sys.path.insert(0, ".")
 
-from src.config.settings import settings
+from src.config.settings import settings  # noqa: E402
+from src.services.vector_store import PAYLOAD_INDEXES, SPARSE_VECTOR_PARAMS, create_payload_indexes  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -96,9 +97,9 @@ def _restore(parquet_path: Path, collection: str, batch_size: int, replace: bool
     client.create_collection(
         collection_name=collection,
         vectors_config={"dense": qm.VectorParams(size=settings.EMBEDDING_DIMENSIONS, distance=qm.Distance.COSINE)},
-        sparse_vectors_config={"sparse": qm.SparseVectorParams()},
+        sparse_vectors_config={"sparse": SPARSE_VECTOR_PARAMS},
     )
-    logger.info("Created collection '%s' (dense 1024 cosine + sparse BM25)", collection)
+    logger.info("Created collection '%s' (dense 1024 cosine + sparse BM25 with IDF)", collection)
 
     total = t.num_rows
     logger.info("Restoring %d points in batches of %d ...", total, batch_size)
@@ -134,6 +135,8 @@ def _restore(parquet_path: Path, collection: str, batch_size: int, replace: bool
 
     elapsed = time.monotonic() - t0
     logger.info("Restore complete: %d points in %.1fs", upserted, elapsed)
+    create_payload_indexes(client, collection)
+    logger.info("Created payload indexes: %s", ", ".join(PAYLOAD_INDEXES))
     return upserted
 
 

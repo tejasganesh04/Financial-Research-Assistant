@@ -16,6 +16,7 @@ from qdrant_client.models import (
     Fusion,
     FusionQuery,
     MatchAny,
+    Modifier,
     PayloadSchemaType,
     PointStruct,
     Prefetch,
@@ -36,9 +37,27 @@ BM25_MODEL_NAME = "Qdrant/bm25"
 SENTINEL_POINT_ID = "00000000-0000-0000-0000-000000000001"
 META_PAYLOAD_KEY = "_meta"
 
+# Stored sparse values are BM25 term weights; Qdrant applies IDF at query time.
+SPARSE_VECTOR_PARAMS = SparseVectorParams(index=SparseIndexParams(on_disk=False), modifier=Modifier.IDF)
+
+# Fields used by access, company/year and document filters.
+PAYLOAD_INDEXES = {
+    "doc_type": PayloadSchemaType.KEYWORD,
+    "confidentiality": PayloadSchemaType.KEYWORD,
+    "company": PayloadSchemaType.KEYWORD,
+    "source_file": PayloadSchemaType.KEYWORD,
+    "fiscal_year": PayloadSchemaType.INTEGER,
+}
+
 
 def get_qdrant_client() -> QdrantClient:
     return QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+
+
+def create_payload_indexes(client: QdrantClient, collection_name: str) -> None:
+    """Index the filtered payload fields. Existing indexes are left unchanged."""
+    for field, schema in PAYLOAD_INDEXES.items():
+        client.create_payload_index(collection_name=collection_name, field_name=field, field_schema=schema, wait=True)
 
 
 @lru_cache(maxsize=1)
@@ -51,12 +70,18 @@ def get_sparse_embedder():
 
 
 def compute_sparse_vectors(texts: list[str]) -> list[SparseVector]:
-    """Return a list of Qdrant SparseVector objects, one per input text."""
+    """Return document-side BM25 vectors, one per input text."""
     embedder = get_sparse_embedder()
     return [
         SparseVector(indices=list(e.indices), values=list(e.values))
         for e in embedder.embed(texts)
     ]
+
+
+def compute_query_sparse_vector(text: str) -> SparseVector:
+    """Return a query-side BM25 vector: each distinct query term weighted 1."""
+    e = next(iter(get_sparse_embedder().query_embed(text)))
+    return SparseVector(indices=list(e.indices), values=list(e.values))
 
 
 def ensure_collection(client: QdrantClient, collection_name: str | None = None) -> None:
@@ -81,26 +106,9 @@ def ensure_collection(client: QdrantClient, collection_name: str | None = None) 
                 size=settings.EMBEDDING_DIMENSIONS, distance=Distance.COSINE
             ),
         },
-        sparse_vectors_config={
-            SPARSE_VECTOR_NAME: SparseVectorParams(index=SparseIndexParams(on_disk=False)),
-        },
+        sparse_vectors_config={SPARSE_VECTOR_NAME: SPARSE_VECTOR_PARAMS},
     )
-    # Payload indexes for fast RBAC filtering
-    for field in ("doc_type", "confidentiality", "company"):
-        client.create_payload_index(
-            collection_name=target,
-            field_name=field,
-            field_schema=PayloadSchemaType.KEYWORD,
-        )
-    # Optional year filter index. Backward compatible with existing collections.
-    try:
-        client.create_payload_index(
-            collection_name=target,
-            field_name="fiscal_year",
-            field_schema=PayloadSchemaType.INTEGER,
-        )
-    except Exception:
-        pass
+    create_payload_indexes(client, target)
 
     try:
         upsert_collection_fingerprint(
@@ -216,7 +224,7 @@ def hybrid_search(
     
     Each prefetch retrieves candidates; Reciprocal Rank Fusion combines the ranked
     lists and returns up to top_k chunks. Access rules are never relaxed."""
-    sparse = compute_sparse_vectors([query_text])[0]
+    sparse = compute_query_sparse_vector(query_text)
 
     results = client.query_points(
         collection_name=settings.QDRANT_COLLECTION,
