@@ -10,6 +10,7 @@ from src.graph.edges import (
     route_after_metadata_extraction,
     route_after_router,
 )
+from src.graph.nodes.context_expander import context_expander_node
 from src.graph.nodes.generator import generator_node
 from src.graph.nodes.grader import grader_node
 from src.graph.nodes.guardrails import guardrails_node
@@ -46,6 +47,7 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_node("query_rewriter", query_rewriter_node)
     graph.add_node("research_agent", research_agent_node)
     graph.add_node("no_info_response", no_info_node)
+    graph.add_node("context_expander", context_expander_node)
     graph.add_node("generator", generator_node)
     graph.add_node("hallucination_checker", hallucination_checker_node)
     graph.add_node("hitl_gate", hitl_gate_node)
@@ -87,11 +89,11 @@ def build_graph(checkpointer=None) -> StateGraph:
 
     # Research agent path: agent populates relevant_chunks + agent_synthesis,
     # bypassing reranker/grader (it does its own internal retrieve+rerank+grade
-    # per sub-question). Goes straight to the generator.
+    # per sub-question). Goes on to neighbour expansion and the generator.
     graph.add_conditional_edges(
         "research_agent",
         lambda state: "generator" if state.get("relevant_chunks") else "no_info_response",
-        {"generator": "generator", "no_info_response": "no_info_response"},
+        {"generator": "context_expander", "no_info_response": "no_info_response"},
     )
 
     graph.add_edge("retrieval", "reranker")
@@ -100,8 +102,10 @@ def build_graph(checkpointer=None) -> StateGraph:
     graph.add_conditional_edges(
         "grader",
         route_after_grading,
-        {"sufficient": "generator", "retry": "query_rewriter", "no_info": "no_info_response"},
+        {"sufficient": "context_expander", "retry": "query_rewriter", "no_info": "no_info_response"},
     )
+    # Kept chunks gain their neighbours before answering; revision retries return to the generator directly.
+    graph.add_edge("context_expander", "generator")
     graph.add_edge("query_rewriter", "retrieval")
     graph.add_edge("no_info_response", END)
 

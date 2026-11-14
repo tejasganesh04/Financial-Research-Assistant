@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     # enough variety to pick from.
     RETRIEVAL_TOP_K: int = 50
     # Reranker: cross-encoder narrows to the final set that feeds the grader + generator.
-    RERANKER_TOP_K: int = 8
+    RERANKER_TOP_K: int = 12
     # Non-LLM post-reranker validation
     ENABLE_DETERMINISTIC_VALIDATOR: bool = True
     EMBEDDING_PROVIDER: str = "openai"

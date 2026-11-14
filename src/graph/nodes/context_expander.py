@@ -1,0 +1,93 @@
+"""Add each kept chunk's neighbours from the same filing before answering.
+
+Tables and paragraphs are often split across consecutive chunks, so a kept chunk
+may hold current assets while the next one holds current liabilities. The
+chunks just before and after each kept chunk are added in reading order. Kept
+chunks always stay; neighbours are added until the size budget is reached.
+"""
+
+import logging
+
+from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
+
+from src.config.settings import settings
+from src.models.state import RAGState
+from src.services.vector_store import get_qdrant_client
+
+logger = logging.getLogger(__name__)
+
+# Upper bound on added neighbour text, so prompts stay within model limits.
+NEIGHBOUR_CHAR_BUDGET = 12_000
+
+
+def position(chunk: dict) -> tuple[str | None, int | None]:
+    meta = chunk.get("metadata") or {}
+    return meta.get("source_file"), meta.get("chunk_index")
+
+
+def fetch_neighbours(chunks: list[dict]) -> dict[tuple, dict]:
+    """Chunks at positions ±1 around each kept chunk, keyed by (file, position)."""
+    kept = {position(c) for c in chunks}
+    wanted: dict[str, set[int]] = {}
+    for source_file, index in kept:
+        if source_file is None or index is None:
+            continue
+        for neighbour in (index - 1, index + 1):
+            if neighbour >= 0 and (source_file, neighbour) not in kept:
+                wanted.setdefault(source_file, set()).add(neighbour)
+    found = {}
+    client = get_qdrant_client()
+    for source_file, indexes in wanted.items():
+        points = client.scroll(
+            settings.QDRANT_COLLECTION,
+            scroll_filter=Filter(
+                must=[
+                    FieldCondition(key="source_file", match=MatchValue(value=source_file)),
+                    FieldCondition(key="chunk_index", match=MatchAny(any=sorted(indexes))),
+                ]
+            ),
+            limit=len(indexes),
+            with_payload=True,
+        )[0]
+        for point in points:
+            payload = point.payload or {}
+            found[(source_file, payload.get("chunk_index"))] = {
+                "content": payload.get("content", ""),
+                "metadata": {k: v for k, v in payload.items() if k != "content"},
+                "score": None,
+                "neighbour": True,
+            }
+    return found
+
+
+def context_expander_node(state: RAGState) -> dict:
+    chunks = state.get("relevant_chunks") or []
+    if not chunks:
+        return {}
+    try:
+        neighbours = fetch_neighbours(chunks)
+    except Exception as error:  # noqa: BLE001 - answering from the kept chunks alone is still correct
+        logger.warning("Neighbour lookup failed; answering from kept chunks only: %s", type(error).__name__)
+        return {}
+    expanded, seen, budget = [], set(), NEIGHBOUR_CHAR_BUDGET
+    for chunk in chunks:
+        source_file, index = position(chunk)
+        for key in (
+            (source_file, index - 1) if index is not None else None,
+            None,
+            (source_file, index + 1) if index is not None else None,
+        ):
+            candidate = chunk if key is None else neighbours.get(key)
+            if candidate is None:
+                continue
+            candidate_key = position(candidate)
+            if candidate_key in seen:
+                continue
+            if candidate is not chunk:
+                if len(candidate["content"]) > budget:
+                    continue
+                budget -= len(candidate["content"])
+            seen.add(candidate_key)
+            expanded.append(candidate)
+    logger.info("Context expanded from %d to %d chunks", len(chunks), len(expanded))
+    return {"relevant_chunks": expanded}

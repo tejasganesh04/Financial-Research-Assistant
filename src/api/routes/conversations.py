@@ -574,6 +574,7 @@ _NODE_LABELS = {
     "retrieval": "Searching documents",
     "reranker": "Reranking candidates",
     "grader": "Evaluating relevance",
+    "context_expander": "Gathering surrounding text",
     "query_rewriter": "Refining search query",
     "generator": "Generating answer",
     "hallucination_checker": "Verifying accuracy",
