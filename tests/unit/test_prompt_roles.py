@@ -110,14 +110,14 @@ def test_each_sync_call_separates_rules_from_request_material(monkeypatch, stage
             metadata_extractor,
             "available_metadata",
             lambda s: [
-                {"company": "REQUEST_COMPANY_7F2", "fiscal_years": [2023]},
+                {"company": "request_company_7f2", "name": "Request Co", "aliases": [], "fiscal_years": [2023]},
             ],
         )
-        structured.invoke.return_value = MetadataExtraction(reason="Unrestricted")
+        structured.invoke.return_value = MetadataExtraction(companies=["request_company_7f2"], reason="Named")
         assert not metadata_extractor.metadata_extractor_node({"contextualized_query": QUESTION})[
             "metadata_unavailable"
         ]
-        expected.append("REQUEST_COMPANY_7F2")
+        expected.append("request_company_7f2")
         call = structured.invoke
     elif stage == "injection":
         structured.invoke.return_value = InjectionCheck(is_injection=False, confidence=0.9, reason="Allowed")

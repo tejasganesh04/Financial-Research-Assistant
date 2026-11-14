@@ -49,9 +49,9 @@ def test_catalog_respects_normal_role_and_explicit_escalation(monkeypatch):
         catalog,
         "load_metadata_catalog",
         lambda: (
-            ("microsoft", 2016, "10k", "public"),
-            ("microsoft", 2023, "board_report", "confidential"),
-            ("acme", 2023, "expense_policy", "internal"),
+            ("microsoft", 2016, "10k", "public", "Microsoft"),
+            ("microsoft", 2023, "board_report", "confidential", "Microsoft"),
+            ("acme", 2023, "expense_policy", "internal", "Acme"),
         ),
     )
     normal = catalog.available_metadata({"user_role": "analyst"})
