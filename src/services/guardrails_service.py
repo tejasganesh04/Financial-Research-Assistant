@@ -83,7 +83,8 @@ def check_injection_llm(text: str) -> tuple[bool, float]:
     """Layer 2: LLM-based injection classifier for borderline or unavailable local scans.
 
     Uses the configured routing model (Groq in the current local setup).
-    Returns (is_injection, confidence).
+    Returns (is_injection, confidence). Raises when the review cannot run, so
+    input that needed review is never passed unchecked.
     """
     llm = None
     try:
@@ -110,7 +111,7 @@ def check_injection_llm(text: str) -> tuple[bool, float]:
     except Exception as e:
         raise_if_rate_limited(e, "guardrails.injection_review", llm=llm)
         logger.warning(f"LLM injection classifier failed: {e}")
-        return False, 0.0
+        raise RuntimeError("Input safety review is unavailable. Please try again.") from e
 
 
 # --- PII Detection (lazy singleton for Presidio engines) ---
