@@ -17,21 +17,36 @@ CATALOG = [
 
 
 @pytest.mark.parametrize(
-    "query,companies,years,expected_companies,unavailable",
+    "query,companies,years,expected_companies,searched_years,unavailable",
     [
-        ("MSFT revenue in FY2016", ["MSFT"], [2016], ["microsoft"], False),
-        ("Compare Microsoft and 3M in FY2023", ["microsoft", "3m"], [2023], ["microsoft", "3m"], False),
-        ("Compare Microsoft FY2016 and FY2023", ["microsoft"], [2016, 2023], ["microsoft"], False),
-        ("Which companies have debt maturing in 2030?", [], [], [], False),
-        ("Microsoft FY2023 filing about debt maturing in 2030", ["microsoft"], [2023], ["microsoft"], False),
-        ("Use only Microsoft's FY2035 filing", ["microsoft"], [2035], ["microsoft"], True),
-        ("Microsoft filings from FY2010 to FY2012", ["microsoft"], [2010, 2012], ["microsoft"], True),
-        ("Apple revenue in FY2023", ["apple"], [2023], [], True),
-        ("JPMorgan FY2016 filing", ["jpmorgan"], [2016], ["jpmorgan"], True),
-        ("Compare Microsoft and MissingCo", ["microsoft", "missingco"], [], ["microsoft"], True),
+        ("MSFT revenue in FY2016", ["MSFT"], [2016], ["microsoft"], [2016], False),
+        ("Compare Microsoft and 3M in FY2023", ["microsoft", "3m"], [2023], ["microsoft", "3m"], [2023], False),
+        ("Compare Microsoft FY2016 and FY2023", ["microsoft"], [2016, 2023], ["microsoft"], [2016, 2023], False),
+        ("Which companies have debt maturing in 2030?", [], [], [], [], False),
+        ("Microsoft FY2023 filing about debt maturing in 2030", ["microsoft"], [2023], ["microsoft"], [2023], False),
+        # A year without its own filing is covered by a filing up to two years later.
+        ("Microsoft FY2015 revenue", ["microsoft"], [2015], ["microsoft"], [2016], False),
+        ("3M FY2020 to FY2022 average margin", ["3m"], [2020, 2021, 2022], ["3m"], [2022, 2023], False),
+        # Partial coverage still searches what exists.
+        (
+            "Compare Microsoft and JPMorgan in FY2016",
+            ["microsoft", "jpmorgan"],
+            [2016],
+            ["microsoft", "jpmorgan"],
+            [2016],
+            False,
+        ),
+        ("Compare Microsoft and MissingCo", ["microsoft", "missingco"], [], ["microsoft"], [], False),
+        # Refuse only when nothing requested can be covered.
+        ("Use only Microsoft's FY2035 filing", ["microsoft"], [2035], ["microsoft"], [], True),
+        ("Microsoft filings from FY2010 to FY2012", ["microsoft"], [2010, 2012], ["microsoft"], [], True),
+        ("Apple revenue in FY2023", ["apple"], [2023], [], [], True),
+        ("JPMorgan FY2016 filing", ["jpmorgan"], [2016], ["jpmorgan"], [], True),
     ],
 )
-def test_selected_filters_validated_against_catalog(query, companies, years, expected_companies, unavailable):
+def test_selected_filters_validated_against_catalog(
+    query, companies, years, expected_companies, searched_years, unavailable
+):
     model = MagicMock()
     model.with_structured_output.return_value.invoke.return_value = MetadataExtraction(
         companies=companies,
@@ -46,7 +61,7 @@ def test_selected_filters_validated_against_catalog(query, companies, years, exp
             {"contextualized_query": query, "messages": [HumanMessage(content="PRIVATE OLD HISTORY")]}
         )
     assert result["target_companies"] == expected_companies
-    assert result["target_fiscal_years"] == years
+    assert result["target_fiscal_years"] == searched_years
     assert result["metadata_unavailable"] is unavailable
     assert route_after_metadata_extraction(result) == ("unavailable" if unavailable else "continue")
     prompt = model.with_structured_output.return_value.invoke.call_args.args[0]
