@@ -53,6 +53,19 @@ format. It refuses to replace an existing collection unless `--replace` is
 explicitly supplied. Restoration reuses precomputed vectors; questions can still
 require new query embeddings. See [data provenance](DATA_SOURCES.md).
 
+### Build the contextual knowledge base
+
+The app searches `financial_docs_v3`, a copy of the restored collection whose
+chunks carry a header naming the company, filing, section, financial statement
+and units. Build it once after restoring (about 16M Voyage tokens on the first
+build, inside the free allowance; reruns re-embed only changed chunks):
+
+```sh
+docker compose -f compose.minimal.yml -f compose.local.yml exec -T api python scripts/build_contextual_collection.py --target financial_docs_v3
+```
+
+Then set `QDRANT_COLLECTION=financial_docs_v3` in `.env` and restart the API.
+
 ## Demo accounts and permissions
 
 | Username | Password | Search permissions | Review answers? |
