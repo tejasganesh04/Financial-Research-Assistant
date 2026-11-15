@@ -12,11 +12,13 @@ Company, filing type and period come from the chunk metadata. Section titles
 carried forward to the chunks that follow them. Near-empty chunks such as
 "Table of Contents" are dropped. Chunks are re-embedded with the configured
 Voyage model and BM25, then written to a new collection; the source collection
-is never modified. Resumable per filing.
+is never modified. Only chunks whose text changed are re-embedded, so reruns
+are cheap; --reuse copies unchanged vectors from an earlier build.
 
 Run inside the API container:
 
     python scripts/build_contextual_collection.py --target financial_docs_v2
+    python scripts/build_contextual_collection.py --target financial_docs_v3 --reuse financial_docs_v2
 """
 
 from __future__ import annotations
@@ -58,6 +60,9 @@ HEADER_CUE = re.compile(
     re.I,
 )
 UNITS = re.compile(rf"in{S}(millions|thousands|billions)", re.I)
+# The word before a heading is a line break, a separator or the company name, never a lowercase word
+# ("recorded in our consolidated statements of income" is a mention, not a heading).
+LOWERCASE_WORD_BEFORE = re.compile(r"\b[a-z][a-z’']*[\s\xa0]*$")
 ITEM = re.compile(rf"(?:^|\n|\]\s*)(?:part{S}i+{S})?item{S}(\d{{1,2}}[ab]?)\.?{S}[–—:-]?\s*([A-Z][^\n.]{{3,60}})", re.I)
 PREFIX = re.compile(r"^\s*\[[^\]]*\]\s*")
 STATEMENT_PAGES = 1  # a statement heading labels its page and the page after it
@@ -106,6 +111,15 @@ def is_junk(text: str) -> bool:
     return len(text.strip()) < 80 and not re.search(r"\d[\d,]{3,}", text)
 
 
+def is_heading(text: str, match: re.Match) -> bool:
+    """A statement title that starts a statement: capitalised, not inside a sentence, followed by units or a period."""
+    return (
+        match.group(0)[0].isupper()
+        and not LOWERCASE_WORD_BEFORE.search(text[max(0, match.start() - 40) : match.start()])
+        and bool(HEADER_CUE.search(text[match.end() : match.end() + 220]))
+    )
+
+
 def statement_title(match: re.Match) -> str:
     return re.sub(S, " ", match.group(0)).strip().title().replace("’S", "’s").replace("'S", "'s")
 
@@ -124,7 +138,7 @@ def contextualize(chunks: list[dict]) -> list[tuple[dict, str]]:
             section = section_name(items[0][1])
             statement = statement_page = None
         titles = list(STATEMENT.finditer(text))
-        heading = next((m for m in titles if HEADER_CUE.search(text[m.end() : m.end() + 220])), None)
+        heading = next((m for m in titles if is_heading(text, m)), None)
         if heading and len(titles) <= 2:
             statement, statement_page = statement_title(heading), page
             section = "Financial Statements"
@@ -179,12 +193,30 @@ def embed_documents(client, texts: list[str], used: dict, cap: int) -> list[list
     return vectors
 
 
+def file_points(qdrant, collection: str, source_file: str) -> dict:
+    """{point id: (content, vectors)} for one filing in a collection; empty if the collection is missing."""
+    if not qdrant.collection_exists(collection):
+        return {}
+    found, offset = {}, None
+    match = qm.Filter(must=[qm.FieldCondition(key="source_file", match=qm.MatchValue(value=source_file))])
+    while True:
+        points, offset = qdrant.scroll(
+            collection, scroll_filter=match, limit=1000, offset=offset, with_payload=["content"], with_vectors=True
+        )
+        found.update({p.id: (p.payload.get("content"), p.vector) for p in points})
+        if offset is None:
+            return found
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--source", default=settings.QDRANT_COLLECTION)
     parser.add_argument("--target", required=True)
     parser.add_argument("--token-cap", type=int, default=30_000_000, help="Stop before using more Voyage tokens")
     parser.add_argument("--limit-files", type=int, default=None)
+    parser.add_argument(
+        "--reuse", default=None, help="Copy vectors from this collection for chunks whose text is unchanged"
+    )
     args = parser.parse_args()
     if args.target == args.source:
         raise SystemExit("Target must differ from the source collection")
@@ -215,44 +247,52 @@ def main():
     logger.info("Read %d filings, %d chunks from %s", len(files), sum(len(by_file[f]) for f in files), args.source)
 
     used = {"tokens": 0}
-    kept_total = dropped_total = 0
+    totals = {"written": 0, "embedded": 0, "dropped": 0}
     for index, source_file in enumerate(files, 1):
         rows = contextualize(by_file[source_file])
-        done = qdrant.count(
-            args.target,
-            count_filter=qm.Filter(must=[qm.FieldCondition(key="source_file", match=qm.MatchValue(value=source_file))]),
-            exact=True,
-        ).count
-        if done == len(rows):
-            logger.info("[%d/%d] %s already built (%d chunks)", index, len(files), source_file, done)
+        current = file_points(qdrant, args.target, source_file)
+        reuse = current if args.reuse in (None, args.target) else file_points(qdrant, args.reuse, source_file)
+        stale = [pid for pid in current if pid not in {payload["_id"] for payload, _ in rows}]
+        changed = [(p, text) for p, text in rows if current.get(p["_id"], (None,))[0] != text]
+        if not changed and not stale:
+            logger.info("[%d/%d] %s up to date (%d chunks)", index, len(files), source_file, len(rows))
             continue
-        texts = [content for _, content in rows]
-        dense = embed_documents(voyage, texts, used, args.token_cap)
-        sparse = compute_sparse_vectors(texts)
+        to_embed = [(p, text) for p, text in changed if reuse.get(p["_id"], (None,))[0] != text]
+        dense = embed_documents(voyage, [text for _, text in to_embed], used, args.token_cap)
+        sparse = compute_sparse_vectors([text for _, text in to_embed])
+        vectors = {p["_id"]: {"dense": d, "sparse": s} for (p, _), d, s in zip(to_embed, dense, sparse)}
         points = [
             qm.PointStruct(
                 id=payload["_id"],
-                vector={"dense": vector, "sparse": sparse_vector},
+                vector=vectors.get(payload["_id"]) or reuse[payload["_id"]][1],
                 payload={k: v for k, v in payload.items() if k != "_id"},
             )
-            for (payload, _), vector, sparse_vector in zip(rows, dense, sparse)
+            for payload, _ in changed
         ]
         for start in range(0, len(points), 256):
             qdrant.upsert(args.target, points=points[start : start + 256], wait=True)
+        if stale:
+            qdrant.delete(args.target, points_selector=qm.PointIdsList(points=stale), wait=True)
         dropped = len(by_file[source_file]) - len(rows)
-        kept_total += len(rows)
-        dropped_total += dropped
+        totals["written"] += len(points)
+        totals["embedded"] += len(to_embed)
+        totals["dropped"] += dropped
         logger.info(
-            "[%d/%d] %s: %d chunks written, %d near-empty dropped, %s Voyage tokens so far",
+            "[%d/%d] %s: %d chunks written (%d embedded), %d near-empty dropped, %s Voyage tokens so far",
             index,
             len(files),
             source_file,
-            len(rows),
+            len(points),
+            len(to_embed),
             dropped,
             f"{used['tokens']:,}",
         )
     logger.info(
-        "Done: %d chunks written, %d dropped, %s Voyage tokens", kept_total, dropped_total, f"{used['tokens']:,}"
+        "Done: %d chunks written, %d embedded, %d dropped, %s Voyage tokens",
+        totals["written"],
+        totals["embedded"],
+        totals["dropped"],
+        f"{used['tokens']:,}",
     )
 
 
