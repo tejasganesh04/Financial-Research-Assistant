@@ -38,7 +38,10 @@ Model requests are subject to each provider's usage limits and pricing.
 The published snapshot contains **68,059 chunks from 84 public filings across
 32 companies**, including document metadata, precomputed dense vectors and sparse
 BM25 vectors. The seed script loads these into Qdrant without embedding the corpus
-again. [Data sources and terms](DATA_SOURCES.md) identify the snapshot and source corpus.
+again. A second script builds the collection the app searches, where every chunk
+starts with a header naming its company, filing, page, section, financial statement
+and units ([local setup](LOCAL_SETUP.md#build-the-contextual-knowledge-base)).
+[Data sources and terms](DATA_SOURCES.md) identify the snapshot and source corpus.
 
 The permission model supports additional document types and confidentiality
 levels, but the active snapshot contains public filings only. Source references
@@ -61,6 +64,21 @@ to the shared answer-generation path.
 [Zoomable SVG](docs/diagrams/research-agent-workflow.svg) ·
 [Mermaid source](docs/diagrams/research-agent-workflow.mmd)
 
+## Evaluation
+
+Measured on the 150 public [FinanceBench](https://huggingface.co/datasets/PatronusAI/financebench)
+questions. The search check asks whether the page holding the answer reaches the
+answer model; the answer benchmark judges 25 full answers against reference answers.
+
+| Version | Search check (of 150) | Answer benchmark |
+| --- | --- | --- |
+| Baseline | 101 | 15 / 25 (60%), median 73 s |
+| Current | **145** | **20 / 24 (83%)**, median 32 s |
+
+The [evaluation story](docs/evaluation-story.md) explains each version: why it was
+changed, what changed, examples, and what was tried and dropped. Each version has a
+[workflow diagram](docs/diagrams/versions/).
+
 ## Code layout
 
 | Folder | Contents |
@@ -68,12 +86,16 @@ to the shared answer-generation path.
 | `frontend/` | React screens, Axios requests, styles and browser tests |
 | `src/api/` | Login, conversations, Admin approvals, PDF access and health routes |
 | `src/graph/` | Graph construction, routing decisions and workflow nodes |
-| `src/services/` | Retrieval, models, privacy, caches, persistence and request traces |
+| `src/services/` | Retrieval, reranking, models, privacy, persistence and request traces |
 | `src/config/` | Settings, prompts and role permissions |
 | `src/models/` | Request/response schemas and graph state |
 | `scripts/seed_from_hf.py` | Restore the published knowledge base into an empty Qdrant collection |
+| `scripts/build_contextual_collection.py` | Build the knowledge base with contextual chunk headers |
+| `scripts/build_diagrams.py` | Generate the workflow diagrams |
 | `tests/` | Unit and integration regression checks |
-| `docs/diagrams/` | Workflow diagrams and editable sources |
+| `tests/evaluation/financebench/` | Search check and answer benchmark |
+| `docs/evaluation-story.md` | How each version was measured and improved |
+| `docs/diagrams/` | Workflow diagrams, one per version, and editable sources |
 
 ## Checks
 

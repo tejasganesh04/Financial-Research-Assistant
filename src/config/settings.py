@@ -14,30 +14,21 @@ class Settings(BaseSettings):
     # --- CORS ---
     CORS_ORIGINS: list[str] = ["*"]
 
-    # --- LLM Providers ---
+    # --- Model providers ---
     OPENAI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
-    FIREWORKS_API_KEY: str = ""
-    OPENROUTER_API_KEY: str = ""
     VOYAGE_API_KEY: str = ""
-    ABACI_NLP_API_KEY: str = ""
 
-    # --- External eval services ---
-    # Patronus AI hosted fuzzy-match judge for FinanceBench external comparability.
-    # Free tier covers 150 samples per month (sufficient for one FinanceBench run).
-    PATRONUS_API_KEY: str = ""
-    # Override: force all LLM calls through OpenAI (used to bypass Groq free-tier rate
-    # limits during eval runs). Default false = prod hybrid Groq + OpenAI + Anthropic.
+    # Provider profiles. Groq-only: every model call uses Groq (the default demo profile in
+    # .env.example). OpenAI-only: every call uses OPENAI_FALLBACK_MODEL. Otherwise each task
+    # uses the model named below.
     FORCE_OPENAI_ONLY: bool = False
-    # Temporary, opt-in Groq mode: all LLM stages use Groq, with no paid-provider fallback.
     FORCE_GROQ_ONLY: bool = False
     GROQ_LIGHT_MODEL: str = "openai/gpt-oss-20b"
     GROQ_ANSWER_MODEL: str = "openai/gpt-oss-120b"
-    # Use Groq for the high-volume "fast path" nodes (router, grader, query rewriter).
-    # Set false to send those to OpenAI even when GROQ_API_KEY is set — required for
-    # FinanceBench eval runs where 1200+ grader calls easily blow through the free-tier
-    # 100k tokens-per-day cap. Default true preserves the production latency profile.
+    # In the per-task profile, send routing and grading to Groq (ROUTER_MODEL, GRADER_MODEL);
+    # false sends them to OPENAI_FALLBACK_MODEL instead.
     USE_GROQ_FAST_PATH: bool = True
 
     # --- LangSmith ---
@@ -56,8 +47,6 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION: str = "financial_docs"
 
     DOCUMENTS_ROOT: str = "data/sample"
-
-    LITELLM_URL: str = ""
 
     # --- PostgreSQL ---
     POSTGRES_DB: str = "rag_agent"
@@ -96,14 +85,14 @@ class Settings(BaseSettings):
     # Characters of neighbouring-chunk text added before answering. Free Groq allows 8,000 tokens
     # per minute per request, so the Groq profile uses a smaller budget.
     NEIGHBOUR_CHAR_BUDGET: int = 12_000
-    # Non-LLM post-reranker validation
+    # Rule-based check of company and year on reranked chunks, before the grader.
     ENABLE_DETERMINISTIC_VALIDATOR: bool = True
-    EMBEDDING_PROVIDER: str = "openai"
-    EMBEDDING_MODEL: str = "text-embedding-3-small"
-    EMBEDDING_DIMENSIONS: int = 1536
+    # Must match the knowledge base's vectors.
+    EMBEDDING_PROVIDER: str = "voyage"
+    EMBEDDING_MODEL: str = "voyage-finance-2"
+    EMBEDDING_DIMENSIONS: int = 1024
 
-    # --- LLM Models ---
-    # Kept on Groq for latency-critical classification / routing
+    # --- Per-task models (used when neither provider profile is forced) ---
     ROUTER_MODEL: str = "llama-3.3-70b-versatile"
     GRADER_MODEL: str = "llama-3.3-70b-versatile"
     GENERATOR_MODEL: str = "claude-sonnet-4-6"
@@ -112,13 +101,8 @@ class Settings(BaseSettings):
     RESEARCH_AGENT_DECOMPOSE_MODEL: str = "gpt-4o-mini"
     RESEARCH_AGENT_SUFFICIENCY_MODEL: str = "gpt-4o-mini"
     RESEARCH_AGENT_SYNTHESIZE_MODEL: str = "claude-sonnet-4-6"
-    # Legacy OpenAI fallback model — used when Anthropic fails or FORCE_OPENAI_ONLY is on
+    # Used by the OpenAI-only profile, and when an Anthropic or Groq key is missing.
     OPENAI_FALLBACK_MODEL: str = "gpt-4o-mini"
-
-    USE_LLAMA_GRADER: bool = False
-    LLAMA_GRADER_PROVIDER: str = "openrouter"  # "openrouter" | "fireworks"
-    LLAMA_GRADER_MODEL_OPENROUTER: str = "meta-llama/llama-3.3-70b-instruct"
-    LLAMA_GRADER_MODEL_FIREWORKS: str = "accounts/fireworks/models/llama-v3p3-70b-instruct"
 
     @property
     def langchain_project_name(self) -> str:

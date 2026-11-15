@@ -7,7 +7,6 @@ services:
       FORCE_GROQ_ONLY: "false"
       FORCE_OPENAI_ONLY: "false"
       USE_GROQ_FAST_PATH: "false"
-      USE_LLAMA_GRADER: "false"
       # Routing, filters, injection review, rewriting, grading and research planning.
       OPENAI_FALLBACK_MODEL: gpt-5.4-mini
       RESEARCH_AGENT_DECOMPOSE_MODEL: gpt-5.4-mini

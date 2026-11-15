@@ -11,7 +11,7 @@ import pytest
 
 from src.config.rbac_config import get_permissions
 from src.config.settings import settings
-from src.services.vector_store import build_rbac_filter
+from src.services.vector_store import build_retrieval_filter
 
 FB_COLLECTION = settings.QDRANT_COLLECTION
 
@@ -44,13 +44,13 @@ class TestRBACFilterShape:
     def test_admin_filter_is_none(self):
         """admin has wildcards on both axes → no filter at all."""
         perms = get_permissions("admin")
-        filt = build_rbac_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
+        filt = build_retrieval_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
         assert filt is None
 
     def test_analyst_constrains_doc_type_and_confidentiality(self):
         """Analyst access is restricted to public company filings."""
         perms = get_permissions("analyst")
-        filt = build_rbac_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
+        filt = build_retrieval_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
         assert filt is not None
         keys = {c.key for c in filt.must}
         assert keys == {"doc_type", "confidentiality"}
@@ -64,7 +64,7 @@ class TestRBACFilterShape:
     def test_hr_filter_blocks_10k_documents(self):
         """hr can ONLY see expense_policy → 10k chunks must not match."""
         perms = get_permissions("hr")
-        filt = build_rbac_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
+        filt = build_retrieval_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
         assert filt is not None
 
         doc_type_cond = next(c for c in filt.must if c.key == "doc_type")
@@ -75,7 +75,7 @@ class TestRBACFilterShape:
 
     def test_finance_allows_10k_invoice_expense_policy(self):
         perms = get_permissions("finance")
-        filt = build_rbac_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
+        filt = build_retrieval_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
         assert filt is not None
         doc_type_cond = next(c for c in filt.must if c.key == "doc_type")
         allowed = set(doc_type_cond.match.any)
@@ -84,7 +84,7 @@ class TestRBACFilterShape:
     def test_c_level_allows_confidential_docs(self):
         """c_level is the only non-admin role that can see confidential."""
         perms = get_permissions("c_level")
-        filt = build_rbac_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
+        filt = build_retrieval_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
         assert filt is not None
         conf_cond = next(c for c in filt.must if c.key == "confidentiality")
         assert "confidential" in list(conf_cond.match.any)
@@ -132,7 +132,7 @@ class TestRBACQdrantEnforcement:
 
     def _count_for_role(self, client, role: str) -> int:
         perms = get_permissions(role)
-        filt = build_rbac_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
+        filt = build_retrieval_filter(perms["allowed_doc_types"], perms["allowed_confidentiality"])
         return client.count(collection_name=FB_COLLECTION, count_filter=filt).count
 
     def test_admin_sees_all_chunks(self, client, collection_size):
@@ -174,6 +174,6 @@ class TestRBACQdrantEnforcement:
         n = self._count_for_role(client, "hr")
         assert n == 0, (
             f"hr role leaked {n} chunks. RBAC IS BROKEN at the vector-DB level. "
-            f"Check whether build_rbac_filter() is producing the right Filter shape "
+            f"Check whether build_retrieval_filter() is producing the right Filter shape "
             f"and that Qdrant is honoring `must` conditions."
         )

@@ -61,10 +61,11 @@ def test_pricing_table_has_required_models():
     # Guards against accidental deletion of models the project actively uses.
     for required in [
         "claude-sonnet-4-6",
-        "claude-opus-4-7",
         "gpt-4o-mini",
-        "text-embedding-3-small",
-        "text-embedding-3-large",
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "voyage-finance-2",
+        "rerank-2.5",
         "llama-3.3-70b-versatile",
     ]:
         assert required in MODEL_PRICING, f"missing pricing for {required}"

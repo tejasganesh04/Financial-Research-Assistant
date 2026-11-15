@@ -66,21 +66,6 @@ def emit(stage: str, **fields: Any) -> None:
         _log_file.write(line + "\n")
 
 
-def get_log_path() -> Path | None:
-    _init()
-    return _log_path
-
-
-def get_text_log_path() -> Path | None:
-    _init()
-    return _text_log_path
-
-
-def get_run_id() -> str | None:
-    _init()
-    return _run_id
-
-
 def attach_file_handler(level: int = logging.INFO) -> None:
     """Add a FileHandler to the root logger so existing logger.info calls are
     captured to logs/run_<timestamp>.log in addition to stderr. Idempotent."""
@@ -158,8 +143,6 @@ def log_runtime_components() -> dict:
         "RESEARCH_AGENT_DECOMPOSE_MODEL",
         "RESEARCH_AGENT_SUFFICIENCY_MODEL",
         "RESEARCH_AGENT_SYNTHESIZE_MODEL",
-        "USE_LLAMA_GRADER",
-        "LLAMA_GRADER_PROVIDER",
         "USE_GROQ_FAST_PATH",
         "FORCE_OPENAI_ONLY",
         "OPENAI_FALLBACK_MODEL",
@@ -216,8 +199,6 @@ def log_runtime_components() -> dict:
     try:
         from qdrant_client import QdrantClient
 
-        from src.services.vector_store import get_collection_fingerprint
-
         qc = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=5)
         info = qc.get_collection(settings.QDRANT_COLLECTION)
         qdrant_info = {
@@ -232,10 +213,9 @@ def log_runtime_components() -> dict:
         try:
             vectors_cfg = info.config.params.vectors
             if isinstance(vectors_cfg, dict):
-                # Named vectors (modern): {"dense": VectorParams(size=N, ...), ...}
+                # Named vectors: {"dense": VectorParams(size=N, ...)}
                 stored_dim = next(iter(vectors_cfg.values())).size
             else:
-                # Legacy single-vector schema
                 stored_dim = vectors_cfg.size
             qdrant_info["stored_dim"] = stored_dim
             if stored_dim != settings.EMBEDDING_DIMENSIONS:
@@ -248,22 +228,6 @@ def log_runtime_components() -> dict:
         except Exception as dim_exc:  # noqa: BLE001
             qdrant_info["stored_dim"] = f"probe_failed: {type(dim_exc).__name__}"
 
-        fp = get_collection_fingerprint(qc, settings.QDRANT_COLLECTION)
-        if fp is None:
-            qdrant_info["fingerprint"] = "unknown (collection pre-dates fingerprinting)"
-        else:
-            stored = (fp.get("embedding_provider"), fp.get("embedding_model"), fp.get("embedding_dim"))
-            live = (settings.EMBEDDING_PROVIDER, settings.EMBEDDING_MODEL, settings.EMBEDDING_DIMENSIONS)
-            if stored == live:
-                qdrant_info["fingerprint"] = (
-                    f"match ({fp.get('embedding_provider')}/{fp.get('embedding_model')}, dim={fp.get('embedding_dim')})"
-                )
-            else:
-                qdrant_info["fingerprint"] = {
-                    "status": "MISMATCH",
-                    "stored": {"provider": stored[0], "model": stored[1], "dim": stored[2]},
-                    "live": {"provider": live[0], "model": live[1], "dim": live[2]},
-                }
         banner["external"]["qdrant"] = qdrant_info
     except Exception as exc:
         banner["external"]["qdrant"] = {
@@ -290,8 +254,7 @@ def log_runtime_components() -> dict:
         f"embedding:   {banner['settings'].get('EMBEDDING_PROVIDER')}/{banner['settings'].get('EMBEDDING_MODEL')} "
         f"(dim={banner['settings'].get('EMBEDDING_DIMENSIONS')})",
         f"qdrant:      {banner['external'].get('qdrant', {})}",
-        f"flags:       USE_LLAMA_GRADER={banner['settings'].get('USE_LLAMA_GRADER')}  "
-        f"FORCE_GROQ_ONLY={settings.FORCE_GROQ_ONLY}  "
+        f"flags:       FORCE_GROQ_ONLY={settings.FORCE_GROQ_ONLY}  "
         f"USE_GROQ_FAST_PATH={banner['settings'].get('USE_GROQ_FAST_PATH')}  "
         f"RETRIEVAL_TOP_K={banner['settings'].get('RETRIEVAL_TOP_K')}",
         sep,
@@ -300,27 +263,6 @@ def log_runtime_components() -> dict:
         logger.warning(line)
 
     qdrant_state = banner["external"].get("qdrant", {})
-    fp = qdrant_state.get("fingerprint")
-    if isinstance(fp, dict) and fp.get("status") == "MISMATCH":
-        stored, live = fp["stored"], fp["live"]
-        logger.warning(sep)
-        logger.warning(
-            "WARNING: collection '%s' was created with %s/%s (dim=%s)",
-            qdrant_state.get("collection"),
-            stored["provider"],
-            stored["model"],
-            stored["dim"],
-        )
-        logger.warning(
-            "WARNING: current EMBEDDING_PROVIDER is %s (%s, dim=%s)",
-            live["provider"],
-            live["model"],
-            live["dim"],
-        )
-        logger.warning("WARNING: queries will return wrong results or fail with VectorDimensionError.")
-        logger.warning("WARNING: re-ingest the corpus with the new embedding to fix.")
-        logger.warning(sep)
-
     # Refuse to start on a dimension mismatch rather than return empty answers.
     dim_mismatch = qdrant_state.get("dim_mismatch")
     if isinstance(dim_mismatch, dict):
@@ -338,16 +280,11 @@ def log_runtime_components() -> dict:
             "and the pipeline will silently degrade to no_info refusals."
         )
         logger.critical("FATAL: fix by either:")
-        logger.critical("FATAL:   (a) re-ingesting with the matching embedding:")
-        logger.critical(
-            "FATAL:       curl -X DELETE http://%s:%s/collections/%s && python scripts/seed_qdrant.py --sample",
-            settings.QDRANT_HOST,
-            settings.QDRANT_PORT,
-            qdrant_state.get("collection"),
-        )
+        logger.critical("FATAL:   (a) restoring the published knowledge base into an empty collection:")
+        logger.critical("FATAL:       make seed-db   (see LOCAL_SETUP.md)")
         logger.critical("FATAL:   (b) editing .env to match the existing collection:")
         logger.critical(
-            "FATAL:       EMBEDDING_PROVIDER=<provider> / EMBEDDING_MODEL=<model> / EMBEDDING_DIMENSIONS=%d",
+            "FATAL:       EMBEDDING_MODEL=<model> / EMBEDDING_DIMENSIONS=%d",
             dim_mismatch["stored"],
         )
         logger.critical(sep)

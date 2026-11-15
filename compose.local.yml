@@ -10,7 +10,7 @@ services:
       REQUEST_TRACE_DIR: /app/logs/traces
       # The published image's build SHA does not describe this mounted checkout.
       GIT_SHA: unknown
-      # Use standard HTTPS downloads; the Xet transfer stalled on this network.
+      # Download Hugging Face files over standard HTTPS rather than Xet.
       HF_HUB_DISABLE_XET: "1"
       HF_HUB_DOWNLOAD_TIMEOUT: "60"
     ports: !override

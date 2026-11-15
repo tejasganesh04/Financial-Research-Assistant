@@ -20,12 +20,12 @@ test-integration:
 	pytest tests/integration/ -v --timeout=120
 
 lint:
-	ruff check src/ tests/
-	ruff format --check src/ tests/
+	ruff check src/ scripts/ tests/
+	ruff format --check src/ scripts/ tests/
 
 format:
-	ruff check --fix src/ tests/
-	ruff format src/ tests/
+	ruff check --fix src/ scripts/ tests/
+	ruff format src/ scripts/ tests/
 
 # --- Data ---
 seed-db:
@@ -41,7 +41,7 @@ docker-down:
 docker-all:
 	$(COMPOSE) up --build
 
-# --- Production ---
+# --- Docker (full stack) ---
 docker-build:
 	$(COMPOSE) build
 

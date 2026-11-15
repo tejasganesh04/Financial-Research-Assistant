@@ -8,7 +8,6 @@ services:
     environment:
       QDRANT_HOST: qdrant
       POSTGRES_HOST: postgres
-      LITELLM_URL: ""
     depends_on:
       qdrant:
         condition: service_healthy

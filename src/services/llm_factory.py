@@ -7,7 +7,6 @@ profile uses OpenAI/Groq for smaller tasks and Anthropic for answer tasks.
 Provider branches and environment settings determine the actual configuration."""
 
 import logging
-import os
 
 from langchain_anthropic import ChatAnthropic
 from langchain_groq import ChatGroq
@@ -15,41 +14,24 @@ from langchain_openai import ChatOpenAI
 
 from src.config.settings import settings
 from src.services.cost_tracker import get_cost_handler
-from src.services.request_context import current_user_id
 
 logger = logging.getLogger(__name__)
-
-
-def _attribution_kwargs() -> dict:
-    """Add verified user attribution only when an optional LiteLLM gateway is configured.
-
-    Direct providers receive no extra user field.
-    """
-    uid = current_user_id.get()
-    if not uid or not settings.LITELLM_URL:
-        return {}
-    return {"model_kwargs": {"user": uid}}
 
 
 _OPENAI_SEED = 42
 
 
 def _openai(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatOpenAI:
-    """Build an OpenAI client, using the optional gateway when configured."""
+    """Build an OpenAI client."""
     kwargs = {
         "model": model,
         "temperature": temperature,
         "seed": _OPENAI_SEED,
+        "api_key": settings.OPENAI_API_KEY,
         "callbacks": [get_cost_handler()],
     }
-    if settings.LITELLM_URL:
-        kwargs["base_url"] = f"{settings.LITELLM_URL.rstrip('/')}/v1"
-        kwargs["api_key"] = "sk-litellm-proxy"
-    else:
-        kwargs["api_key"] = settings.OPENAI_API_KEY
     if max_tokens:
         kwargs["max_tokens"] = max_tokens
-    kwargs.update(_attribution_kwargs())
     return ChatOpenAI(**kwargs)
 
 
@@ -61,16 +43,11 @@ def _anthropic(model: str, temperature: float = 0.0, max_tokens: int = 1024) -> 
     kwargs = {
         "model_name": model,
         "max_tokens": max_tokens,
+        "api_key": settings.ANTHROPIC_API_KEY,
         "callbacks": [get_cost_handler()],
     }
-    if settings.LITELLM_URL:
-        kwargs["base_url"] = f"{settings.LITELLM_URL.rstrip('/')}/anthropic"
-        kwargs["api_key"] = "sk-litellm-proxy"
-    else:
-        kwargs["api_key"] = settings.ANTHROPIC_API_KEY
     if model not in _ANTHROPIC_NO_TEMPERATURE_MODELS:
         kwargs["temperature"] = temperature
-    kwargs.update(_attribution_kwargs())
     return ChatAnthropic(**kwargs)
 
 
@@ -85,26 +62,8 @@ def _llm_for_task(model_name: str, temperature: float = 0.0, max_tokens: int = 2
     raise ValueError(f"Unknown model provider for {model_name!r}. Expected prefix 'claude-' or 'gpt-'.")
 
 
-def _groq(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatGroq | ChatOpenAI:
-    """Groq chat model. When `LITELLM_URL` is set, routes through LiteLLM's
-    OpenAI-compatible endpoint (Groq is exposed as a regular model in
-    LiteLLM's model_list, no separate /groq pass-through needed).
-
-    Returns `ChatOpenAI` instead of `ChatGroq` when proxied — same `.invoke()`
-    interface, langchain-groq isn't needed when the proxy is doing the
-    provider routing.
-    """
-    if settings.LITELLM_URL and not settings.FORCE_GROQ_ONLY:
-        return ChatOpenAI(
-            model=model,
-            temperature=temperature,
-            seed=_OPENAI_SEED,
-            base_url=f"{settings.LITELLM_URL.rstrip('/')}/v1",
-            api_key="sk-litellm-proxy",
-            callbacks=[get_cost_handler()],
-            max_tokens=max_tokens,
-            **_attribution_kwargs(),
-        )
+def _groq(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatGroq:
+    """Build a Groq client; GPT-OSS models run with low reasoning effort."""
     kwargs = dict(
         model=model,
         temperature=temperature,
@@ -156,58 +115,6 @@ class LLMFactory:
         """Select the model that judges each candidate chunk for relevance."""
         if settings.FORCE_GROQ_ONLY:
             return _groq_demo()
-        if settings.USE_LLAMA_GRADER:
-            provider = settings.LLAMA_GRADER_PROVIDER.lower()
-            if provider == "openrouter":
-                key = settings.OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY")
-                if not key:
-                    raise RuntimeError(
-                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=openrouter requires OPENROUTER_API_KEY in env"
-                    )
-                _warn_once(
-                    "grader_openrouter_llama",
-                    f"Grader: OpenRouter {settings.LLAMA_GRADER_MODEL_OPENROUTER}",
-                )
-                return ChatOpenAI(
-                    model=settings.LLAMA_GRADER_MODEL_OPENROUTER,
-                    temperature=0.0,
-                    max_tokens=1024,
-                    base_url="https://openrouter.ai/api/v1",
-                    api_key=key,
-                    max_retries=3,
-                    extra_body={
-                        "provider": {
-                            "order": ["fireworks", "together", "deepinfra"],
-                            "allow_fallbacks": False,
-                        }
-                    },
-                    callbacks=[get_cost_handler()],
-                    **_attribution_kwargs(),
-                )
-            if provider == "fireworks":
-                key = settings.FIREWORKS_API_KEY or os.environ.get("FIREWORKS_API_KEY")
-                if not key:
-                    raise RuntimeError(
-                        "USE_LLAMA_GRADER=true + LLAMA_GRADER_PROVIDER=fireworks requires FIREWORKS_API_KEY in env"
-                    )
-                _warn_once(
-                    "grader_fireworks_llama",
-                    f"Grader: Fireworks {settings.LLAMA_GRADER_MODEL_FIREWORKS}",
-                )
-                return ChatOpenAI(
-                    model=settings.LLAMA_GRADER_MODEL_FIREWORKS,
-                    temperature=0.0,
-                    max_tokens=512,
-                    base_url="https://api.fireworks.ai/inference/v1",
-                    api_key=key,
-                    max_retries=3,
-                    callbacks=[get_cost_handler()],
-                    **_attribution_kwargs(),
-                )
-            raise ValueError(
-                f"Unknown LLAMA_GRADER_PROVIDER={settings.LLAMA_GRADER_PROVIDER!r} "
-                f"(expected 'openrouter' or 'fireworks')"
-            )
         if settings.FORCE_OPENAI_ONLY or not settings.USE_GROQ_FAST_PATH:
             return _openai(settings.OPENAI_FALLBACK_MODEL, 0.0)
         if settings.GROQ_API_KEY:

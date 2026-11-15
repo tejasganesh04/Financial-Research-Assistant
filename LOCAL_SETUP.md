@@ -21,10 +21,12 @@ The default template selects Groq-only language-model calls:
 Use a private random database password and JWT secret. For example, generate
 values locally with `python -c "import secrets; print(secrets.token_hex(32))"`.
 
-Optional OpenAI/Anthropic settings remain in the template. To use that profile,
-configure the corresponding provider keys and set `FORCE_GROQ_ONLY=false`,
-`FORCE_OPENAI_ONLY=false` and `USE_GROQ_FAST_PATH=false`. Selecting a provider
-profile does not change the required Voyage embedding model.
+OpenAI and Anthropic models are also supported. `compose.benchmark.yml` switches
+every step to OpenAI models for the answer benchmark (see the
+[evaluation story](docs/evaluation-story.md#reproducing-the-numbers)); it needs
+`OPENAI_API_KEY`. Selecting a provider profile does not change the required Voyage
+embedding model. `VOYAGE_API_KEY` is also used by the default reranker,
+Voyage rerank-2.5, which falls back to a local model if Voyage is unavailable.
 
 ## 2. Start the services
 
