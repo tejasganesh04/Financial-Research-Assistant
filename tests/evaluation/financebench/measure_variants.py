@@ -44,6 +44,7 @@ RESULTS = Path(__file__).resolve().parents[1] / "results"
 REWRITES: dict[str, dict] = {}  # case_id -> {"search", "passage"} from generate_rewrites.py, when supplied
 SELECTIONS = ("rerank", "fusion", "protect")
 FUSION_K = 10
+POOL = {"size": 50}  # search pool size; --pool changes it
 VOYAGE_RERANKER = "rerank-2.5"  # first 200M tokens free per account
 INSTRUCTION = (
     "Instruction: find the passage or financial statement table that contains the figures or statements "
@@ -140,13 +141,21 @@ def measure(question: dict, client, reranker, collection: str) -> dict:
             pools[name], dense_ranks[name] = pools["asked"], dense_ranks["asked"]
             continue
         vector = embed_text(text)
-        pools[name] = hybrid_search(client, text, vector, search_filter, top_k=50, collection=collection)
+        pools[name] = hybrid_search(
+            client,
+            text,
+            vector,
+            search_filter,
+            top_k=POOL["size"],
+            fusion_candidates_per_arm=POOL["size"],
+            collection=collection,
+        )
         dense = client.query_points(
             collection,
             query=vector,
             using="dense",
             query_filter=search_filter,
-            limit=50,
+            limit=POOL["size"],
             with_payload=["source_file", "chunk_index"],
         ).points
         dense_ranks[name] = {
@@ -198,7 +207,7 @@ def summarize(rows: list[dict]) -> str:
     for r in measured:
         for name in [k.split("/", 1)[1] for k in r if k.startswith("pool/")]:
             pools[name] += r[f"pool/{name}"]
-    lines += ["", "Evidence in the search pool of 50: " + ", ".join(f"{k} {v}" for k, v in pools.items())]
+    lines += ["", f"Evidence in the search pool of {POOL['size']}: " + ", ".join(f"{k} {v}" for k, v in pools.items())]
     return "\n".join(lines)
 
 
@@ -209,7 +218,9 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--rewrites", type=Path, default=None, help="rewrites.jsonl from generate_rewrites.py")
     parser.add_argument("--reranker", choices=["local", "voyage"], default="local")
+    parser.add_argument("--pool", type=int, default=50, help="Candidates taken from hybrid search")
     args = parser.parse_args()
+    POOL["size"] = args.pool
     if args.rewrites:
         REWRITES.update({r["case_id"]: r for r in map(json.loads, args.rewrites.read_text().splitlines())})
     out_dir = RESULTS / args.run

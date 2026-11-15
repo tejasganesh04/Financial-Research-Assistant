@@ -30,6 +30,7 @@ def test_selection_rules():
 
 def test_retrieval_searches_with_statement_wording_and_records_dense_rank(monkeypatch):
     monkeypatch.setattr(retrieval.settings, "SEARCH_STATEMENT_TERMS", True)
+    monkeypatch.setattr(retrieval.settings, "RERANK_SELECTION", "fusion")
     hit = {"content": "balance sheet", "metadata": {"source_file": "AMD.pdf", "chunk_index": 7}}
     client = MagicMock()
     client.query_points.return_value.points = [SimpleNamespace(payload={"source_file": "AMD.pdf", "chunk_index": 7})]
