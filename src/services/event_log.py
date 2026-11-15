@@ -168,6 +168,8 @@ def log_runtime_components() -> dict:
         "GROQ_ANSWER_MODEL",
         "RETRIEVAL_TOP_K",
         "RERANKER_TOP_K",
+        "RERANKER_PROVIDER",
+        "RERANK_SELECTION",
         "ENABLE_DETERMINISTIC_VALIDATOR",
         "MAX_RETRIEVAL_RETRIES",
         "MAX_GENERATION_RETRIES",
@@ -189,12 +191,12 @@ def log_runtime_components() -> dict:
         banner["env_relevant"][k] = v if v else "(unset)"
 
     try:
-        from src.services.reranker_service import get_reranker
+        if settings.RERANKER_PROVIDER == "voyage":
+            banner["components_loaded"]["reranker"] = {"provider": "voyage", "model": settings.VOYAGE_RERANK_MODEL}
+        else:
+            from src.services.reranker_service import get_reranker
 
-        rk = get_reranker()
-        banner["components_loaded"]["reranker"] = {
-            "class": type(rk).__name__,
-        }
+            banner["components_loaded"]["reranker"] = {"provider": "local", "class": type(get_reranker()).__name__}
     except Exception as exc:
         banner["components_loaded"]["reranker"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
 

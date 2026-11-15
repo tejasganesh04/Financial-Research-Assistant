@@ -282,6 +282,7 @@ class RequestTrace(BaseCallbackHandler):
                 "step_started",
                 "model_call",
                 "embedding_call",
+                "rerank_call",
             ):
                 details = {
                     k: v
@@ -315,7 +316,7 @@ class RequestTrace(BaseCallbackHandler):
         incomplete = self.outcome in {"interrupted", "cancelled", "failed"}
         by_model = {}
         for e in self.events:
-            if e["stage"] not in ("model_call", "embedding_call"):
+            if e["stage"] not in ("model_call", "embedding_call", "rerank_call"):
                 continue
             cost = e.get("cost_usd")
             incomplete |= cost is None or not e.get("usage_available", False)

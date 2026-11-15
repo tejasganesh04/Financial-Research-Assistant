@@ -28,6 +28,7 @@ from src.services.request_trace import active_step
 # discounted hit cost). OpenAI applies its cache discount on `input_token_details.cache_read`.
 MODEL_PRICING: dict[str, dict[str, float]] = {
     "voyage-finance-2": {"input": 0.12, "output": 0.0},
+    "rerank-2.5": {"input": 0.05, "output": 0.0},
     # Anthropic
     "claude-sonnet-4-6": {"input": 3.00, "output": 15.00, "cache_write": 3.75, "cache_read": 0.30},
     "claude-sonnet-4-5": {"input": 3.00, "output": 15.00, "cache_write": 3.75, "cache_read": 0.30},
