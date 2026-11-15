@@ -1,6 +1,6 @@
 # Knowledge-base provenance
 
-The active `financial_docs` collection was seeded from the public snapshot:
+The `financial_docs` collection was seeded from the public snapshot:
 
 - Dataset: https://huggingface.co/datasets/cmpunkmannu/financebench-voyage-finance-2-embeddings
 - Pinned revision: `c31f0efb6eea1f33310eb82fed4d3b940367c21b`
@@ -20,3 +20,13 @@ The local source manifest and dataset card are retained under
 `data/raw/financebench-snapshot/` when present; that downloaded directory is
 excluded from Git. This document preserves the essential provenance in the
 active repository.
+
+## Contextual collection
+
+The app searches `financial_docs_v3`, built from `financial_docs` by
+`scripts/build_contextual_collection.py`. It keeps the snapshot's text and
+metadata, adds a header to each chunk (company, filing, page, section,
+statement title and units, detected from the document itself), drops near-empty
+chunks such as "Table of Contents", and re-embeds the chunks with Voyage
+Finance 2 and BM25. The source collection is never modified.
+

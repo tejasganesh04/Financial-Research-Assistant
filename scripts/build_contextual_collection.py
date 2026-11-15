@@ -124,8 +124,13 @@ def statement_title(match: re.Match) -> str:
     return re.sub(S, " ", match.group(0)).strip().title().replace("’S", "’s").replace("'S", "'s")
 
 
-def contextualize(chunks: list[dict]) -> list[tuple[dict, str]]:
-    """Return (payload, new content) for one filing's chunks, in reading order."""
+def contextualize(chunks: list[dict], embed_header: str = "full") -> list[tuple[dict, str]]:
+    """Return (payload, text to embed) for one filing's chunks, in reading order.
+
+    The stored content always carries the full header. With embed_header="context" the
+    embedded text keeps only the section, statement and units: company, filing and page
+    are the same for every chunk of a filing, and searches already filter on them.
+    """
     section = statement = units = None
     statement_page = None
     page_units: dict[int, str] = {}
@@ -168,7 +173,12 @@ def contextualize(chunks: list[dict]) -> list[tuple[dict, str]]:
             "statement": statement,
             "units": unit,
         }
-        out.append((new_payload, new_payload["content"]))
+        embedded = new_payload["content"]
+        if embed_header == "context":
+            context = [p for p in (section, statement, unit) if p]
+            embedded = f"[{' · '.join(context)}] {text}" if context else text
+            new_payload["embedded"] = embedded
+        out.append((new_payload, embedded))
     return out
 
 
@@ -194,26 +204,37 @@ def embed_documents(client, texts: list[str], used: dict, cap: int) -> list[list
 
 
 def file_points(qdrant, collection: str, source_file: str) -> dict:
-    """{point id: (content, vectors)} for one filing in a collection; empty if the collection is missing."""
+    """{point id: (embedded text, vectors)} for one filing in a collection; empty if the collection is missing."""
     if not qdrant.collection_exists(collection):
         return {}
     found, offset = {}, None
     match = qm.Filter(must=[qm.FieldCondition(key="source_file", match=qm.MatchValue(value=source_file))])
     while True:
         points, offset = qdrant.scroll(
-            collection, scroll_filter=match, limit=1000, offset=offset, with_payload=["content"], with_vectors=True
+            collection,
+            scroll_filter=match,
+            limit=1000,
+            offset=offset,
+            with_payload=["content", "embedded"],
+            with_vectors=True,
         )
-        found.update({p.id: (p.payload.get("content"), p.vector) for p in points})
+        found.update({p.id: (p.payload.get("embedded") or p.payload.get("content"), p.vector) for p in points})
         if offset is None:
             return found
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--source", default=settings.QDRANT_COLLECTION)
+    parser.add_argument("--source", default="financial_docs", help="Collection seeded from the public snapshot")
     parser.add_argument("--target", required=True)
     parser.add_argument("--token-cap", type=int, default=30_000_000, help="Stop before using more Voyage tokens")
     parser.add_argument("--limit-files", type=int, default=None)
+    parser.add_argument(
+        "--embed-header",
+        choices=["full", "context"],
+        default="full",
+        help="Embed the full header, or only its section, statement and units",
+    )
     parser.add_argument(
         "--reuse", default=None, help="Copy vectors from this collection for chunks whose text is unchanged"
     )
@@ -249,7 +270,7 @@ def main():
     used = {"tokens": 0}
     totals = {"written": 0, "embedded": 0, "dropped": 0}
     for index, source_file in enumerate(files, 1):
-        rows = contextualize(by_file[source_file])
+        rows = contextualize(by_file[source_file], args.embed_header)
         current = file_points(qdrant, args.target, source_file)
         reuse = current if args.reuse in (None, args.target) else file_points(qdrant, args.reuse, source_file)
         stale = [pid for pid in current if pid not in {payload["_id"] for payload, _ in rows}]
