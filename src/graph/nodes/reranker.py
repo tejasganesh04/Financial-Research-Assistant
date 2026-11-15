@@ -1,7 +1,7 @@
 """Reranker node — narrows hybrid-search candidates to the top-K most relevant.
 
 Reads `retrieved_chunks` (~50 candidates from hybrid dense+BM25 search),
-scores each with a cross-encoder against the sanitized query, and writes the
+scores each against the query with the configured reranker, and writes the
 top-K to `reranked_chunks`. Downstream grader + generator read from
 `reranked_chunks` instead of the raw retrieval pool.
 """
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def reranker_node(state: RAGState) -> dict:
-    """Rerank retrieved candidates with a cross-encoder and select top-K."""
+    """Rerank retrieved candidates and select top-K."""
     query = state.get("retrieval_query") or state.get("contextualized_query", "")
     candidates = state.get("retrieved_chunks", [])
 
@@ -41,5 +41,6 @@ def reranker_node(state: RAGState) -> dict:
         top_score=reranked[0]["rerank_score"] if reranked else None,
         bottom_score=reranked[-1]["rerank_score"] if reranked else None,
         top_k=top_k,
+        model=reranked[0].get("rerank_model") if reranked else None,
     )
     return {"reranked_chunks": reranked}

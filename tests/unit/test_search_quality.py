@@ -52,3 +52,29 @@ def test_switching_statement_wording_off_restores_the_question(monkeypatch):
             {"contextualized_query": "AMD quick ratio?", "retrieved_chunks": [{"content": "a", "rerank_score": 1.0}]}
         )
     assert scored.call_args.args[0] == "AMD quick ratio?"
+
+
+def test_voyage_scores_order_chunks_and_name_the_model(monkeypatch):
+    from src.services import reranker_service
+
+    monkeypatch.setattr(reranker_service.settings, "RERANKER_PROVIDER", "voyage")
+    monkeypatch.setattr(reranker_service, "voyage_scores", lambda query, documents: [0.1, 0.9])
+    ranked = reranker_service.rerank("AMD revenue", [{"content": "risk"}, {"content": "income statement"}], top_k=2)
+    assert [c["content"] for c in ranked] == ["income statement", "risk"]
+    assert ranked[0]["rerank_model"] == "rerank-2.5"
+
+
+def test_voyage_failure_falls_back_to_the_local_model(monkeypatch):
+    from src.services import reranker_service
+
+    def unavailable(query, documents):
+        raise ConnectionError("voyage down")
+
+    local = MagicMock()
+    local.predict.return_value = [0.2, 0.7]
+    monkeypatch.setattr(reranker_service.settings, "RERANKER_PROVIDER", "voyage")
+    monkeypatch.setattr(reranker_service, "voyage_scores", unavailable)
+    monkeypatch.setattr(reranker_service, "get_reranker", lambda: local)
+    ranked = reranker_service.rerank("AMD revenue", [{"content": "a"}, {"content": "b"}], top_k=2)
+    assert [c["content"] for c in ranked] == ["b", "a"]
+    assert ranked[0]["rerank_model"] == reranker_service.RERANKER_MODEL

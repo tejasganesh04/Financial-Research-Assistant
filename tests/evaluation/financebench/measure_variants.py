@@ -12,7 +12,8 @@ expanded text. Final selections of 12 chunks are then compared:
 
 A question counts as found when an evidence-page chunk is among the selected 12
 (and among the first 8 of the ordering, for reference). No language-model calls
-are made. Resumable per run; ``--collection`` compares knowledge-base versions.
+are made. Resumable per run; ``--collection`` compares knowledge-base versions and
+``--reranker voyage`` scores with Voyage rerank-2.5 instead of the local model.
 
     docker compose -f compose.minimal.yml -f compose.local.yml run --rm --no-deps \\
       -v ./tests/evaluation:/app/tests/evaluation api \\
@@ -43,6 +44,28 @@ RESULTS = Path(__file__).resolve().parents[1] / "results"
 REWRITES: dict[str, dict] = {}  # case_id -> {"search", "passage"} from generate_rewrites.py, when supplied
 SELECTIONS = ("rerank", "fusion", "protect")
 FUSION_K = 10
+VOYAGE_RERANKER = "rerank-2.5"  # first 200M tokens free per account
+INSTRUCTION = (
+    "Instruction: find the passage or financial statement table that contains the figures or statements "
+    "needed to answer this question about the named company and period.\nQuery: "
+)
+
+
+class VoyageReranker:
+    """Same interface as the local CrossEncoder: predict([(query, document), ...]) -> scores."""
+
+    def __init__(self):
+        import voyageai
+
+        self.client = voyageai.Client(api_key=settings.VOYAGE_API_KEY, max_retries=6, timeout=120)
+
+    def predict(self, pairs):
+        query, documents = pairs[0][0], [document for _, document in pairs]
+        result = self.client.rerank(query, documents, model=VOYAGE_RERANKER, truncation=True)
+        scores = [0.0] * len(documents)
+        for item in result.results:
+            scores[item.index] = item.relevance_score
+        return scores
 
 
 def filing(client, collection: str, source_file: str) -> dict | None:
@@ -106,8 +129,13 @@ def measure(question: dict, client, reranker, collection: str) -> dict:
         texts["rewrite"] = f"{asked}\n{rewrite['search']}"
         texts["hyde"] = rewrite["passage"]
     rerank_texts = [name for name in ("asked", "terms", "rewrite") if name in texts]
+    if isinstance(reranker, VoyageReranker):
+        texts["instructed"] = INSTRUCTION + texts["terms"]
+        rerank_texts.append("instructed")
     pools, dense_ranks = {}, {}
     for name, text in texts.items():
+        if name == "instructed":
+            continue
         if name == "terms" and not row["has_terms"]:
             pools[name], dense_ranks[name] = pools["asked"], dense_ranks["asked"]
             continue
@@ -180,6 +208,7 @@ def main():
     parser.add_argument("--collection", default=settings.QDRANT_COLLECTION)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--rewrites", type=Path, default=None, help="rewrites.jsonl from generate_rewrites.py")
+    parser.add_argument("--reranker", choices=["local", "voyage"], default="local")
     args = parser.parse_args()
     if args.rewrites:
         REWRITES.update({r["case_id"]: r for r in map(json.loads, args.rewrites.read_text().splitlines())})
@@ -189,7 +218,8 @@ def main():
     done = {json.loads(line)["case_id"] for line in out_path.read_text().splitlines()} if out_path.exists() else set()
     questions = [q for q in load_source() if q["financebench_id"] not in done][: args.limit]
     print(f"{len(done)} already measured; measuring {len(questions)} now on {args.collection}.", flush=True)
-    client, reranker = get_qdrant_client(), get_reranker()
+    client = get_qdrant_client()
+    reranker = VoyageReranker() if args.reranker == "voyage" else get_reranker()
     with out_path.open("a") as output:
         for index, question in enumerate(questions, 1):
             row = measure(question, client, reranker, args.collection)

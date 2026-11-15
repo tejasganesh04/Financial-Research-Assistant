@@ -81,13 +81,17 @@ class Settings(BaseSettings):
     # Retrieval: cast a wide net (hybrid dense+BM25 with RRF) so the reranker has
     # enough variety to pick from.
     RETRIEVAL_TOP_K: int = 50
-    # Reranker: cross-encoder narrows to the final set that feeds the grader + generator.
+    # Reranker: narrows the candidates to the final set that feeds the grader + generator.
+    # "voyage" calls Voyage's reranker and falls back to the local BGE cross-encoder on failure;
+    # "local" always uses the local model.
+    RERANKER_PROVIDER: str = "voyage"
+    VOYAGE_RERANK_MODEL: str = "rerank-2.5"
     RERANKER_TOP_K: int = 12
     # Add statement wording for named financial concepts to the search and reranking text.
     SEARCH_STATEMENT_TERMS: bool = True
     # How the final chunks are chosen: "rerank" (reranker order), "fusion" (reranker rank fused with
-    # the dense-search rank) or "protect" (dense top 3 plus reranker order).
-    RERANK_SELECTION: str = "fusion"
+    # the dense-search rank, which helps the local model) or "protect" (dense top 3 plus reranker order).
+    RERANK_SELECTION: str = "rerank"
     RERANK_FUSION_K: int = 10
     # Non-LLM post-reranker validation
     ENABLE_DETERMINISTIC_VALIDATOR: bool = True
