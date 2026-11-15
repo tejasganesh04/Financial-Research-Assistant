@@ -2,10 +2,9 @@
 
 Run inside the API container with Docker Compose; see LOCAL_SETUP.md.
 
-The snapshot format is the one produced by scripts/export_to_hf.py:
-chunks.parquet + manifest.json. Restore reads only chunks.parquet; the
-manifest is used to verify the dense_dim and distance metric match what
-the consumer's Qdrant is configured for.
+The published snapshot (see DATA_SOURCES.md) holds chunks.parquet and
+manifest.json. Restore reads only chunks.parquet; the manifest is used to
+verify that the dense dimension and distance metric match this configuration.
 
 Bulk upsert in batches of 256. ~1000 points/s on a local dev Qdrant —
 68k chunks restore in ~70s after the parquet download.

@@ -1,4 +1,4 @@
-"""Provider isolation for the temporary Groq-only mode; no API calls required."""
+"""Provider isolation for the Groq-only profile; no API calls required."""
 
 import unittest
 from unittest.mock import patch, sentinel
@@ -28,10 +28,8 @@ class GroqOnlyFactoryTests(unittest.TestCase):
                 llm_factory.settings,
                 FORCE_GROQ_ONLY=True,
                 FORCE_OPENAI_ONLY=True,
-                USE_LLAMA_GRADER=True,
                 USE_GROQ_FAST_PATH=False,
                 GROQ_API_KEY="gsk-test-placeholder",
-                LITELLM_URL="http://unused-paid-proxy.invalid",
             ),
             patch.object(llm_factory, "ChatOpenAI", side_effect=AssertionError("Paid OpenAI path selected")),
             patch.object(llm_factory, "ChatAnthropic", side_effect=AssertionError("Paid Claude path selected")),
@@ -47,7 +45,7 @@ class GroqOnlyFactoryTests(unittest.TestCase):
                     )
                     self.assertEqual(model.model_name, expected)
                     self.assertIsNotNone(model.max_tokens)
-            # Optional callers such as Multi-HyDE also use the task dispatcher.
+            # Direct task-model lookups follow the same profile.
             self.assertEqual(
                 llm_factory._llm_for_task("gpt-4o-mini").model_name,
                 llm_factory.settings.GROQ_LIGHT_MODEL,
@@ -73,10 +71,8 @@ class GroqOnlyFactoryTests(unittest.TestCase):
                 llm_factory.settings,
                 FORCE_GROQ_ONLY=False,
                 FORCE_OPENAI_ONLY=False,
-                USE_LLAMA_GRADER=False,
                 USE_GROQ_FAST_PATH=False,
                 ANTHROPIC_API_KEY="test-placeholder",
-                LITELLM_URL="",
             ),
             patch.object(llm_factory, "ChatOpenAI", return_value=sentinel.openai),
             patch.object(llm_factory, "ChatAnthropic", return_value=sentinel.claude),
@@ -98,7 +94,6 @@ class GroqOnlyFactoryTests(unittest.TestCase):
                 FORCE_GROQ_ONLY=False,
                 FORCE_OPENAI_ONLY=False,
                 ANTHROPIC_API_KEY="test-placeholder",
-                LITELLM_URL="",
                 **dict.fromkeys(roles.values(), "gpt-5.4"),
             ),
             patch.object(llm_factory, "ChatOpenAI", return_value=sentinel.openai) as openai,
@@ -116,7 +111,6 @@ class GroqOnlyFactoryTests(unittest.TestCase):
                 FORCE_GROQ_ONLY=False,
                 FORCE_OPENAI_ONLY=False,
                 ANTHROPIC_API_KEY="",
-                LITELLM_URL="",
                 GENERATOR_MODEL="claude-sonnet-4-6",
             ),
             patch.object(llm_factory, "ChatOpenAI", return_value=sentinel.openai) as openai,

@@ -66,12 +66,6 @@ ORDER BY checkpoint_id ASC
 LIMIT 1
 """
 
-_DELETE_SQL = """
-DELETE FROM checkpoints WHERE thread_id = %s;
-DELETE FROM checkpoint_writes WHERE thread_id = %s;
-DELETE FROM checkpoint_blobs WHERE thread_id = %s;
-"""
-
 
 async def list_threads_for_user(
     pool, user_id: str, limit: int = 50, offset: int = 0

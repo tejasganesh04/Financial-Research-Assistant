@@ -1,9 +1,8 @@
-"""Reranker node — narrows hybrid-search candidates to the top-K most relevant.
+"""Reranker node: narrows hybrid-search candidates to the most relevant chunks.
 
-Reads `retrieved_chunks` (~50 candidates from hybrid dense+BM25 search),
-scores each against the query with the configured reranker, and writes the
-top-K to `reranked_chunks`. Downstream grader + generator read from
-`reranked_chunks` instead of the raw retrieval pool.
+Reads `retrieved_chunks` (up to RETRIEVAL_TOP_K candidates from hybrid dense + BM25
+search), scores each against the query with the configured reranker, and writes the
+top RERANKER_TOP_K to `reranked_chunks`, which the grader and generator read.
 """
 
 import logging

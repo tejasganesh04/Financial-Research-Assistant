@@ -56,7 +56,6 @@ from src.services.request_trace import observe_step
 logger = logging.getLogger(__name__)
 
 
-MAX_LLM_TURNS = 5  # Legacy constant; currently unused, so it does not enforce a total-call cap.
 MAX_SUB_QUESTIONS = 5  # Keep at most five initial sub-questions returned by the planner.
 MAX_FOLLOWUP_ROUNDS = 2  # At most two sufficiency checks, each able to request one more search.
 
@@ -319,7 +318,6 @@ def research_agent_node(state: RAGState) -> dict:
     Search up to five initial questions, then allow up to two follow-up rounds.
     agent_turns_used counts only the planner, sufficiency checks and synthesizer
     (at most four calls on this normal path), not embeddings or per-chunk grades.
-    MAX_LLM_TURNS is unused; there is no five-call cap on all provider work.
     """
     query = state.get("contextualized_query", "")
     if not query:

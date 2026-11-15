@@ -209,7 +209,7 @@ async def test_real_metadata_node_controls_search_and_records_trace(flow, monkey
         metadata_extractor,
         "available_metadata",
         lambda state: [
-            {"company": "microsoft", "aliases": ["msft"], "fiscal_years": [2016, 2023]},
+            {"company": "microsoft", "name": "Microsoft", "aliases": ["msft"], "fiscal_years": [2016, 2023]},
         ],
     )
     model = MagicMock()
@@ -257,8 +257,9 @@ async def test_real_metadata_node_controls_search_and_records_trace(flow, monkey
         search.assert_not_called()
         embed.assert_not_called()
         if case == "unavailable":
-            assert "requested company or filing year" in response.json()["response"]
-            assert not any(e.get("step") == "router" for e in events)
+            reply = response.json()["response"]
+            assert "isn't available within your access" in reply
+            assert "Available years for Microsoft: FY2016, FY2023" in reply
 
 
 @pytest.mark.asyncio
@@ -516,7 +517,8 @@ async def test_failed_request_is_clear_and_same_conversation_can_recover(flow, m
 @pytest.mark.asyncio
 @pytest.mark.parametrize("flow", ["memory"], indirect=True)
 async def test_missing_approval_storage_blocks_finance_before_generation(flow, monkeypatch):
-    monkeypatch.setattr(app.state, "checkpointer", None)
+    # Patch the state dictionary: patching the same app.state attribute twice cannot be undone cleanly.
+    monkeypatch.setitem(app.state._state, "checkpointer", None)
     url = "/v1/conversations/messages"
     response = await flow.client.post(url, headers=headers("finance"), json={"message": ESCALATE + "lookup amount"})
     assert response.status_code == 503

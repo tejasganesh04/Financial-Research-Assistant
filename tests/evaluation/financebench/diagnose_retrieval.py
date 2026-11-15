@@ -1,6 +1,6 @@
 """Explain each search miss from a measure_retrieval.py run.
 
-For every question whose answer page missed the reranked top 8, record where
+For every question whose answer page missed the reranked top 8 (the original cut-off), record where
 it was lost and why: whether the evidence numbers appear on the stored page,
 the answer chunk's rank in dense and keyword search separately, its reranker
 score against the cut-off, what the reranker preferred instead, and simple

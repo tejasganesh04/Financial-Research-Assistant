@@ -1,12 +1,12 @@
 """Compare search, reranking and selection variants on FinanceBench evidence pages.
 
 Each question is filtered to its source filing's company and fiscal year, and the
-app's hybrid search (RRF pool of 50) runs with two search texts: the question as
+app's hybrid search (an RRF pool of 50 by default; --pool changes it) runs with two search texts: the question as
 asked, and the question plus statement wording for named financial concepts.
 The reranker scores each pool against the question as asked and against the
 expanded text. Final selections of 12 chunks are then compared:
 
-- rerank: reranker order alone (the app today)
+- rerank: reranker order alone (the app's selection)
 - fusion: reciprocal rank fusion of the reranker rank and the dense-search rank
 - protect: top 9 by reranker plus the dense-search top 3
 

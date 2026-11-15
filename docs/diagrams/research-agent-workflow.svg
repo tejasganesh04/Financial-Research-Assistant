@@ -17,7 +17,7 @@
 <tspan x="1840" dy="0">CODE-BASED MAP</tspan>
 </text>
 <text x="1840" y="95" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#D5E4ED" font-weight="400" text-anchor="end">
-<tspan x="1840" dy="0">2 NOV 2026</tspan>
+<tspan x="1840" dy="0">15 NOV 2026</tspan>
 </text>
 <rect x="50" y="180" width="1800" height="105" rx="15" fill="#F0F5F9" stroke="none" stroke-width="2"/>
 <text x="73" y="211" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#17364B" font-weight="700" text-anchor="start">
@@ -81,7 +81,7 @@
 </text>
 <text x="282" y="807" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
 <tspan x="282" dy="0">Run the shared helper shown on the right →</tspan>
-<tspan x="282" dy="29">Receive 0–8 accepted chunks per search.</tspan>
+<tspan x="282" dy="29">Receive 0–12 accepted chunks per search.</tspan>
 <tspan x="282" dy="29">Merge into chunks_by_id; keep each identity once.</tspan>
 </text>
 <rect x="597" y="906" width="303.5" height="29" rx="6" fill="#FFFFFF" stroke="none" stroke-width="2"/>
@@ -192,8 +192,8 @@
 </text>
 <text x="1222" y="697" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
 <tspan x="1222" dy="0">Search text = this sub-question / follow-up.</tspan>
-<tspan x="1222" dy="29">Voyage dense vector + local BM25 → Qdrant</tspan>
-<tspan x="1222" dy="29">Same mandatory filters; up to 50 candidates.</tspan>
+<tspan x="1222" dy="29">Voyage dense + BM25 → Qdrant (+ finance terms)</tspan>
+<tspan x="1222" dy="29">Same mandatory filters; up to 100 candidates.</tspan>
 </text>
 <path d="M1492 765 V810" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <rect x="1200" y="810" width="585" height="145" rx="15" fill="#FFFFFF" stroke="#368B76" stroke-width="2"/>
@@ -201,9 +201,9 @@
 <tspan x="1222" dy="0">C  RERANK · reranker_node()</tspan>
 </text>
 <text x="1222" y="882" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
-<tspan x="1222" dy="0">Local BGE scores question–passage pairs.</tspan>
+<tspan x="1222" dy="0">Voyage rerank-2.5 scores each passage.</tspan>
 <tspan x="1222" dy="29">Question = this sub-question / follow-up.</tspan>
-<tspan x="1222" dy="29">Keep up to 8 candidates.</tspan>
+<tspan x="1222" dy="29">Keep up to 12 candidates.</tspan>
 </text>
 <path d="M1492 955 V985" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <rect x="1200" y="985" width="585" height="140" rx="15" fill="#FFFFFF" stroke="#368B76" stroke-width="2"/>
@@ -213,7 +213,7 @@
 <text x="1222" y="1057" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
 <tspan x="1222" dy="0">GPT-OSS 20B judges each surviving passage.</tspan>
 <tspan x="1222" dy="29">Question = ORIGINAL contextualized question.</tspan>
-<tspan x="1222" dy="29">Accept useful partial evidence → 0–8 chunks.</tspan>
+<tspan x="1222" dy="29">Accept useful partial evidence → 0–12 chunks.</tspan>
 </text>
 <path d="M1492 1125 V1220" fill="none" stroke="#368B76" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <rect x="1200" y="1220" width="585" height="120" rx="15" fill="#DFF1E9" stroke="#368B76" stroke-width="2"/>
@@ -253,8 +253,8 @@
 </text>
 <text x="1192" y="1812" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
 <tspan x="1192" dy="0">≤5 initial searches + ≤2 follow-ups = ≤7 searches.</tspan>
-<tspan x="1192" dy="29">Each yields ≤8 chunks: ≤56 before deduplication.</tspan>
-<tspan x="1192" dy="29">No final global “keep only 8” step in research.</tspan>
+<tspan x="1192" dy="29">Each yields ≤12 chunks: ≤84 before deduplication.</tspan>
+<tspan x="1192" dy="29">No final global “keep only 12” step in research.</tspan>
 <tspan x="1192" dy="29">Sub-questions change wording, not metadata filters.</tspan>
 <tspan x="1192" dy="29">No graph query-rewriter loop inside the helper.</tspan>
 <tspan x="1192" dy="29">Helpers are not separately checkpointed graph nodes.</tspan>
@@ -267,7 +267,7 @@
 <tspan x="1192" dy="0">observe_step() times ordinary helper calls.</tspan>
 <tspan x="1192" dy="29">agent_turns_used counts plan + checks + synthesis;</tspan>
 <tspan x="1192" dy="29">it excludes embeddings, grades and SDK retries.</tspan>
-<tspan x="1192" dy="29">MAX_LLM_TURNS=5 is unused, not a total-call cap.</tspan>
+<tspan x="1192" dy="29">There is no fixed cap on total model calls.</tspan>
 <tspan x="1192" dy="29">Detected provider limits abort to API error handling.</tspan>
 <tspan x="1192" dy="29">Other helper fallbacks are explained in the guide.</tspan>
 </text>
@@ -285,11 +285,11 @@
 </text>
 <rect x="530" y="2375" width="455" height="140" rx="15" fill="#EAF3FC" stroke="#477BAF" stroke-width="2"/>
 <text x="552" y="2410" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#17364B" font-weight="700" text-anchor="start">
-<tspan x="552" dy="0">generator</tspan>
+<tspan x="552" dy="0">context_expander → generator</tspan>
 </text>
 <text x="552" y="2447" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
-<tspan x="552" dy="0">A separate model call writes</tspan>
-<tspan x="552" dy="29">the user-facing draft from</tspan>
+<tspan x="552" dy="0">Add neighbouring chunks; then</tspan>
+<tspan x="552" dy="29">a separate model call drafts from</tspan>
 <tspan x="552" dy="29">synthesis + raw chunks + context.</tspan>
 </text>
 <path d="M985 2445 H1080" fill="none" stroke="#477BAF" stroke-width="2.8" stroke-linejoin="round" marker-end="url(#arrow)"/>
@@ -308,7 +308,7 @@
 </text>
 <text x="75" y="2634" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#567080" font-weight="400" text-anchor="start">
 <tspan x="75" dy="0">Solid arrows show execution order. Dashed helper-call arrow expands ordinary Python work; it is not another graph edge.</tspan>
-<tspan x="75" dy="29">Model names reflect the current Groq-only setup. Paid profile: GPT-4o-mini for planning/grading/checks; Sonnet 4.6 for synthesis.</tspan>
+<tspan x="75" dy="29">Model names reflect the current Groq-only setup. Benchmark profile: gpt-5.4-mini for planning/grading/checks; gpt-5.4 for synthesis.</tspan>
 <tspan x="75" dy="29">Local collections stay inside this function until return. Empty-question return contains only relevant_chunks=[] and agent_synthesis=None.</tspan>
 <tspan x="75" dy="29">Source: research_agent.py, retrieval.py, reranker.py, grader.py, prompts.py, llm_factory.py and builder.py. No API calls were made.</tspan>
 </text>

@@ -5,12 +5,10 @@ matches. Reciprocal Rank Fusion combines the two rankings. Searches apply
 mandatory permissions and validated company/year metadata filters."""
 
 import logging
-from datetime import datetime, timezone
 from functools import lru_cache
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
-    Distance,
     FieldCondition,
     Filter,
     Fusion,
@@ -18,12 +16,10 @@ from qdrant_client.models import (
     MatchAny,
     Modifier,
     PayloadSchemaType,
-    PointStruct,
     Prefetch,
     SparseIndexParams,
     SparseVector,
     SparseVectorParams,
-    VectorParams,
 )
 
 from src.config.settings import settings
@@ -35,8 +31,6 @@ DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 BM25_MODEL_NAME = "Qdrant/bm25"
 
-SENTINEL_POINT_ID = "00000000-0000-0000-0000-000000000001"
-META_PAYLOAD_KEY = "_meta"
 
 # Stored sparse values are BM25 term weights; Qdrant applies IDF at query time.
 SPARSE_VECTOR_PARAMS = SparseVectorParams(index=SparseIndexParams(on_disk=False), modifier=Modifier.IDF)
@@ -88,109 +82,6 @@ def compute_query_sparse_vector(text: str) -> SparseVector:
     return SparseVector(indices=list(e.indices), values=list(e.values))
 
 
-def ensure_collection(client: QdrantClient, collection_name: str | None = None) -> None:
-    """Create the collection and payload indexes if they don't exist.
-
-    Schema: named dense vector + named sparse vector. If an older single-vector
-    collection exists, callers should drop it first — this function will not
-    migrate an existing collection's schema.
-
-    `collection_name` override lets callers target non-default collections
-    (e.g. FinanceBench corpus isolated from the production collection).
-    """
-    target = collection_name or settings.QDRANT_COLLECTION
-    collections = [c.name for c in client.get_collections().collections]
-    if target in collections:
-        return
-
-    client.create_collection(
-        collection_name=target,
-        vectors_config={
-            DENSE_VECTOR_NAME: VectorParams(size=settings.EMBEDDING_DIMENSIONS, distance=Distance.COSINE),
-        },
-        sparse_vectors_config={SPARSE_VECTOR_NAME: SPARSE_VECTOR_PARAMS},
-    )
-    create_payload_indexes(client, target)
-
-    try:
-        upsert_collection_fingerprint(
-            client=client,
-            collection_name=target,
-            embedding_model=settings.EMBEDDING_MODEL,
-            embedding_dim=settings.EMBEDDING_DIMENSIONS,
-            embedding_provider=settings.EMBEDDING_PROVIDER,
-        )
-    except Exception as exc:
-        logger.warning("Failed to write embedding-model fingerprint to '%s': %s", target, exc)
-
-    logger.info(f"Created hybrid collection '{target}' with dense + sparse vectors")
-
-
-def upsert_collection_fingerprint(
-    client: QdrantClient,
-    collection_name: str,
-    embedding_model: str,
-    embedding_dim: int,
-    embedding_provider: str,
-) -> None:
-    """Write/refresh the sentinel point with the embedding config used at
-    collection-create time. Zero dense vector + empty sparse vector so it
-    ranks near-bottom in any retrieval (never enters top-K of meaningful
-    queries). Boot banner reads this back to detect silent config drift.
-    """
-    client.upsert(
-        collection_name=collection_name,
-        points=[
-            PointStruct(
-                id=SENTINEL_POINT_ID,
-                vector={
-                    DENSE_VECTOR_NAME: [0.0] * embedding_dim,
-                    SPARSE_VECTOR_NAME: SparseVector(indices=[], values=[]),
-                },
-                payload={
-                    META_PAYLOAD_KEY: True,
-                    "embedding_model": embedding_model,
-                    "embedding_dim": embedding_dim,
-                    "embedding_provider": embedding_provider,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                },
-            )
-        ],
-    )
-
-
-def get_collection_fingerprint(client: QdrantClient, collection_name: str) -> dict | None:
-    """Read back the sentinel payload. Returns None if absent (collection
-    pre-dates this feature — boot banner treats that as 'unknown', not error)."""
-    try:
-        result = client.retrieve(
-            collection_name=collection_name,
-            ids=[SENTINEL_POINT_ID],
-            with_payload=True,
-            with_vectors=False,
-        )
-        if not result:
-            return None
-        return dict(result[0].payload or {})
-    except Exception:
-        return None
-
-
-# Document type must match an allowed type AND confidentiality must match an allowed level. * means unrestricted.
-def build_rbac_filter(allowed_doc_types: list[str], allowed_confidentiality: list[str]) -> Filter | None:
-    """Build a Qdrant filter from RBAC permissions."""
-    conditions = []
-
-    if "*" not in allowed_doc_types:
-        conditions.append(FieldCondition(key="doc_type", match=MatchAny(any=allowed_doc_types)))
-
-    if "*" not in allowed_confidentiality:
-        conditions.append(FieldCondition(key="confidentiality", match=MatchAny(any=allowed_confidentiality)))
-
-    return Filter(must=conditions) if conditions else None
-
-
-# Extend the access filter with company/year constraints; vector search must respect the resulting conditions.
 def build_retrieval_filter(
     allowed_doc_types: list[str],
     allowed_confidentiality: list[str],
@@ -274,30 +165,3 @@ def dense_ranks(
         with_payload=["source_file", "chunk_index"],
     ).points
     return {(p.payload.get("source_file"), p.payload.get("chunk_index")): rank for rank, p in enumerate(points, 1)}
-
-
-# Legacy dense-only search — kept for any caller that wants pure semantic search
-# (e.g. debugging, benchmarking). The graph uses hybrid_search.
-def search(
-    client: QdrantClient,
-    query_vector: list[float],
-    rbac_filter: Filter | None = None,
-    top_k: int = 8,
-) -> list[dict]:
-    """Pure dense semantic search. Prefer hybrid_search for production retrieval."""
-    results = client.query_points(
-        collection_name=settings.QDRANT_COLLECTION,
-        query=query_vector,
-        using=DENSE_VECTOR_NAME,
-        query_filter=rbac_filter,
-        limit=top_k,
-        with_payload=True,
-    )
-    return [
-        {
-            "content": point.payload.get("content", ""),
-            "metadata": {k: v for k, v in point.payload.items() if k != "content"},
-            "score": point.score,
-        }
-        for point in results.points
-    ]

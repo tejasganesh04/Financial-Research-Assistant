@@ -39,12 +39,8 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
     "gpt-4o": {"input": 2.50, "output": 10.00, "cache_read": 1.25},
     "gpt-5.4": {"input": 2.50, "output": 15.00, "cache_read": 0.25},
     "gpt-5.4-mini": {"input": 0.75, "output": 4.50, "cache_read": 0.075},
-    # OpenAI embeddings (output cost = 0; recorded as input only)
-    "text-embedding-3-small": {"input": 0.02, "output": 0.0},
-    "text-embedding-3-large": {"input": 0.13, "output": 0.0},
     # Groq free tier — tokens still recorded for telemetry
     "llama-3.3-70b-versatile": {"input": 0.0, "output": 0.0},
-    "llama-3.1-70b-versatile": {"input": 0.0, "output": 0.0},
 }
 
 DEFAULT_LOG_DIR = Path("cost_logs")
@@ -408,17 +404,6 @@ class CostTracker:
         finally:
             CostTracker.write_run_summary(run_id, log_path or prev_path)
             _ActiveContext.set(prev_run, prev_path)
-
-    @staticmethod
-    def start_run(run_id: str, log_path: Path | None = None) -> None:
-        _ActiveContext.set(run_id, log_path)
-
-    @staticmethod
-    def end_run() -> Path | None:
-        run_id, log_path = _ActiveContext.get()
-        out = CostTracker.write_run_summary(run_id, log_path) if run_id else None
-        _ActiveContext.set(None)
-        return out
 
     @staticmethod
     def summarize(run_id: str | None = None, log_path: Path | None = None) -> dict:
