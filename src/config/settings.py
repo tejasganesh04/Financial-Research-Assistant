@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     MAX_GENERATION_RETRIES: int = 2
     # Retrieval: cast a wide net (hybrid dense+BM25 with RRF) so the reranker has
     # enough variety to pick from.
-    RETRIEVAL_TOP_K: int = 50
+    RETRIEVAL_TOP_K: int = 100
     # Reranker: narrows the candidates to the final set that feeds the grader + generator.
     # "voyage" calls Voyage's reranker and falls back to the local BGE cross-encoder on failure;
     # "local" always uses the local model.

@@ -48,11 +48,12 @@ def retrieval_node(state: RAGState) -> dict:
             rbac_filter=search_filter,
             top_k=settings.RETRIEVAL_TOP_K,
         )
-        # The finance-trained dense ranking is kept so the reranker cannot fully overrule it.
-        ranks = dense_ranks(client, vector, search_filter, limit=settings.RETRIEVAL_TOP_K)
-        for chunk in chunks:
-            meta = chunk.get("metadata") or {}
-            chunk["dense_rank"] = ranks.get((meta.get("source_file"), meta.get("chunk_index")))
+        if settings.RERANK_SELECTION != "rerank":
+            # Fusion and protect selections combine the dense-search rank with the reranker's.
+            ranks = dense_ranks(client, vector, search_filter, limit=settings.RETRIEVAL_TOP_K)
+            for chunk in chunks:
+                meta = chunk.get("metadata") or {}
+                chunk["dense_rank"] = ranks.get((meta.get("source_file"), meta.get("chunk_index")))
         # An empty result stays empty. Neither retries nor research may widen selected filters.
         from src.services.event_log import emit
 

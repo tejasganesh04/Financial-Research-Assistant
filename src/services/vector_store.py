@@ -220,14 +220,15 @@ def hybrid_search(
     query_dense_vector: list[float],
     rbac_filter: Filter | None = None,
     top_k: int = 50,
-    fusion_candidates_per_arm: int = 50,
+    fusion_candidates_per_arm: int | None = None,
     collection: str | None = None,
 ) -> list[dict]:
     """Search dense and sparse vectors with the same metadata filter and fuse their ranks.
 
-    Each prefetch retrieves candidates; Reciprocal Rank Fusion combines the ranked
-    lists and returns up to top_k chunks. Access rules are never relaxed."""
+    Each prefetch retrieves candidates (top_k per arm unless set); Reciprocal Rank Fusion
+    combines the ranked lists and returns up to top_k chunks. Access rules are never relaxed."""
     sparse = compute_query_sparse_vector(query_text)
+    per_arm = fusion_candidates_per_arm or top_k
 
     results = client.query_points(
         collection_name=collection or settings.QDRANT_COLLECTION,
@@ -235,13 +236,13 @@ def hybrid_search(
             Prefetch(
                 query=query_dense_vector,
                 using=DENSE_VECTOR_NAME,
-                limit=fusion_candidates_per_arm,
+                limit=per_arm,
                 filter=rbac_filter,
             ),
             Prefetch(
                 query=sparse,
                 using=SPARSE_VECTOR_NAME,
-                limit=fusion_candidates_per_arm,
+                limit=per_arm,
                 filter=rbac_filter,
             ),
         ],
