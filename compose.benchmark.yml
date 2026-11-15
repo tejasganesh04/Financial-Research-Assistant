@@ -17,3 +17,5 @@ services:
       HALLUCINATION_MODEL: gpt-5.4
       HIGH_STAKES_HALLUCINATION_MODEL: gpt-5.4
       RESEARCH_AGENT_SYNTHESIZE_MODEL: gpt-5.4
+      # Full neighbouring-chunk context; the Groq profile limits it for free-tier request sizes.
+      NEIGHBOUR_CHAR_BUDGET: "12000"

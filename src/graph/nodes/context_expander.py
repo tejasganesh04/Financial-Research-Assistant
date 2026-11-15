@@ -12,12 +12,10 @@ from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
 from src.config.settings import settings
 from src.models.state import RAGState
+from src.services.request_trace import record
 from src.services.vector_store import get_qdrant_client
 
 logger = logging.getLogger(__name__)
-
-# Upper bound on added neighbour text, so prompts stay within model limits.
-NEIGHBOUR_CHAR_BUDGET = 12_000
 
 
 def position(chunk: dict) -> tuple[str | None, int | None]:
@@ -62,14 +60,14 @@ def fetch_neighbours(chunks: list[dict]) -> dict[tuple, dict]:
 
 def context_expander_node(state: RAGState) -> dict:
     chunks = state.get("relevant_chunks") or []
-    if not chunks:
+    if not chunks or settings.NEIGHBOUR_CHAR_BUDGET <= 0:
         return {}
     try:
         neighbours = fetch_neighbours(chunks)
     except Exception as error:  # noqa: BLE001 - answering from the kept chunks alone is still correct
         logger.warning("Neighbour lookup failed; answering from kept chunks only: %s", type(error).__name__)
         return {}
-    expanded, seen, budget = [], set(), NEIGHBOUR_CHAR_BUDGET
+    expanded, seen, budget = [], set(), settings.NEIGHBOUR_CHAR_BUDGET
     for chunk in chunks:
         source_file, index = position(chunk)
         for key in (
@@ -90,4 +88,10 @@ def context_expander_node(state: RAGState) -> dict:
             seen.add(candidate_key)
             expanded.append(candidate)
     logger.info("Context expanded from %d to %d chunks", len(chunks), len(expanded))
+    record(
+        "context_expansion",
+        kept_chunks=len(chunks),
+        neighbours_added=len(expanded) - len(chunks),
+        neighbour_chars=settings.NEIGHBOUR_CHAR_BUDGET - budget,
+    )
     return {"relevant_chunks": expanded}
