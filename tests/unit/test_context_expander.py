@@ -43,7 +43,7 @@ def test_neighbours_join_in_reading_order_without_duplicates(monkeypatch):
 
 
 def test_kept_chunks_stay_and_neighbours_stop_at_the_budget(monkeypatch):
-    monkeypatch.setattr(context_expander, "NEIGHBOUR_CHAR_BUDGET", 10)
+    monkeypatch.setattr(context_expander.settings, "NEIGHBOUR_CHAR_BUDGET", 10)
     monkeypatch.setattr(context_expander, "get_qdrant_client", lambda: client_with({0: "x" * 8, 2: "y" * 8}))
     result = context_expander.context_expander_node({"relevant_chunks": [chunk(1)]})
     assert [c["metadata"]["chunk_index"] for c in result["relevant_chunks"]] == [0, 1]

@@ -132,7 +132,8 @@ async def generator_node(state: RAGState) -> dict:
             "Scope of this answer: "
             + " ".join(scope_notes)
             + " Answer for the companies and years that are available; do not refuse because another"
-            " company or year is unavailable.\n\n" + user_prompt
+            " company or year is unavailable, and do not mention the unavailable ones, because a note"
+            " about them is added after your answer.\n\n" + user_prompt
         )
 
     # First attempts keep the normal prompt. Only a failed-check retry receives the prior draft and feedback.

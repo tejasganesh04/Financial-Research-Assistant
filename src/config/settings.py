@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     # the dense-search rank, which helps the local model) or "protect" (dense top 3 plus reranker order).
     RERANK_SELECTION: str = "rerank"
     RERANK_FUSION_K: int = 10
+    # Characters of neighbouring-chunk text added before answering. Free Groq allows 8,000 tokens
+    # per minute per request, so the Groq profile uses a smaller budget.
+    NEIGHBOUR_CHAR_BUDGET: int = 12_000
     # Non-LLM post-reranker validation
     ENABLE_DETERMINISTIC_VALIDATOR: bool = True
     EMBEDDING_PROVIDER: str = "openai"

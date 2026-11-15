@@ -42,6 +42,7 @@ STEPS = set(PROMPTS) | {
     "rbac_gate",
     "retrieval",
     "reranker",
+    "context_expander",
     "hitl_gate",
     "response_formatter",
     "no_info_response",
