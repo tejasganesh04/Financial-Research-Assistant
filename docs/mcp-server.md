@@ -101,8 +101,10 @@ address; see [deployment](deployment.md).
 - **Consent requests** expire after 10 minutes and authorization codes after 2 minutes; a code used
   twice ends the connection it created.
 - **Registration** is open, as MCP clients expect, but limited per IP address
-  (`MCP_CLIENT_REGISTRATIONS_PER_HOUR`). Redirect addresses must be `https`, or `http` on localhost.
-  A registration alone grants nothing: a user still has to sign in and approve.
+  (`MCP_CLIENT_REGISTRATIONS_PER_HOUR`). A client may receive sign-in codes only on localhost (as
+  Claude Code does) or on an `https` host listed in `MCP_REDIRECT_HOSTS` (default `claude.ai` and
+  `claude.com`, for Claude's hosted apps), so nobody can register a look-alike client that sends codes
+  to their own server. A registration alone grants nothing: a user still has to sign in and approve.
 - **Rate limit.** `MCP_RATE_LIMIT_PER_MINUTE` searches and page reads per user (default 30).
 - **Host check.** Requests must name an allowed host (`MCP_ALLOWED_HOSTS`), which blocks
   DNS-rebinding attacks from web pages. Add your domain when serving beyond localhost.

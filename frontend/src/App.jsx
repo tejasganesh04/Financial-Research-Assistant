@@ -17,7 +17,12 @@ import Connect from "./Connect.jsx";
 import Consent from "./Consent.jsx";
 import ResearchView, { ConversationList, useResearch } from "./Research.jsx";
 import { linkHandler, navigate, useLocation } from "./router.js";
-import { forgetSession, renewSession, signOut } from "./session.js";
+import {
+  forgetSession,
+  onSignedOutElsewhere,
+  renewSession,
+  signOut,
+} from "./session.js";
 import SignIn from "./SignIn.jsx";
 
 const ADMIN_PATHS = ["/approvals", "/admin/users", "/admin/activity"];
@@ -41,7 +46,15 @@ export default function App() {
       setNotice("Your session has ended. Sign in again to continue.");
     };
     window.addEventListener("session-expired", expired);
-    return () => window.removeEventListener("session-expired", expired);
+    const stopListening = onSignedOutElsewhere(() => {
+      forgetSession();
+      setUser(null);
+      setNotice("You signed out in another tab.");
+    });
+    return () => {
+      window.removeEventListener("session-expired", expired);
+      stopListening();
+    };
   }, []);
 
   function signedIn(next) {

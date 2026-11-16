@@ -12,6 +12,21 @@ let expiresAt = 0;
 let renewTimer = null;
 let inflight = null;
 
+// Tabs tell each other about signing out, so no tab keeps working on a session that has ended.
+const channel =
+  typeof BroadcastChannel !== "undefined"
+    ? new BroadcastChannel("financial-research-session")
+    : null;
+
+export function onSignedOutElsewhere(handler) {
+  if (!channel) return () => {};
+  const listener = (event) => {
+    if (event.data === "signed-out") handler();
+  };
+  channel.addEventListener("message", listener);
+  return () => channel.removeEventListener("message", listener);
+}
+
 // Requests to /v1 carry the access token; a 401 triggers one renewal and one retry.
 export const client = axios.create({ baseURL: "/v1", timeout: 20000 });
 
@@ -82,6 +97,7 @@ export async function signIn(username, password) {
 
 export async function signOut() {
   forgetSession();
+  channel?.postMessage("signed-out");
   await axios.post("/v1/auth/logout", null, { timeout: 10000 }).catch(() => {});
 }
 

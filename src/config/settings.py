@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     MCP_RATE_LIMIT_PER_MINUTE: int = 30
     # New OAuth client registrations per IP address per hour (each Claude Code install registers once).
     MCP_CLIENT_REGISTRATIONS_PER_HOUR: int = 20
+    # Where clients may receive sign-in codes, besides localhost (Claude Code and other local clients):
+    # https hosts of hosted clients, such as Claude's web and desktop apps. Subdomains are included.
+    MCP_REDIRECT_HOSTS: list[str] = ["claude.ai", "claude.com"]
     # Host headers accepted at /mcp (protection against DNS rebinding). Add your domain when hosting.
     MCP_ALLOWED_HOSTS: list[str] = ["localhost:*", "127.0.0.1:*", "[::1]:*"]
     MCP_ALLOWED_ORIGINS: list[str] = ["http://localhost:*", "http://127.0.0.1:*", "http://[::1]:*"]

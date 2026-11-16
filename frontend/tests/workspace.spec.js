@@ -90,18 +90,11 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
         mcp_url: "https://research.example.com/mcp",
       });
     if (path.startsWith("/v1/oauth/requests/") && method === "GET")
-      return path.endsWith("/expired")
-        ? json(
-            {
-              detail:
-                "This connection request has expired or was already used.",
-            },
-            404,
-          )
-        : json({
-            client_name: "Claude Code",
-            redirect_host: "localhost",
-            redirect_is_local: true,
+      return path.endsWith("/hosted")
+        ? json({
+            client_name: "Claude",
+            redirect_host: "claude.ai",
+            redirect_is_local: false,
             scopes: [
               {
                 scope: "documents:read",
@@ -111,7 +104,29 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
             ],
             resource: "https://research.example.com/mcp",
             access_token_minutes: 60,
-          });
+          })
+        : path.endsWith("/expired")
+          ? json(
+              {
+                detail:
+                  "This connection request has expired or was already used.",
+              },
+              404,
+            )
+          : json({
+              client_name: "Claude Code",
+              redirect_host: "localhost",
+              redirect_is_local: true,
+              scopes: [
+                {
+                  scope: "documents:read",
+                  description:
+                    "Search and read the documents your role can access",
+                },
+              ],
+              resource: "https://research.example.com/mcp",
+              access_token_minutes: 60,
+            });
     expect(request.headers().authorization).toBe("Bearer test-token");
     if (state.expired || state.rejectNextToken) {
       state.rejectNextToken = false;
@@ -1044,5 +1059,31 @@ test("MCP consent explains an expired request", async ({ page }) => {
   await page.goto("/oauth/consent?request=expired");
   await expect(
     page.getByRole("heading", { name: "Connection request unavailable" }),
+  ).toBeVisible();
+});
+
+test("MCP consent warns when access goes to a hosted client", async ({
+  page,
+}) => {
+  await mockBackend(page);
+  await login(page);
+  await page.goto("/oauth/consent?request=hosted");
+  await expect(
+    page.getByText("Access will be sent to claude.ai"),
+  ).toBeVisible();
+});
+
+test("signing out in one tab signs out the others", async ({ context }) => {
+  const first = await context.newPage();
+  await mockBackend(first);
+  await login(first);
+  const second = await context.newPage();
+  await mockBackend(second);
+  // The mock's sign-in state is per page, so sign the second tab in directly.
+  await login(second);
+  await first.getByRole("button", { name: "Sign out" }).click();
+  await expect(second.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
+  await expect(
+    second.getByText("You signed out in another tab."),
   ).toBeVisible();
 });

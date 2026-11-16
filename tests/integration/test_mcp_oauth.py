@@ -153,10 +153,28 @@ async def test_discovery_points_clients_to_sign_in(mcp):
     assert set(metadata["grant_types_supported"]) == {"authorization_code", "refresh_token"}
 
 
-@pytest.mark.parametrize("redirect", ["http://evil.example/callback", "javascript:alert(1)"])
+@pytest.mark.parametrize(
+    "redirect",
+    [
+        "http://evil.example/callback",
+        "https://evil.example/callback",
+        "https://claude.ai.evil.example/callback",
+        "https://user:pass@claude.ai/callback",
+        "javascript:alert(1)",
+        "cursor://callback",
+    ],
+)
 async def test_registration_refuses_unsafe_redirects(mcp, redirect):
     response = await mcp.post("/register", json={"redirect_uris": [redirect], "token_endpoint_auth_method": "none"})
     assert response.status_code == 400
+
+
+@pytest.mark.parametrize(
+    "redirect",
+    ["http://127.0.0.1:43123/callback", "http://[::1]:5000/cb", "https://claude.ai/api/mcp/auth_callback"],
+)
+async def test_registration_accepts_local_and_allowed_hosted_clients(mcp, redirect):
+    await register(mcp, redirect=redirect)
 
 
 async def test_registration_is_rate_limited_per_address(mcp, monkeypatch):
