@@ -297,7 +297,10 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
               (_, i) =>
                 `Answer paragraph ${i + 1}: Revenue figures from the filing.`,
             ).join("\n\n")
-          : "Microsoft’s cost of revenue was **$32,780 million**.";
+          : mode === "cited"
+            ? "Revenue was **$85,320 million**【Source 5: MICROSOFT_2016_10K.pdf, Page 28】. " +
+              "Cost of revenue rose [Source: MICROSOFT_2016_10K.pdf, Page 52]."
+            : "Microsoft’s cost of revenue was **$32,780 million**.";
       if (mode !== "pending")
         state.messages.push({
           role: "assistant",
@@ -648,6 +651,9 @@ test("expired sessions return to login without submitting a question", async ({
 }) => {
   const state = await mockBackend(page);
   await login(page);
+  // Let the first loads finish, so the refresh below is the request that meets the expired session.
+  await expect(page.getByText("No conversations yet.")).toBeVisible();
+  await page.waitForLoadState("networkidle");
   state.expired = true;
   await page.getByRole("button", { name: "Refresh conversation list" }).click();
   await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
@@ -1197,4 +1203,22 @@ test("light is the default appearance and the dark choice is remembered", async 
   await openAccountMenu(page);
   await page.getByRole("button", { name: "Light" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+});
+
+test("citations in an answer are shown as compact chips", async ({ page }) => {
+  await mockBackend(page, { mode: "cited" });
+  await login(page);
+  await page.getByLabel("Ask a financial question").fill("Microsoft revenue?");
+  await page.getByRole("button", { name: "Send question" }).click();
+  const chips = page.locator(".answer .cite");
+  await expect(chips).toHaveText([
+    "MICROSOFT_2016_10K · p. 28",
+    "MICROSOFT_2016_10K · p. 52",
+  ]);
+  await expect(chips.first()).toHaveAttribute(
+    "title",
+    "MICROSOFT_2016_10K, page 28",
+  );
+  await expect(page.locator(".answer")).not.toContainText("Source 5");
+  await expect(page.locator(".answer")).not.toContainText("【");
 });

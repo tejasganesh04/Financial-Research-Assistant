@@ -307,6 +307,18 @@ export function PageHeader({ title, description, actions, eyebrow }) {
   );
 }
 
+// Models cite as [Source: file, Page 3], [Source 2: file, Page 3] or with 【 】 brackets. Show each
+// as a small chip, without the source number, which need not match the numbered list below.
+const CITATION =
+  /\s*[[【]\s*Sources?\s*\d*\s*:\s*([^,\]】]+?)\s*,\s*(?:pages?|p\.)\s*(\d+(?:\s*[-–]\s*\d+)?)\s*[\]】]/gi;
+
+export function withCitations(text) {
+  return text.replace(CITATION, (_, file, page) => {
+    const name = file.replace(/\.pdf$/i, "").replace(/[[\]"]/g, "");
+    return ` [${name} · p. ${page}](#cite "${name}, page ${page}")`;
+  });
+}
+
 export function Answer({ children }) {
   return (
     <div className="answer">
@@ -314,11 +326,16 @@ export function Answer({ children }) {
         remarkPlugins={[remarkGfm]}
         components={{
           img: () => null,
-          a: ({ children, href }) => (
-            <a href={href} target="_blank" rel="noreferrer">
-              {children}
-            </a>
-          ),
+          a: ({ children, href, title }) =>
+            href === "#cite" ? (
+              <span className="cite" title={title}>
+                {children}
+              </span>
+            ) : (
+              <a href={href} target="_blank" rel="noreferrer">
+                {children}
+              </a>
+            ),
           table: ({ children }) => (
             <div className="table-scroll">
               <table>{children}</table>
@@ -326,7 +343,7 @@ export function Answer({ children }) {
           ),
         }}
       >
-        {children || ""}
+        {withCitations(children || "")}
       </Markdown>
     </div>
   );

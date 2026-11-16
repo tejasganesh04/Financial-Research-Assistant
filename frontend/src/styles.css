@@ -2096,6 +2096,20 @@ button.account-row:disabled {
 .answer strong {
   font-weight: 500;
 }
+.cite {
+  display: inline-block;
+  margin: 0 2px;
+  padding: 0 8px;
+  border-radius: var(--pill);
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: 2px;
+  cursor: default;
+}
 .answer blockquote {
   margin: 0 0 16px;
   padding-left: 16px;
