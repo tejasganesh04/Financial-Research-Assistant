@@ -1,5 +1,6 @@
-// Regenerates src/icons.js from Material Symbols (Apache-2.0, @material-symbols/svg-400).
-// Run: node tools/gen-icons.mjs
+// Regenerates src/icons.js from Material Symbols (Apache-2.0). The icon package is large, so it
+// is not a dependency; to add or change an icon:
+//   npm install --no-save @material-symbols/svg-400 && node tools/gen-icons.mjs
 import fs from "node:fs";
 
 const MAP = {
