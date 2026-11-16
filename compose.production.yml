@@ -1,0 +1,51 @@
+# Production: HTTPS through Caddy, nothing else reachable from outside.
+# Use on top of the base file:
+#   docker compose -f compose.minimal.yml -f compose.production.yml --env-file .env up -d --build
+# See docs/deployment.md.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    image: financial-research-assistant-api:production
+    environment:
+      ENVIRONMENT: production
+      REQUEST_TRACE_DIR: /app/logs/traces
+    # Only Caddy can reach the API, so the forwarded client address can be trusted.
+    command:
+      [
+        "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000",
+        "--proxy-headers", "--forwarded-allow-ips", "*", "--no-server-header",
+      ]
+    ports: !reset []
+    restart: always
+
+  qdrant:
+    ports: !reset []
+    restart: always
+
+  postgres:
+    ports: !reset []
+    restart: always
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env to the public host name, such as research.example.com}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: always
+    networks: [rag-net]
+
+volumes:
+  caddy_data:
+  caddy_config:

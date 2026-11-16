@@ -51,59 +51,64 @@ Behaviour worth knowing:
 
 ## Connect Claude Code
 
-With the app running (`make up`):
+With the app running, add the server once:
 
 ```sh
-make mcp-token MCP_USER=analyst          # asks for the password, prints a command
+claude mcp add --transport http financial-research http://localhost:8000/mcp
 ```
 
-Run the printed command from the folder you use Claude Code in. It looks like:
+Then, in Claude Code, run `/mcp`, choose `financial-research` and select **Authenticate**. A
+browser tab opens on the app's consent page: sign in with your usual account (if you are not
+already signed in) and select **Allow access**. Claude Code stores the tokens and renews them by
+itself; `claude mcp list` shows `financial-research ... ✔ Connected`.
 
-```sh
-claude mcp add --transport http financial-research http://localhost:8000/mcp \
-  --header "Authorization: Bearer <token>"
-```
+Ask, for example: *"Using the financial-research tools, what was Amazon's days payable
+outstanding in FY2017? Show the calculation and cite pages."*
 
-`claude mcp list` should show `financial-research ... ✔ Connected`. In Claude Code, ask for
-example: *"Using the financial-research tools, what was Amazon's days payable outstanding in
-FY2017? Show the calculation and cite pages."*
+The connection has the role of the account that approved it. The app's **Connect Claude Code**
+page shows the same steps with the server's configured address.
 
-The token carries the role of the account that created it. Create the token with the account
-whose access the assistant should have.
+### Other clients
 
-### Other clients and stdio
+Any MCP client that supports remote servers over Streamable HTTP with OAuth can use the same
+address. It discovers everything else from the server:
 
-Any MCP client that supports Streamable HTTP can use `http://localhost:8000/mcp` with the
-`Authorization` header. A client can also start the server itself over stdio, inside the API
-container:
+1. A request without a token gets `401` with
+   `WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource/mcp"`.
+2. The resource metadata names the authorization server (the app itself), whose metadata at
+   `/.well-known/oauth-authorization-server` lists the `/authorize`, `/token`, `/register` and
+   `/revoke` endpoints.
+3. The client registers itself (dynamic client registration), then runs the authorization-code
+   flow with PKCE (`S256`). The user signs in and approves on `/oauth/consent`.
 
-```json
-{
-  "mcpServers": {
-    "financial-research": {
-      "command": "docker",
-      "args": ["compose", "-f", "/path/to/repo/compose.minimal.yml", "-f", "/path/to/repo/compose.local.yml",
-               "exec", "-T", "-e", "FRA_MCP_TOKEN", "api", "python", "-m", "src.mcp_server"],
-      "env": { "FRA_MCP_TOKEN": "<token>" }
-    }
-  }
-}
-```
+Hosted clients (for example Claude Desktop's custom connectors) need the app on a public HTTPS
+address; see [deployment](deployment.md).
 
-## Access and tokens
+## Sign-in, tokens and access
 
-- **Created from a login.** `POST /v1/auth/mcp-token` with an ordinary login token returns an
-  MCP token for the same user and role. `scripts/create_mcp_token.py` does both steps.
-- **Search only.** MCP tokens carry the `documents:read` scope and a separate audience. The app's
-  API rejects them, so they cannot open conversations, approve escalations or create more tokens.
-  The MCP endpoint rejects ordinary login tokens.
-- **Lifetime and revocation.** Tokens last `MCP_TOKEN_EXPIRY_DAYS` (default 30, at most 90). Each
-  has an id, shown when it is created; adding the id to `MCP_REVOKED_TOKEN_IDS` stops it working.
+- **Same accounts as the app.** There is no separate MCP password or token to hand out; anyone
+  with an account can connect their own client, and only they can approve it.
+- **Access tokens** are JWTs valid for `ACCESS_TOKEN_MINUTES` (default 60), with the `documents:read`
+  scope and the MCP address as their audience. The app's API rejects them, so they cannot open
+  conversations, approve escalations or change accounts; the MCP endpoint rejects the app's own
+  tokens.
+- **Refresh tokens** rotate on every use and are stored only as hashes. Reusing an old one ends the
+  connection. Renewal checks the account, so a password change, deactivation or "sign out
+  everywhere" stops a client within the hour. Connections end after `SESSION_IDLE_DAYS` without use
+  (default 7) or `SESSION_MAX_DAYS` after approval (default 30).
+- **Disconnect** a client under Account → Sessions in the app; administrators can end any user's
+  sessions from the Users page. Clients can also revoke their own tokens at `/revoke`.
+- **Consent requests** expire after 10 minutes and authorization codes after 2 minutes; a code used
+  twice ends the connection it created.
+- **Registration** is open, as MCP clients expect, but limited per IP address
+  (`MCP_CLIENT_REGISTRATIONS_PER_HOUR`). Redirect addresses must be `https`, or `http` on localhost.
+  A registration alone grants nothing: a user still has to sign in and approve.
 - **Rate limit.** `MCP_RATE_LIMIT_PER_MINUTE` searches and page reads per user (default 30).
 - **Host check.** Requests must name an allowed host (`MCP_ALLOWED_HOSTS`), which blocks
   DNS-rebinding attacks from web pages. Add your domain when serving beyond localhost.
-- **Audit log.** Every call logs one line (`src.mcp_server.audit`) with the user, role, token id,
-  tool, filters, result count, status and duration. Query text is not logged; its length is.
+- **Audit log.** Every tool call logs one line (`src.mcp_server.audit`) with the user, role, session
+  id, tool, filters, result count, status and duration. Query text is not logged; its length is.
+  Connections and disconnections appear in the app's Activity log.
 
 ## Measured
 
@@ -142,14 +147,13 @@ The answer pages were in the results in every case; the mistakes came from choos
 
 ## Limits
 
-- The rate limit is kept in memory for one API process; several processes would need a shared
+- The MCP rate limit is kept in memory for one API process; several processes would need a shared
   store such as Redis.
 - The document list is read once per API process, like the in-app catalog. Restart the API after
   adding documents.
-- Tokens are signed with the app's `JWT_SECRET`. Rotating the secret revokes every token. A role
-  change takes effect when the user creates a new token.
-- Clients get tokens from the app rather than through an OAuth sign-in flow. MCP's OAuth flow would
-  let a client sign the user in directly.
+- Access tokens are signed with the app's `JWT_SECRET`. Rotating the secret ends every access token
+  at once (refresh tokens keep working and issue new ones).
+- A role change applies when the client next renews its access token, within the hour.
 - Answers written by an external assistant are not checked by the app. Use the in-app assistant
   where answers must be verified or approved.
 
@@ -157,7 +161,9 @@ The answer pages were in the results in every case; the mistakes came from choos
 
 | Symptom | Fix |
 | --- | --- |
-| `401` or "needs authentication" | The token expired or was revoked: create a new one. |
+| `401` or "needs authentication" | Run `/mcp` in Claude Code and choose Authenticate again (the connection was ended, or the password changed). |
+| "Connection request unavailable" in the browser | The consent link expired (10 minutes): start again from the client. |
+| Sign-in fails with "invalid_request ... resource" | The client was added with a different address than `PUBLIC_URL`; use the address shown on the Connect page. |
 | `421` / "Invalid Host header" | Add the host name to `MCP_ALLOWED_HOSTS`. |
 | `503` "The MCP server is not running" | `MCP_ENABLED` is false, or the API is still starting. |
 | Claude Code shows "Failed to connect" | Start the app (`make up`) and check `http://localhost:8000/v1/health`. |

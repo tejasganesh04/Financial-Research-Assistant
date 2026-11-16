@@ -1,0 +1,16 @@
+# Caddy obtains and renews the HTTPS certificate for {$DOMAIN} automatically.
+{$DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy api:8000 {
+		# Answers stream progress events; pass them through as they arrive.
+		flush_interval -1
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# Plain-HTTP requests are redirected to HTTPS by Caddy itself.

@@ -1,0 +1,149 @@
+# Deployment
+
+How to host the app privately for invited users, with HTTPS, on one server. The same accounts
+work in the web app and in MCP clients such as Claude Code.
+
+```
+Internet ──443──▶ Caddy (HTTPS, certificates) ──▶ API (FastAPI, React interface, /mcp)
+                                                    ├─▶ PostgreSQL (accounts, sessions, conversations)
+                                                    └─▶ Qdrant (knowledge base)
+```
+
+Only Caddy is reachable from outside. The API, PostgreSQL and Qdrant listen on the private
+Docker network.
+
+## What you need
+
+- A Linux server with Docker and about **4 GB of memory** (the API loads a local fallback reranker
+  and the knowledge base is about 68,000 chunks), and 10 GB of disk.
+- A domain name, for example `research.example.com`, with a DNS `A` record pointing at the server.
+  Ports 80 and 443 must be open; Caddy uses them to obtain the certificate.
+- API keys for the models you use (see `.env.example`) and a Voyage key for query embeddings.
+
+## 1. Configure
+
+Copy the repository to the server and create `.env` from `.env.example`. In addition to the model
+keys, set:
+
+```sh
+ENVIRONMENT=production
+DOMAIN=research.example.com
+PUBLIC_URL=https://research.example.com
+
+# Long random values: python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+JWT_SECRET=...
+POSTGRES_PASSWORD=...
+
+# The MCP endpoint only answers requests addressed to these hosts (DNS-rebinding protection).
+MCP_ALLOWED_HOSTS=["research.example.com"]
+MCP_ALLOWED_ORIGINS=["https://research.example.com"]
+
+QDRANT_COLLECTION=financial_docs_v3
+LANGCHAIN_TRACING_V2=false
+```
+
+The API refuses to start in production with the default `JWT_SECRET` or database password, a
+`JWT_SECRET` shorter than 32 characters, a wildcard `CORS_ORIGINS`, or a `PUBLIC_URL` that is not
+`https://`. In production the refresh cookie is sent over HTTPS only, the API sends HSTS, and the
+interactive API docs (`/docs`) are off.
+
+Limits worth reviewing for your budget (defaults shown):
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `QUESTIONS_PER_HOUR` / `QUESTIONS_PER_DAY` | 60 / 300 | Questions per user to the in-app assistant |
+| `MCP_RATE_LIMIT_PER_MINUTE` | 30 | Searches and page reads per user from MCP clients |
+| `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES` | 5 / 15 | Account lockout after wrong passwords |
+| `ACCESS_TOKEN_MINUTES` | 60 | Longest time a revoked session keeps working |
+| `SESSION_IDLE_DAYS` / `SESSION_MAX_DAYS` | 7 / 30 | When a browser or MCP client must sign in again |
+
+## 2. Bring the knowledge base
+
+Copy the existing Qdrant data rather than embedding the corpus again. On the machine that has it:
+
+```sh
+docker run --rm -v financialresearchassistant_qdrant_data:/data -v "$PWD":/backup alpine \
+  tar czf /backup/qdrant-data.tgz -C /data .
+```
+
+Copy `qdrant-data.tgz` to the server, then restore it into the production volume before the first
+start (the volume name starts with the folder name of the checkout):
+
+```sh
+docker volume create <folder>_qdrant_data
+docker run --rm -v <folder>_qdrant_data:/data -v "$PWD":/backup alpine \
+  tar xzf /backup/qdrant-data.tgz -C /data
+```
+
+Alternatively restore the published snapshot and build the contextual collection as in
+[local setup](../LOCAL_SETUP.md#3-restore-an-empty-knowledge-base) (this embeds again).
+
+## 3. Start
+
+```sh
+docker compose -f compose.minimal.yml -f compose.production.yml up -d --build
+docker compose -f compose.minimal.yml -f compose.production.yml logs -f caddy api
+```
+
+Caddy obtains the certificate on first start. Then create the accounts; each password is printed
+once:
+
+```sh
+docker compose -f compose.minimal.yml -f compose.production.yml exec api python scripts/manage_users.py seed
+```
+
+Keep the `admin` account for yourself and hand out the others. Open
+`https://research.example.com/`, sign in as admin and check **Users** and **Activity**.
+
+## 4. Invite people
+
+- Give each person their username, password and the address. They can change the password under
+  **Account**.
+- For Claude Code they run `claude mcp add --transport http financial-research
+  https://research.example.com/mcp`, then `/mcp` → **Authenticate**, and approve in the browser.
+  The **Connect Claude Code** page in the app shows the exact command.
+- To remove someone: **Users** → *Manage* → **Deactivate**. Their browser and MCP sessions end at
+  once; an access token already issued stops working within `ACCESS_TOKEN_MINUTES`.
+
+## Operations
+
+**Backups.** Back up PostgreSQL (accounts, conversations, approvals) daily, for example with cron:
+
+```sh
+docker compose -f compose.minimal.yml -f compose.production.yml exec -T postgres \
+  pg_dump -U rag_user -Fc rag_agent > backups/rag_agent-$(date +%F).dump
+```
+
+The Qdrant volume changes only when the knowledge base is rebuilt; keep the archive from step 2.
+
+**Updates.**
+
+```sh
+git pull
+docker compose -f compose.minimal.yml -f compose.production.yml up -d --build api
+```
+
+Account tables are created or extended automatically at start-up.
+
+**Rotating the signing key.** Changing `JWT_SECRET` and restarting ends every access token at
+once; browsers and MCP clients renew with their refresh tokens.
+
+**Logs.** `docker compose ... logs api` includes one audit line per MCP tool call
+(`src.mcp_server.audit`). Sign-ins, failed attempts, lockouts, MCP connections and account changes
+are in the app's **Activity** page (kept 180 days).
+
+**One API process.** Sign-in attempt limits and MCP call limits are counted in memory per process;
+question quotas are counted in PostgreSQL. Run a single API container (the default).
+
+## Security summary
+
+| Area | Measure |
+| --- | --- |
+| Accounts | No sign-up; created by an administrator. Passwords hashed with scrypt; minimum 12 characters. |
+| Sign-in | Lockout after repeated failures; attempts limited per IP; every attempt logged. |
+| Web sessions | 60-minute access token in page memory only; rotating refresh token in an httpOnly, `Secure`, `SameSite=Strict` cookie limited to `/v1/auth`; reuse of an old refresh token ends the session. |
+| MCP | OAuth 2.1 with PKCE and dynamic registration; consent by the signed-in user; tokens bound to the MCP address; rotating refresh tokens checked against the account at renewal. |
+| Revocation | Password change, sign-out-everywhere and deactivation end sessions immediately; access tokens expire within the hour. |
+| Transport | HTTPS only via Caddy; HSTS; DNS-rebinding check on `/mcp`. |
+| Browser | Content Security Policy (own scripts only, no framing), `nosniff`, no referrer. |
+| Cost control | Per-user question quotas; per-user MCP call limits; registration limits per IP. |
