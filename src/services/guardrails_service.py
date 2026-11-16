@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Literal
 
+from src.services.model_loading import MODEL_LOAD_LOCK
 from src.services.provider_errors import raise_if_rate_limited
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,14 @@ def _get_injection_scanner():
     if _llm_guard_available is False:
         return None
     if _injection_scanner is None:
+        with MODEL_LOAD_LOCK:
+            return _load_injection_scanner()
+    return _injection_scanner
+
+
+def _load_injection_scanner():
+    global _injection_scanner, _llm_guard_available
+    if _injection_scanner is None and _llm_guard_available is not False:
         try:
             from llm_guard.input_scanners import PromptInjection
 
@@ -131,6 +140,14 @@ def _get_presidio_engines():
     if _init_failed:
         return None, None
     if _analyzer is None:
+        with MODEL_LOAD_LOCK:
+            return _load_presidio_engines()
+    return _analyzer, _anonymizer
+
+
+def _load_presidio_engines():
+    global _analyzer, _anonymizer, _init_failed
+    if _analyzer is None and not _init_failed:
         try:
             import spacy
 

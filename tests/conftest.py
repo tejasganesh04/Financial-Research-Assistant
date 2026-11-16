@@ -18,6 +18,7 @@ def no_question_quotas(monkeypatch):
 
     monkeypatch.setattr(settings, "QUESTIONS_PER_HOUR", 0)
     monkeypatch.setattr(settings, "QUESTIONS_PER_DAY", 0)
+    monkeypatch.setattr(settings, "WARM_MODELS_ON_START", False)
 
 
 @pytest.fixture

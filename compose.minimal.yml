@@ -8,6 +8,9 @@ services:
     environment:
       QDRANT_HOST: qdrant
       POSTGRES_HOST: postgres
+      # Download Hugging Face models over standard HTTPS; the Xet downloader can stall mid-file.
+      HF_HUB_DISABLE_XET: "1"
+      HF_HUB_DOWNLOAD_TIMEOUT: "60"
     depends_on:
       qdrant:
         condition: service_healthy

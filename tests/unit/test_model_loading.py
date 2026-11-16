@@ -42,3 +42,28 @@ def test_concurrent_first_loads_run_one_at_a_time_and_load_once(monkeypatch):
         reranker_service._load_reranker.cache_clear()
     assert peak == 1
     assert sorted(loads) == ["bm25", "reranker"]
+
+
+def test_screening_models_load_once_even_when_warm_up_and_a_question_overlap(monkeypatch):
+    from src.services import guardrails_service, model_loading
+
+    loads = []
+
+    class Scanner:
+        def __init__(self, **kwargs):
+            time.sleep(0.05)
+            loads.append("scanner")
+
+    monkeypatch.setitem(sys.modules, "llm_guard.input_scanners", SimpleNamespace(PromptInjection=Scanner))
+    monkeypatch.setattr(guardrails_service, "_injection_scanner", None)
+    monkeypatch.setattr(guardrails_service, "_llm_guard_available", None)
+    monkeypatch.setattr(guardrails_service, "_get_presidio_engines", lambda: (None, None))
+    monkeypatch.delenv("RAG_DISABLE_LLM_GUARD", raising=False)
+    threads = [threading.Thread(target=model_loading.warm_local_models)] + [
+        threading.Thread(target=guardrails_service._get_injection_scanner) for _ in range(3)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert loads == ["scanner"]
