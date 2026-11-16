@@ -1,8 +1,8 @@
 """Rank retrieved chunks against the question.
 
-The configured provider is Voyage rerank-2.5 (an API call) or the local BGE
-cross-encoder. If the Voyage call fails, the local model scores the chunks so
-retrieval still completes.
+The configured provider is Voyage (an API call) or the local BGE cross-encoder.
+If the Voyage call fails, the local model scores the chunks so retrieval still
+completes, or, with RERANKER_LOCAL_FALLBACK off, the search order is kept.
 """
 
 import logging
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
 DEFAULT_DEVICE = "cpu"
+SEARCH_ORDER = "search-order"  # rerank_model when no reranker was available
 
 
 def get_reranker():
@@ -66,7 +67,10 @@ def score(query: str, documents: list[str]) -> tuple[list[float], str]:
     if settings.RERANKER_PROVIDER == "voyage":
         try:
             return voyage_scores(query, documents), settings.VOYAGE_RERANK_MODEL
-        except Exception as error:  # noqa: BLE001 - any provider failure falls back to the local model
+        except Exception as error:  # noqa: BLE001 - any provider failure falls back
+            if not settings.RERANKER_LOCAL_FALLBACK:
+                logger.warning("Voyage reranker unavailable (%s); keeping the search order", type(error).__name__)
+                return [0.0] * len(documents), SEARCH_ORDER  # equal scores: the stable sort keeps the order
             logger.warning("Voyage reranker unavailable (%s); using the local model", type(error).__name__)
     return [float(s) for s in get_reranker().predict([(query, d) for d in documents])], RERANKER_MODEL
 
