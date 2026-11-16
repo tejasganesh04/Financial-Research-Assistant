@@ -120,8 +120,10 @@ def _run_calculation(call: dict) -> dict:
     return {"program": program, **result}
 
 
-async def _answer_with_calculator(llm, tool_llm, messages: list) -> tuple[AIMessage, list[dict]]:
-    """Let the model call the calculator a bounded number of times, then return its answer."""
+async def _answer_with_calculator(llm, tool_llm, messages: list, plain: list) -> tuple[AIMessage, list[dict]]:
+    """Let the model call the calculator a bounded number of times, then return its answer.
+
+    `plain` is the same request without the calculator instructions, used if the limit is reached."""
     calculations: list[dict] = []
     for _ in range(settings.CALCULATOR_MAX_ROUNDS):
         response = await aretry_llm_call(lambda: tool_llm.ainvoke(messages), label="generator with calculator")
@@ -137,7 +139,7 @@ async def _answer_with_calculator(llm, tool_llm, messages: list) -> tuple[AIMess
     # Still calculating after the limit: answer from the results so far, without tools.
     logger.warning("Calculator round limit reached; answering from %d calculations", len(calculations))
     summary = "\n".join(step for c in calculations for step in c.get("steps", [])) or "none"
-    final = [*messages[:2], HumanMessage(content=f"Calculator results:\n{summary}\n\nWrite the final answer now.")]
+    final = [*plain, HumanMessage(content=f"Calculator results:\n{summary}\n\nWrite the final answer now.")]
     return await llm.ainvoke(final), calculations
 
 
@@ -243,7 +245,7 @@ async def generator_node(state: RAGState) -> dict:
         if tool_llm is not None:
             messages = [_with_calculator_instructions(plain_messages[0]), plain_messages[1]]
             try:
-                result, calculations = await _answer_with_calculator(llm, tool_llm, messages)
+                result, calculations = await _answer_with_calculator(llm, tool_llm, messages, plain_messages)
             except Exception as error:
                 # A provider that keeps mangling tool calls should not cost the user the answer.
                 if is_rate_limited(error) or "tool_use_failed" not in str(error):
