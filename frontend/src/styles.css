@@ -2664,6 +2664,12 @@ button.account-row:disabled {
   .hint-keys {
     display: none;
   }
+  .composer textarea {
+    padding: 16px 20px 0;
+  }
+  .composer-bar {
+    padding: 0 8px 8px 20px;
+  }
   .modal-footer {
     flex-wrap: wrap;
   }
