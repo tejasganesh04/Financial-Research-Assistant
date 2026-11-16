@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRY_HOURS: int = 24
 
+    # --- Calculator tool for the answer model (exact arithmetic) ---
+    CALCULATOR_ENABLED: bool = True
+    # Model turns that may call the calculator before the answer must be written.
+    CALCULATOR_MAX_ROUNDS: int = 4
+
     # --- MCP server (document search for external AI assistants, at /mcp) ---
     MCP_ENABLED: bool = True
     # Address clients use to reach this API; shown when a token is created.

@@ -90,6 +90,7 @@ def _build_initial_state(
         "relevant_chunks": [],
         "grading_results": [],
         "generated_answer": "",
+        "calculations": [],
         "hallucination_status": "",
         "hallucination_score": 0.0,
         "hallucination_feedback": "",

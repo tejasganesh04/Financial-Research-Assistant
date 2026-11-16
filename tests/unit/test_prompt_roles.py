@@ -176,7 +176,7 @@ async def test_generator_keeps_revision_draft_feedback_and_sources_in_human_mess
             "agent_synthesis": "REQUEST_SYNTHESIS_7F2",
         }
     )
-    assert result == {"generated_answer": "Revised answer"}
+    assert result == {"generated_answer": "Revised answer", "calculations": []}
     assert_roles(
         model.ainvoke.call_args.args[0], QUESTION, EVIDENCE, FEEDBACK, "REQUEST_DRAFT_7F2", "REQUEST_SYNTHESIS_7F2"
     )
