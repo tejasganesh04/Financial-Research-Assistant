@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from langchain_core.messages import HumanMessage
 from sse_starlette.sse import EventSourceResponse
 
-from src.api.dependencies import get_current_user
+from src.api.dependencies import get_current_user, question_quota
 from src.config.rbac_config import approvers_for, get_permissions
 from src.graph.builder import build_graph
 from src.models.auth import User
@@ -104,7 +104,12 @@ def _build_initial_state(
 
 
 @router.post("/messages", response_model=ChatResponse)
-async def chat(request: ChatRequest, user: User = Depends(get_current_user), http_request: Request = None):
+async def chat(
+    request: ChatRequest,
+    user: User = Depends(get_current_user),
+    http_request: Request = None,
+    _quota: None = Depends(question_quota),
+):
     """Process a chat message through the RAG agent pipeline and return the complete answer."""
     request_started = time.monotonic()
     thread_id = request.thread_id or str(uuid.uuid4())
@@ -561,7 +566,11 @@ async def delete_thread_endpoint(
 
 @router.post("/{thread_id}/messages", response_model=ChatResponse)
 async def conversation_message(
-    thread_id: str, body: ChatRequest, http_request: Request, user: User = Depends(get_current_user)
+    thread_id: str,
+    body: ChatRequest,
+    http_request: Request,
+    user: User = Depends(get_current_user),
+    _quota: None = Depends(question_quota),
 ):
     return await chat(body.model_copy(update={"thread_id": thread_id}), user, http_request)
 
@@ -593,7 +602,12 @@ _NODE_LABELS = {
 
 
 @router.post("/messages/stream")
-async def chat_stream(request: ChatRequest, user: User = Depends(get_current_user), http_request: Request = None):
+async def chat_stream(
+    request: ChatRequest,
+    user: User = Depends(get_current_user),
+    http_request: Request = None,
+    _quota: None = Depends(question_quota),
+):
     """Prepare a question, send live stage updates, then return the complete answer or pending status."""
     request_started = time.monotonic()
     thread_id = request.thread_id or str(uuid.uuid4())
@@ -800,6 +814,10 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
 
 @router.post("/{thread_id}/messages/stream")
 async def conversation_message_stream(
-    thread_id: str, body: ChatRequest, http_request: Request, user: User = Depends(get_current_user)
+    thread_id: str,
+    body: ChatRequest,
+    http_request: Request,
+    user: User = Depends(get_current_user),
+    _quota: None = Depends(question_quota),
 ):
     return await chat_stream(body.model_copy(update={"thread_id": thread_id}), user, http_request)

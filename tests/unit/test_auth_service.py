@@ -65,6 +65,7 @@ def test_expired_token_raises_http_exception():
         "iat": datetime.now(timezone.utc) - timedelta(hours=25),
         "exp": datetime.now(timezone.utc) - timedelta(hours=1),
         "iss": "rag-agent-auth",
+        "aud": "fra-web",
     }
     expired_token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
@@ -98,6 +99,7 @@ def test_wrong_secret_raises_http_exception():
         "iat": datetime.now(timezone.utc),
         "exp": datetime.now(timezone.utc) + timedelta(hours=1),
         "iss": "rag-agent-auth",
+        "aud": "fra-web",
     }
     bad_token = jwt.encode(payload, "completely-wrong-secret-padded-to-32-bytes", algorithm="HS256")
 
@@ -106,3 +108,38 @@ def test_wrong_secret_raises_http_exception():
 
     assert exc_info.value.status_code == 401
     assert "invalid" in exc_info.value.detail.lower()
+
+
+# ── Access tokens are short-lived and for the web API only ────────────────
+
+
+def test_access_tokens_last_the_configured_minutes():
+    token = create_token(user_id="u1", name="A", role="analyst", session_id="s-1")
+    claims = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM], audience="fra-web")
+    assert claims["exp"] - claims["iat"] == settings.ACCESS_TOKEN_MINUTES * 60
+    assert decode_token(token).session_id == "s-1"
+
+
+def test_tokens_for_another_audience_are_rejected():
+    payload = {
+        "sub": "u",
+        "role": "admin",
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+        "iss": "rag-agent-auth",
+        "aud": "http://localhost:8000/mcp",
+    }
+    with pytest.raises(HTTPException):
+        decode_token(jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM))
+
+
+def test_tokens_without_an_audience_are_rejected():
+    payload = {
+        "sub": "u",
+        "role": "admin",
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+        "iss": "rag-agent-auth",
+    }
+    with pytest.raises(HTTPException):
+        decode_token(jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM))

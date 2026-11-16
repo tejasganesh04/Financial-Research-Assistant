@@ -9,3 +9,5 @@ class User(BaseModel):
     name: str
     role: str  # "analyst", "finance", "hr", "c_level", "admin"
     department: str = ""
+    # The sign-in session the access token belongs to (absent in tokens made directly in tests).
+    session_id: str | None = None

@@ -1,19 +1,21 @@
+import asyncio
 import logging
 import os
 import subprocess
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from functools import lru_cache
 from pathlib import Path
 
 import psycopg
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 
-from src.api.routes import approvals, auth, conversations, documents, health
+from src.api.routes import admin, approvals, auth, conversations, documents, health, oauth
 from src.config.settings import settings
+from src.services import user_store
 
 API_VERSION = "1"
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
@@ -75,25 +77,56 @@ async def lifespan(app: FastAPI):
         app.state.checkpointer = None
         app.state.pool = None
 
+    housekeeping = None
+    if app.state.pool is not None:
+        await user_store.ensure_schema(app.state.pool)
+        await user_store.purge_expired(app.state.pool)
+        if await user_store.count_accounts(app.state.pool) == 0:
+            logger.warning("No user accounts exist yet. Create them with: make users")
+        housekeeping = asyncio.create_task(_housekeeping(app.state.pool))
+
     logger.info(f"RAG Agent API starting (environment={settings.ENVIRONMENT})")
     async with AsyncExitStack() as stack:
         if settings.MCP_ENABLED:
+            from src.mcp_server.auth import provider
             from src.mcp_server.server import http_lifespan
 
+            provider.pool = app.state.pool
             await stack.enter_async_context(http_lifespan())
-            logger.info("MCP server available at /mcp")
+            logger.info("MCP server available at /mcp (OAuth issuer %s)", settings.public_url)
         yield
+
+    if housekeeping is not None:
+        housekeeping.cancel()
+        with suppress(asyncio.CancelledError):
+            await housekeeping
 
     if app.state.pool:
         await app.state.pool.close()
     logger.info("RAG Agent API shutting down")
 
 
+async def _housekeeping(pool) -> None:
+    """Delete expired sessions, codes and counters every hour."""
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            await user_store.purge_expired(pool)
+        except Exception:
+            logger.exception("Auth housekeeping failed")
+
+
+_PRODUCTION = settings.ENVIRONMENT == "production"
+
 app = FastAPI(
     title="Financial Research Assistant API",
     description="Financial document questions, sources, conversations and human review",
-    version="0.3.5",
+    version="0.4.0",
     lifespan=lifespan,
+    # The interactive API docs load scripts from a CDN; keep them to development.
+    docs_url=None if _PRODUCTION else "/docs",
+    redoc_url=None if _PRODUCTION else "/redoc",
+    openapi_url=None if _PRODUCTION else "/openapi.json",
 )
 
 
@@ -108,13 +141,34 @@ async def database_unavailable(request, exc):
     )
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+if settings.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+# The interface's own scripts and styles only; no framing, no third-party connections.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+    "font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; "
+    "object-src 'none'"
 )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+    if _PRODUCTION:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 @lru_cache(maxsize=1)
@@ -161,19 +215,22 @@ def root():
     }
 
 
-_routers = [health, auth, conversations, approvals, documents]
+_routers = [health, auth, admin, oauth, conversations, approvals, documents]
 
 for r in _routers:
     app.include_router(r.router, prefix=f"/v{API_VERSION}")
 
 # Document search for external AI assistants (Claude Code, Claude Desktop, ...); see src/mcp_server.
+# OAuth discovery, registration, authorization and token endpoints sit at the root, as MCP clients
+# expect them there.
 if settings.MCP_ENABLED:
     from starlette.routing import Route
 
-    from src.mcp_server.server import http_endpoint, mcp
+    from src.mcp_server.server import http_endpoint, mcp, oauth_routes
 
     mcp._mcp_server.version = app.version  # report this app's version, not the SDK's
     app.router.routes.append(Route("/mcp", endpoint=http_endpoint, include_in_schema=False))
+    app.router.routes.extend(oauth_routes())
 
 if (FRONTEND_DIR / "assets").is_dir():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="frontend-assets")
@@ -185,3 +242,27 @@ def favicon():
     if not icon.is_file():
         return JSONResponse(status_code=404, content={"detail": "Frontend not built"})
     return FileResponse(icon)
+
+
+# Pages of the single-page interface; each serves the same index.html and the app picks the view.
+SPA_PATHS = (
+    "/sign-in",
+    "/approvals",
+    "/admin",
+    "/admin/users",
+    "/admin/activity",
+    "/account",
+    "/connect",
+    "/oauth/consent",
+)
+
+
+def _spa_page():
+    index = FRONTEND_DIR / "index.html"
+    if not index.is_file():
+        return JSONResponse(status_code=404, content={"detail": "Frontend not built"})
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+
+for _path in SPA_PATHS:
+    app.add_api_route(_path, _spa_page, methods=["GET"], include_in_schema=False, response_model=None)
