@@ -1,4 +1,4 @@
-.PHONY: up down restart logs ps seed-db build-kb mcp-token run test test-unit test-integration lint format check clean
+.PHONY: up down restart logs ps seed-db build-kb users users-list user-password run test test-unit test-integration lint format check clean
 
 COMPOSE = docker compose -f compose.minimal.yml -f compose.local.yml
 
@@ -25,10 +25,17 @@ seed-db:
 build-kb:
 	$(COMPOSE) exec -T api python scripts/build_contextual_collection.py --target financial_docs_v3
 
-# --- MCP server: create a token and print the Claude Code command (docs/mcp-server.md) ---
-MCP_USER ?= analyst
-mcp-token:
-	python3 scripts/create_mcp_token.py --username $(MCP_USER)
+# --- Accounts (no sign-up; see scripts/manage_users.py) ---
+# One account per role, with generated passwords printed once.
+users:
+	$(COMPOSE) exec api python scripts/manage_users.py seed
+
+users-list:
+	$(COMPOSE) exec api python scripts/manage_users.py list
+
+# make user-password USER=analyst   (prompts for the new password; ends the user's sessions)
+user-password:
+	$(COMPOSE) exec api python scripts/manage_users.py set-password $(USER)
 
 # --- Local development (API on the host; Qdrant and PostgreSQL in Docker) ---
 run:

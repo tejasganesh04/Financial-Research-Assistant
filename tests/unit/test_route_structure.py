@@ -13,6 +13,7 @@ def test_supported_route_groups_and_no_legacy_aliases():
     assert "/v1/conversations/{thread_id}/messages/stream" in paths
     assert "/v1/approvals/{thread_id}/approve" in paths
     assert "/v1/approvals/{thread_id}/reject" in paths
+    assert {"/v1/auth/refresh", "/v1/auth/logout", "/v1/auth/password", "/v1/admin/users"} <= paths
     for prefix in (
         "/auth",
         "/chat",
@@ -21,7 +22,6 @@ def test_supported_route_groups_and_no_legacy_aliases():
         "/v1/chat",
         "/v1/threads",
         "/v1/hitl",
-        "/v1/admin",
         "/v1/ingest",
         "/v1/warm",
     ):

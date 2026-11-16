@@ -77,39 +77,17 @@ class ChatResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Request body for login."""
+    """Request body for sign-in."""
 
-    username: str
-    password: str
-
-
-class TokenResponse(BaseModel):
-    """Login response containing the signed JWT and demo identity. React then calls /auth/me to load permissions."""
-
-    access_token: str
-    token_type: str = "bearer"
-    user_id: str
-    name: str
-    role: str
-    department: str
+    username: str = Field(max_length=80)
+    password: str = Field(max_length=256)
 
 
-class McpTokenRequest(BaseModel):
-    """Optional lifetime for a new MCP token; the server's default applies when omitted."""
+class PasswordChangeRequest(BaseModel):
+    """A signed-in user changing their own password."""
 
-    days: int | None = None
-
-
-class McpTokenResponse(BaseModel):
-    """A search-only token for MCP clients. Shown once; the API itself does not accept it."""
-
-    access_token: str
-    token_type: str = "bearer"
-    token_id: str
-    expires_at: str
-    role: str
-    scope: str
-    mcp_url: str
+    current_password: str = Field(max_length=256)
+    new_password: str = Field(max_length=256)
 
 
 class UserPermissions(BaseModel):
@@ -121,12 +99,22 @@ class UserPermissions(BaseModel):
 
 
 class UserMeResponse(BaseModel):
-    """`GET /auth/me` response. Validates the JWT is still good and lets
-    the frontend re-fetch user state after a refresh.
-    """
+    """The signed-in identity and its role permissions (`GET /auth/me`, and inside SessionResponse)."""
 
     user_id: str
     name: str
     role: str
     department: str
     permissions: UserPermissions
+
+
+class SessionResponse(BaseModel):
+    """Sign-in or renewal: a short-lived access token for the Authorization header, and the user.
+
+    The refresh token is never in the body; it travels in an httpOnly cookie.
+    """
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserMeResponse

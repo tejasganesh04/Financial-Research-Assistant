@@ -4,17 +4,15 @@ Tools search and read documents with the same hybrid search, reranker and role p
 in-app assistant. Answer writing, answer checks, escalation and human approval stay in the app:
 an MCP caller only ever sees what its own role allows.
 
-Served over Streamable HTTP at /mcp inside the API (see `http_endpoint` and `http_lifespan`), or
-over stdio with `python -m src.mcp_server` for a single user.
+Served over Streamable HTTP at /mcp inside the API (see `http_endpoint` and `http_lifespan`).
+Clients sign in with OAuth using the same accounts as the web app (src/mcp_server/auth.py).
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import threading
 import time
-from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from functools import partial
 from typing import Annotated, Any
@@ -22,20 +20,29 @@ from typing import Annotated, Any
 import anyio
 from mcp.server.auth.middleware.auth_context import AuthContextMiddleware, get_access_token
 from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser, BearerAuthBackend, RequireAuthMiddleware
+from mcp.server.auth.provider import ProviderTokenVerifier
+from mcp.server.auth.routes import (
+    build_resource_metadata_url,
+    create_auth_routes,
+    create_protected_resource_routes,
+)
+from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
-from pydantic import Field
+from pydantic import AnyHttpUrl, Field
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from src.config.settings import settings
 from src.mcp_server import knowledge
-from src.mcp_server.auth import SCOPE, InvalidMcpToken, McpTokenVerifier, decode_mcp_token
+from src.mcp_server.auth import SCOPE, caller_from_claims, provider
 from src.mcp_server.knowledge import Caller, RequestError
 from src.services.provider_errors import ProviderRateLimitError, is_rate_limited
+from src.services.rate_limit import SlidingWindowLimiter
 
 logger = logging.getLogger(__name__)
 audit = logging.getLogger("src.mcp_server.audit")
@@ -61,42 +68,27 @@ READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotent
 
 mcp = FastMCP(name="financial-research", instructions=INSTRUCTIONS, log_level="WARNING")
 
-# Set by `python -m src.mcp_server` (stdio): one user per process, identified by its token at startup.
-_stdio_caller: Caller | None = None
-
-
-def set_stdio_caller(caller: Caller | None) -> None:
-    global _stdio_caller
-    _stdio_caller = caller
-
 
 class RateLimiter:
-    """At most `limit` calls per user in any 60-second window, in this process."""
+    """At most `limit` searches or page reads per user in any 60-second window, in this process."""
 
     def __init__(self, limit_per_minute: int):
         self.limit = limit_per_minute
-        self._calls: dict[str, deque] = defaultdict(deque)
-        self._lock = threading.Lock()
+        self._window = SlidingWindowLimiter(limit_per_minute, 60)
 
     def check(self, key: str) -> None:
-        now = time.monotonic()
-        with self._lock:
-            calls = self._calls[key]
-            while calls and calls[0] <= now - 60:
-                calls.popleft()
-            if self.limit > 0 and len(calls) >= self.limit:
-                wait = max(1, int(60 - (now - calls[0])) + 1)
-                raise RequestError(
-                    f"Rate limit reached ({self.limit} searches or page reads per minute). Try again in {wait} seconds."
-                )
-            calls.append(now)
+        wait = self._window.hit(key)
+        if wait:
+            raise RequestError(
+                f"Rate limit reached ({self.limit} searches or page reads per minute). Try again in {wait} seconds."
+            )
 
 
 limiter = RateLimiter(settings.MCP_RATE_LIMIT_PER_MINUTE)
 
 
 def current_caller(ctx: Context | None) -> Caller:
-    """The verified caller: the HTTP request's bearer token, or the stdio process's token."""
+    """The verified caller, from the request's OAuth access token."""
     access = None
     try:
         request = ctx.request_context.request if ctx is not None else None
@@ -106,14 +98,10 @@ def current_caller(ctx: Context | None) -> Caller:
     if isinstance(user, AuthenticatedUser):
         access = user.access_token
     access = access or get_access_token()
-    if access is not None:
-        try:
-            return decode_mcp_token(access.token)[0]
-        except InvalidMcpToken as error:
-            raise ToolError(str(error)) from error
-    if _stdio_caller is not None:
-        return _stdio_caller
-    raise ToolError("Not signed in: an MCP token is required.")
+    caller = caller_from_claims(access.claims or {}) if access is not None else None
+    if caller is None:
+        raise ToolError("Not signed in: connect this client with OAuth (see docs/mcp-server.md).")
+    return caller
 
 
 def _bounded(value: Any) -> Any:
@@ -341,11 +329,66 @@ class _SessionEndpoint:
 
 _endpoint = _SessionEndpoint()
 
-# Bearer token check, then scope check, then the MCP handler (the SDK's own middleware).
+RESOURCE_METADATA_URL = build_resource_metadata_url(AnyHttpUrl(settings.mcp_resource_url))
+
+# Bearer token check, then scope check, then the MCP handler (the SDK's own middleware). A request
+# without a valid token gets 401 with a WWW-Authenticate header pointing at the resource metadata,
+# which is how clients discover where to sign in.
 http_endpoint = AuthenticationMiddleware(
-    AuthContextMiddleware(RequireAuthMiddleware(_endpoint, required_scopes=[SCOPE])),
-    backend=BearerAuthBackend(McpTokenVerifier()),
+    AuthContextMiddleware(
+        RequireAuthMiddleware(_endpoint, required_scopes=[SCOPE], resource_metadata_url=RESOURCE_METADATA_URL)
+    ),
+    backend=BearerAuthBackend(
+        ProviderTokenVerifier(provider), resource_server_url=AnyHttpUrl(settings.mcp_resource_url)
+    ),
 )
+
+
+class _RegistrationLimit:
+    """Limits new OAuth client registrations per IP address (registration is open, as MCP expects)."""
+
+    def __init__(self, app):
+        self.app = app
+        self.window = SlidingWindowLimiter(settings.MCP_CLIENT_REGISTRATIONS_PER_HOUR, 3600)
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("method") == "POST":
+            client = scope.get("client")
+            wait = self.window.hit(client[0] if client else "unknown")
+            if wait:
+                response = JSONResponse(
+                    {"error": "invalid_client_metadata", "error_description": "Too many registrations. Try later."},
+                    status_code=429,
+                    headers={"Retry-After": str(wait)},
+                )
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
+def oauth_routes() -> list[Route]:
+    """Discovery, registration, authorization, token and revocation endpoints for MCP clients."""
+    routes = create_auth_routes(
+        provider,
+        issuer_url=AnyHttpUrl(settings.public_url),
+        service_documentation_url=None,
+        client_registration_options=ClientRegistrationOptions(
+            enabled=True, valid_scopes=[SCOPE], default_scopes=[SCOPE]
+        ),
+        revocation_options=RevocationOptions(enabled=True),
+    )
+    routes = [
+        Route(r.path, endpoint=_RegistrationLimit(r.endpoint), methods=list(r.methods or []))
+        if r.path == "/register"
+        else r
+        for r in routes
+    ]
+    return routes + create_protected_resource_routes(
+        resource_url=AnyHttpUrl(settings.mcp_resource_url),
+        authorization_servers=[AnyHttpUrl(settings.public_url)],
+        scopes_supported=[SCOPE],
+        resource_name="Financial Research Assistant",
+    )
 
 
 @asynccontextmanager

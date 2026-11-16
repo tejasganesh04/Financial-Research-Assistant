@@ -11,6 +11,15 @@ def isolated_request_reports(tmp_path, monkeypatch):
     monkeypatch.setenv("REQUEST_TRACE_DIR", str(tmp_path / "traces"))
 
 
+@pytest.fixture(autouse=True)
+def no_question_quotas(monkeypatch):
+    """Question quotas need the account database; tests that cover them set their own limits."""
+    from src.config.settings import settings
+
+    monkeypatch.setattr(settings, "QUESTIONS_PER_HOUR", 0)
+    monkeypatch.setattr(settings, "QUESTIONS_PER_DAY", 0)
+
+
 @pytest.fixture
 def base_state() -> RAGState:
     """A clean initial state for testing individual nodes."""
@@ -79,3 +88,40 @@ def sample_chunks() -> list[dict]:
             "score": 0.81,
         },
     ]
+
+
+AUTH_TABLES = (
+    "oauth_codes, oauth_requests, oauth_clients, auth_refresh_tokens, auth_sessions, auth_events, "
+    "rate_limit_counters, auth_schema_version, app_users"
+)
+
+
+@pytest.fixture
+async def auth_pool(monkeypatch):
+    """A fresh account database in the isolated TEST_POSTGRES_URL, wired into the app and MCP provider."""
+    import os
+
+    from psycopg_pool import AsyncConnectionPool
+
+    from src.services import user_store
+
+    url = os.environ.get("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("An isolated test PostgreSQL URL (TEST_POSTGRES_URL) was not supplied")
+    if not url.rsplit("/", 1)[-1].split("?")[0].endswith("_test"):
+        pytest.fail("TEST_POSTGRES_URL must name a database ending in _test; it is wiped by these tests")
+    pool = AsyncConnectionPool(url, open=False, kwargs={"autocommit": True, "prepare_threshold": 0})
+    await pool.open()
+    async with pool.connection() as conn:
+        await conn.execute(f"DROP TABLE IF EXISTS {AUTH_TABLES} CASCADE")
+    await user_store.ensure_schema(pool)
+
+    from src.api.main import app
+    from src.api.routes.auth import login_limiter
+    from src.mcp_server.auth import provider
+
+    monkeypatch.setattr(app.state, "pool", pool, raising=False)
+    monkeypatch.setattr(provider, "pool", pool)
+    login_limiter.reset()
+    yield pool
+    await pool.close()

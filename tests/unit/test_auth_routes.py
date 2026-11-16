@@ -1,7 +1,6 @@
-"""Unit tests for the auth routes — login + /v1/auth/me.
+"""Unit tests for the auth routes that need no database: /v1/auth/me and the no-database answers.
 
-TokenResponse includes user_id, name and department, and GET /v1/auth/me
-returns the caller's identity. These tests pin that contract.
+Sign-in, renewal and administration against PostgreSQL are in tests/integration/test_accounts.py.
 """
 
 from __future__ import annotations
@@ -14,35 +13,24 @@ from src.services.auth_service import create_token
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    monkeypatch.setattr(app.state, "pool", None, raising=False)
     return TestClient(app)
 
 
-# ── POST /v1/auth/login ──────────────────────────────────────────────────────
+# ── Without the account database ─────────────────────────────────────────────
 
 
-def test_login_returns_full_user_tuple(client):
-    """The frontend renders the header from this response — every field
-    must be present and match the expected user."""
-    resp = client.post("/v1/auth/login", json={"username": "finance", "password": "finance123"})
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["user_id"] == "finance"
-    assert body["name"] == "Test Finance"
-    assert body["role"] == "finance"
-    assert body["department"] == "FP&A"
-    assert body["access_token"]
-    assert body["token_type"] == "bearer"
+def test_sign_in_without_the_database_is_a_clear_503(client):
+    resp = client.post("/v1/auth/login", json={"username": "finance", "password": "x"})
+    assert resp.status_code == 503
+    assert "unavailable" in resp.json()["detail"]
 
 
-def test_login_rejects_bad_password(client):
-    resp = client.post("/v1/auth/login", json={"username": "finance", "password": "wrong"})
-    assert resp.status_code == 401
-
-
-def test_login_rejects_unknown_user(client):
-    resp = client.post("/v1/auth/login", json={"username": "nobody", "password": "x"})
-    assert resp.status_code == 401
+def test_there_is_no_sign_up_or_manual_mcp_token_endpoint(client):
+    assert client.post("/v1/auth/signup", json={}).status_code in (404, 405)
+    assert client.post("/v1/auth/register", json={}).status_code in (404, 405)
+    assert client.post("/v1/auth/mcp-token").status_code in (404, 405)
 
 
 # ── GET /v1/auth/me ──────────────────────────────────────────────────────────
@@ -67,7 +55,7 @@ def test_me_returns_identity_and_permissions(client):
 
 def test_me_requires_auth(client):
     resp = client.get("/v1/auth/me")
-    assert resp.status_code in (401, 403)
+    assert resp.status_code == 401
 
 
 def test_me_rejects_invalid_token(client):

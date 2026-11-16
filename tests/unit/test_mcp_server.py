@@ -1,4 +1,4 @@
-"""MCP server: tokens, role permissions, filters, page reading, rate limits and the HTTP endpoint.
+"""MCP server: access tokens, role permissions, filters, page reading, rate limits and the HTTP endpoint.
 
 No network: the document catalog, search, embeddings and reranker are replaced with fakes.
 """
@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import jwt
@@ -22,6 +23,7 @@ from src.mcp_server import auth as mcp_auth
 from src.mcp_server import knowledge, server
 from src.mcp_server.knowledge import Caller, Document, RequestError
 from src.services.auth_service import create_token, decode_token
+from src.services.user_store import Account
 
 DOCS = (
     Document("AMAZON_2017_10K", "AMAZON_2017_10K.pdf", "amazon", "Amazon", 2017, "10k", "public", 85),
@@ -75,27 +77,35 @@ def filter_values(search_filter) -> dict:
     return {c.key: list(getattr(c.match, "any", None) or [c.match.value]) for c in search_filter.must}
 
 
-# ── Tokens ───────────────────────────────────────────────────────────────────
+# ── Access tokens ────────────────────────────────────────────────────────────
 
 
-def test_mcp_token_round_trip():
-    token, expires, token_id = mcp_auth.create_mcp_token("analyst", "Test Analyst", "analyst", "Research")
-    caller, claims = mcp_auth.decode_mcp_token(token)
-    assert caller == Caller("analyst", "Test Analyst", "analyst", "Research", token_id)
-    assert claims["scope"] == mcp_auth.SCOPE
-    assert expires - time.time() == pytest.approx(settings.MCP_TOKEN_EXPIRY_DAYS * 86_400, abs=5)
+def account(username="analyst", role="analyst", name="Test Analyst", department="Research") -> Account:
+    now = datetime.now(timezone.utc)
+    return Account(username, name, role, department, "", 1, True, 0, None, now, now, None, None)
+
+
+def mcp_token(username="analyst", role="analyst", name="Test Analyst", department="Research", scopes=None) -> str:
+    return mcp_auth.create_access_token(
+        account(username, role, name, department), "session-1", "client-1", scopes or [mcp_auth.SCOPE]
+    )
+
+
+def test_access_token_round_trip():
+    claims = mcp_auth.decode_access_token(mcp_token())
+    assert mcp_auth.caller_from_claims(claims) == Caller("analyst", "Test Analyst", "analyst", "Research", "session-1")
+    assert claims["aud"] == settings.mcp_resource_url and claims["client_id"] == "client-1"
+    assert claims["exp"] - claims["iat"] == settings.ACCESS_TOKEN_MINUTES * 60
 
 
 def test_app_api_rejects_mcp_tokens():
-    token, _, _ = mcp_auth.create_mcp_token("admin", "Test Admin", "admin")
     with pytest.raises(HTTPException) as error:
-        decode_token(token)
+        decode_token(mcp_token("admin", "admin"))
     assert error.value.status_code == 401
 
 
 def test_mcp_rejects_app_login_tokens():
-    with pytest.raises(mcp_auth.InvalidMcpToken):
-        mcp_auth.decode_mcp_token(create_token("admin", "Test Admin", "admin"))
+    assert mcp_auth.decode_access_token(create_token("admin", "Test Admin", "admin")) is None
 
 
 def _signed(**changes) -> str:
@@ -105,55 +115,47 @@ def _signed(**changes) -> str:
         "role": "analyst",
         "iat": now,
         "exp": now + 60,
-        "iss": mcp_auth.ISSUER,
-        "aud": mcp_auth.AUDIENCE,
+        "iss": settings.public_url,
+        "aud": settings.mcp_resource_url,
         "scope": mcp_auth.SCOPE,
-        "jti": "abc",
+        "sid": "s",
+        "client_id": "c",
     }
     claims.update(changes)
     return jwt.encode({k: v for k, v in claims.items() if v is not None}, settings.JWT_SECRET, settings.JWT_ALGORITHM)
 
 
 @pytest.mark.parametrize(
-    ("changes", "message"),
+    "changes",
     [
-        ({"exp": int(time.time()) - 10}, "expired"),
-        ({"scope": "conversations:write"}, "does not allow"),
-        ({"role": "superuser"}, "unknown role"),
-        ({"aud": "someone-else"}, "not valid"),
-        ({"jti": None}, "not valid"),
+        {"exp": int(time.time()) - 10},
+        {"aud": "https://elsewhere.example/mcp"},
+        {"iss": "someone-else"},
+        {"sid": None},
+        {"client_id": None},
     ],
 )
-def test_mcp_token_rejections(changes, message):
-    with pytest.raises(mcp_auth.InvalidMcpToken, match=message):
-        mcp_auth.decode_mcp_token(_signed(**changes))
+def test_invalid_access_tokens_are_rejected(changes):
+    assert mcp_auth.decode_access_token(_signed(**changes)) is None
+
+
+@pytest.mark.parametrize("changes", [{"scope": "conversations:write"}, {"role": "superuser"}])
+def test_tokens_without_the_scope_or_a_known_role_give_no_caller(changes):
+    assert mcp_auth.caller_from_claims(mcp_auth.decode_access_token(_signed(**changes))) is None
 
 
 def test_tampered_token_rejected():
     token = _signed()
-    with pytest.raises(mcp_auth.InvalidMcpToken):
-        mcp_auth.decode_mcp_token(token[:-2] + ("AA" if not token.endswith("AA") else "BB"))
+    assert mcp_auth.decode_access_token(token[:-2] + ("AA" if not token.endswith("AA") else "BB")) is None
 
 
-def test_revoked_token_rejected(monkeypatch):
-    token, _, token_id = mcp_auth.create_mcp_token("analyst", "A", "analyst")
-    monkeypatch.setattr(settings, "MCP_REVOKED_TOKEN_IDS", [token_id])
-    with pytest.raises(mcp_auth.InvalidMcpToken, match="revoked"):
-        mcp_auth.decode_mcp_token(token)
-
-
-@pytest.mark.parametrize("days", [0, -1, 10_000])
-def test_token_lifetime_bounds(days):
-    with pytest.raises(ValueError):
-        mcp_auth.create_mcp_token("analyst", "A", "analyst", days=days)
-
-
-async def test_token_verifier_returns_none_for_bad_tokens():
-    verifier = mcp_auth.McpTokenVerifier()
-    assert await verifier.verify_token("not-a-token") is None
-    token, expires, _ = mcp_auth.create_mcp_token("analyst", "A", "analyst")
-    access = await verifier.verify_token(token)
-    assert access.client_id == "analyst" and access.scopes == [mcp_auth.SCOPE] and access.expires_at == expires
+async def test_provider_verifies_access_tokens():
+    assert await mcp_auth.provider.load_access_token("not-a-token") is None
+    assert await mcp_auth.provider.load_access_token(_signed(scope="other")) is None
+    token = mcp_token()
+    access = await mcp_auth.provider.load_access_token(token)
+    assert access.client_id == "client-1" and access.scopes == [mcp_auth.SCOPE]
+    assert access.subject == "analyst" and access.resource == settings.mcp_resource_url
 
 
 # ── Role permissions ─────────────────────────────────────────────────────────
@@ -345,39 +347,28 @@ def test_rate_limiter_blocks_after_limit():
     limiter.check("other-user")
 
 
-def test_stdio_caller_used_without_http_token():
-    server.set_stdio_caller(ANALYST)
-    try:
-        assert server.current_caller(None) == ANALYST
-    finally:
-        server.set_stdio_caller(None)
-
-
 def test_no_identity_is_refused():
     with pytest.raises(server.ToolError, match="Not signed in"):
         server.current_caller(None)
 
 
 async def test_tool_errors_are_clean_and_unexpected_errors_hide_details(monkeypatch):
-    server.set_stdio_caller(ANALYST)
-    try:
+    monkeypatch.setattr(server, "current_caller", lambda ctx: ANALYST)
 
-        def invalid(caller):
-            raise RequestError("Fix it.")
+    def invalid(caller):
+        raise RequestError("Fix it.")
 
-        rejected = await server._run("t", None, invalid, limited=False, audit_details={})
-        assert rejected.isError and rejected.content[0].text == "Fix it."
+    rejected = await server._run("t", None, invalid, limited=False, audit_details={})
+    assert rejected.isError and rejected.content[0].text == "Fix it."
 
-        def broken(caller):
-            raise RuntimeError("database password is hunter2")
+    def broken(caller):
+        raise RuntimeError("database password is hunter2")
 
-        failed = await server._run("t", None, broken, limited=False, audit_details={})
-        assert failed.isError and "hunter2" not in failed.content[0].text
+    failed = await server._run("t", None, broken, limited=False, audit_details={})
+    assert failed.isError and "hunter2" not in failed.content[0].text
 
-        ok = await server._run("t", None, lambda c: {"result_count": 0, "x": None}, limited=False, audit_details={})
-        assert not ok.isError and ok.structuredContent == {"result_count": 0}
-    finally:
-        server.set_stdio_caller(None)
+    ok = await server._run("t", None, lambda c: {"result_count": 0, "x": None}, limited=False, audit_details={})
+    assert not ok.isError and ok.structuredContent == {"result_count": 0}
 
 
 # ── HTTP endpoint ────────────────────────────────────────────────────────────
@@ -409,13 +400,19 @@ def mcp_headers(token: str) -> dict:
 
 
 def test_http_requires_an_mcp_token(mcp_http):
-    assert mcp_http.post("/mcp", json=INIT, headers=HEADERS).status_code == 401
+    missing = mcp_http.post("/mcp", json=INIT, headers=HEADERS)
+    assert missing.status_code == 401
+    # The challenge tells clients where to discover how to sign in (RFC 9728).
+    assert (
+        'resource_metadata="http://localhost:8000/.well-known/oauth-protected-resource/mcp"'
+        in (missing.headers["www-authenticate"])
+    )
     app_token = create_token("admin", "Test Admin", "admin")
     assert mcp_http.post("/mcp", json=INIT, headers=mcp_headers(app_token)).status_code == 401
 
 
 def test_http_handshake_and_tool_list(mcp_http):
-    token, _, _ = mcp_auth.create_mcp_token("analyst", "Test Analyst", "analyst")
+    token = mcp_token()
     init = mcp_http.post("/mcp", json=INIT, headers=mcp_headers(token))
     assert init.status_code == 200
     assert init.json()["result"]["serverInfo"]["name"] == "financial-research"
@@ -426,7 +423,7 @@ def test_http_handshake_and_tool_list(mcp_http):
 
 
 def test_http_tool_call_uses_the_token_role(mcp_http):
-    token, _, _ = mcp_auth.create_mcp_token("hr", "Test HR", "hr")
+    token = mcp_token("hr", "hr", "Test HR")
     body = {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "list_documents", "arguments": {}}}
     result = mcp_http.post("/mcp", json=body, headers=mcp_headers(token)).json()["result"]
     assert result["structuredContent"]["caller"]["role"] == "hr"
@@ -436,7 +433,7 @@ def test_http_tool_call_uses_the_token_role(mcp_http):
 
 
 def test_http_rejects_unknown_host_headers(mcp_http):
-    token, _, _ = mcp_auth.create_mcp_token("analyst", "A", "analyst")
+    token = mcp_token()
     response = mcp_http.post("/mcp", json=INIT, headers={**mcp_headers(token), "Host": "attacker.example"})
     assert response.status_code in (400, 421)
 
@@ -444,36 +441,20 @@ def test_http_rejects_unknown_host_headers(mcp_http):
 # ── App integration ──────────────────────────────────────────────────────────
 
 
-def test_app_serves_mcp_and_issues_tokens():
+def test_app_serves_mcp_and_oauth_discovery():
     from src.api.main import app
 
-    assert any(getattr(r, "path", None) == "/mcp" for r in app.router.routes)
+    paths = {getattr(r, "path", None) for r in app.router.routes}
+    assert {"/mcp", "/authorize", "/token", "/register", "/revoke"} <= paths
     client = TestClient(app)
-    login = client.post("/v1/auth/login", json={"username": "analyst", "password": "analyst123"}).json()
-    issued = client.post(
-        "/v1/auth/mcp-token", json={"days": 7}, headers={"Authorization": f"Bearer {login['access_token']}"}
-    )
-    assert issued.status_code == 200
-    body = issued.json()
-    assert body["role"] == "analyst" and body["mcp_url"].endswith("/mcp") and body["scope"] == mcp_auth.SCOPE
-    caller, claims = mcp_auth.decode_mcp_token(body["access_token"])
-    assert caller.user_id == "analyst" and claims["exp"] - claims["iat"] == 7 * 86_400
-    # An MCP token can neither use the API nor mint another token.
-    mcp_token = {"Authorization": f"Bearer {body['access_token']}"}
-    assert client.get("/v1/auth/me", headers=mcp_token).status_code == 401
-    assert client.post("/v1/auth/mcp-token", headers=mcp_token).status_code == 401
-
-
-def test_token_endpoint_requires_login_and_valid_lifetime():
-    from src.api.main import app
-
-    client = TestClient(app)
-    assert client.post("/v1/auth/mcp-token").status_code in (401, 403)
-    login = client.post("/v1/auth/login", json={"username": "analyst", "password": "analyst123"}).json()
-    response = client.post(
-        "/v1/auth/mcp-token", json={"days": 365}, headers={"Authorization": f"Bearer {login['access_token']}"}
-    )
-    assert response.status_code == 422
+    resource = client.get("/.well-known/oauth-protected-resource/mcp").json()
+    assert resource["resource"] == settings.mcp_resource_url
+    assert resource["scopes_supported"] == [mcp_auth.SCOPE]
+    metadata = client.get("/.well-known/oauth-authorization-server").json()
+    assert metadata["registration_endpoint"].endswith("/register")
+    assert metadata["code_challenge_methods_supported"] == ["S256"]
+    # The old manual token endpoint is gone; MCP clients sign in with OAuth.
+    assert client.post("/v1/auth/mcp-token").status_code in (404, 405)
 
 
 # ── Company names as assistants write them ───────────────────────────────────
@@ -534,7 +515,7 @@ def test_results_group_chunks_by_page_in_rank_order():
 
 
 def test_http_declines_event_streams(mcp_http):
-    token, _, _ = mcp_auth.create_mcp_token("analyst", "A", "analyst")
+    token = mcp_token()
     response = mcp_http.get("/mcp", headers={"Accept": "text/event-stream", "Authorization": f"Bearer {token}"})
     assert response.status_code == 405
 

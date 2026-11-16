@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     MAX_CONVERSATION_QUESTIONS: int = 20
 
     # --- CORS ---
-    CORS_ORIGINS: list[str] = ["*"]
+    # The interface is served by this API (same origin), so no cross-origin access is needed; the
+    # Vite dev server proxies /v1. List origins here only for a separately hosted frontend.
+    CORS_ORIGINS: list[str] = []
 
     # --- Model providers ---
     OPENAI_API_KEY: str = ""
@@ -36,10 +38,42 @@ class Settings(BaseSettings):
     LANGCHAIN_PROJECT: str = "rag-agent-dev"
     LANGCHAIN_API_KEY: str = ""
 
+    # --- Public address ---
+    # Where people and MCP clients reach this app (https in production). OAuth issuer and the MCP
+    # resource URL ({PUBLIC_URL}/mcp) are derived from it.
+    PUBLIC_URL: str = "http://localhost:8000"
+
     # --- Auth ---
     JWT_SECRET: str = "dev-secret-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRY_HOURS: int = 24
+    # Access tokens (web and MCP) are short-lived and checked by signature only, so changing a
+    # password, signing someone out or deactivating them takes effect within this many minutes.
+    ACCESS_TOKEN_MINUTES: int = 60
+    # Refresh tokens rotate on every use. A session ends after this many idle days, or this many
+    # days after sign-in, whichever comes first.
+    SESSION_IDLE_DAYS: int = 7
+    SESSION_MAX_DAYS: int = 30
+    # A refresh token used twice ends its session, except within this many seconds (two browser
+    # tabs renewing at once).
+    REFRESH_REUSE_GRACE_SECONDS: int = 30
+    # Send the sign-in cookie over HTTPS only. Defaults to on in production.
+    COOKIE_SECURE: bool | None = None
+    # Sign-in protection: lock an account after this many failed attempts in a row, and limit
+    # attempts per IP address.
+    LOGIN_MAX_FAILURES: int = 5
+    LOGIN_LOCKOUT_MINUTES: int = 15
+    LOGIN_ATTEMPTS_PER_MINUTE: int = 10
+    # Questions to the in-app assistant per user (each one makes several model calls). 0 = no limit.
+    QUESTIONS_PER_HOUR: int = 60
+    QUESTIONS_PER_DAY: int = 300
+
+    @property
+    def cookie_secure(self) -> bool:
+        return self.ENVIRONMENT == "production" if self.COOKIE_SECURE is None else self.COOKIE_SECURE
+
+    @property
+    def public_url(self) -> str:
+        return self.PUBLIC_URL.rstrip("/")
 
     # --- Calculator tool for the answer model (exact arithmetic) ---
     CALCULATOR_ENABLED: bool = True
@@ -47,18 +81,19 @@ class Settings(BaseSettings):
     CALCULATOR_MAX_ROUNDS: int = 4
 
     # --- MCP server (document search for external AI assistants, at /mcp) ---
+    # Clients sign in with OAuth (the same accounts as the web app); see docs/mcp-server.md.
     MCP_ENABLED: bool = True
-    # Address clients use to reach this API; shown when a token is created.
-    MCP_PUBLIC_URL: str = "http://localhost:8000"
-    MCP_TOKEN_EXPIRY_DAYS: int = 30
-    MCP_TOKEN_MAX_DAYS: int = 90
     # Searches and page reads per user per minute (each search makes one embedding and one rerank call).
     MCP_RATE_LIMIT_PER_MINUTE: int = 30
+    # New OAuth client registrations per IP address per hour (each Claude Code install registers once).
+    MCP_CLIENT_REGISTRATIONS_PER_HOUR: int = 20
     # Host headers accepted at /mcp (protection against DNS rebinding). Add your domain when hosting.
     MCP_ALLOWED_HOSTS: list[str] = ["localhost:*", "127.0.0.1:*", "[::1]:*"]
     MCP_ALLOWED_ORIGINS: list[str] = ["http://localhost:*", "http://127.0.0.1:*", "http://[::1]:*"]
-    # Token ids (the token_id shown when a token is created) that are no longer accepted.
-    MCP_REVOKED_TOKEN_IDS: list[str] = []
+
+    @property
+    def mcp_resource_url(self) -> str:
+        return f"{self.public_url}/mcp"
 
     # --- Qdrant ---
     QDRANT_HOST: str = "localhost"
@@ -142,6 +177,10 @@ class Settings(BaseSettings):
                 raise ValueError("POSTGRES_PASSWORD must be changed from default in production!")
             if "*" in self.CORS_ORIGINS:
                 raise ValueError("CORS_ORIGINS must not be wildcard '*' in production!")
+            if len(self.JWT_SECRET) < 32:
+                raise ValueError("JWT_SECRET must be at least 32 characters in production!")
+            if not self.PUBLIC_URL.startswith("https://"):
+                raise ValueError("PUBLIC_URL must be an https:// address in production!")
         return self
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
