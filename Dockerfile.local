@@ -1,4 +1,4 @@
-# Build React once. Node is not needed in the running application.
+# React interface, built once; Node is not needed in the running application.
 FROM node:22-alpine AS frontend-build
 WORKDIR /frontend
 COPY frontend/package*.json ./
@@ -6,17 +6,28 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# Reuse the existing Python dependency image.
-FROM ghcr.io/rishabhmannu/financebench-rag-agent-api:0.3.5
-USER root
-RUN pip install --no-cache-dir "llm-guard[onnxruntime]==0.3.16"
+# Python packages, pinned in requirements.lock (CPU-only PyTorch).
+FROM python:3.12.13-slim AS python-deps
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+COPY requirements.lock /tmp/requirements.lock
+RUN pip install --no-deps -r /tmp/requirements.lock
+
+FROM python:3.12.13-slim
+ENV PYTHONUNBUFFERED=1 \
+    ORT_LOGGING_LEVEL=3 \
+    PYTHONWARNINGS="ignore:websockets.legacy is deprecated:DeprecationWarning,ignore:websockets.server.WebSocketServerProtocol is deprecated:DeprecationWarning,ignore:Type google.protobuf.pyext._message:DeprecationWarning"
+RUN groupadd --gid 1000 appuser && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
+COPY --from=python-deps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=python-deps /usr/local/bin /usr/local/bin
 WORKDIR /app
-# Replace inherited source so archived modules do not remain in the image.
-RUN rm -rf /app/src /app/scripts /app/cli
-# The dependency image includes the retired terminal-client executable.
-RUN rm -f /usr/local/bin/financebench
-COPY src/ /app/src/
-COPY scripts/ /app/scripts/
-COPY --from=frontend-build /frontend/dist /app/frontend/dist
+COPY src/ src/
+COPY scripts/ scripts/
+COPY --from=frontend-build /frontend/dist frontend/dist
+RUN mkdir -p /home/appuser/.cache/huggingface /app/logs /app/cost_logs /app/data \
+    && chown -R appuser:appuser /home/appuser/.cache /app
 LABEL maintainer="Tejas Ganesh"
 USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=360s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')" || exit 1
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

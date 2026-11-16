@@ -45,7 +45,7 @@ REWRITES: dict[str, dict] = {}  # case_id -> {"search", "passage"} from generate
 SELECTIONS = ("rerank", "fusion", "protect")
 FUSION_K = 10
 POOL = {"size": 50}  # search pool size; --pool changes it
-VOYAGE_RERANKER = "rerank-2.5"  # first 200M tokens free per account
+VOYAGE_RERANKER = "rerank-2.5"  # billed at $0.05 per million tokens
 INSTRUCTION = (
     "Instruction: find the passage or financial statement table that contains the figures or statements "
     "needed to answer this question about the named company and period.\nQuery: "

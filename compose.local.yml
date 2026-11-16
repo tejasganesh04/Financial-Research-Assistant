@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile.local
     environment:
       REQUEST_TRACE_DIR: /app/logs/traces
-      # The published image's build SHA does not describe this mounted checkout.
+      # The image is not tied to a commit; the source is mounted from this checkout.
       GIT_SHA: unknown
       # Download Hugging Face files over standard HTTPS rather than Xet.
       HF_HUB_DISABLE_XET: "1"
