@@ -24,6 +24,10 @@ accounts can connect their own AI assistant, such as Claude Code, over MCP.
 - Local request traces with workflow decisions, timings and provider-reported token usage.
 - An [MCP server](docs/mcp-server.md) so employees' own AI assistants, such as Claude Code, can search
   the same documents under the same role permissions.
+- A light, Material-style interface (dark on request) that works on phones, with an account menu
+  for appearance, account settings and signing out.
+- [HTTPS deployment](docs/deployment.md) on one server behind Caddy, updated with `make deploy` or
+  automatically from `main` by GitHub Actions once the tests pass.
 
 ## Run locally
 
@@ -148,6 +152,15 @@ npm test
 npm run build
 ```
 
+Every push and pull request runs these on GitHub Actions (`.github/workflows/ci.yml`). To check a
+running deployment end to end through a real browser, including a real question and an MCP client
+connecting through OAuth, use `frontend/tests/live-check.mjs` (see
+[deployment](docs/deployment.md#operations)).
+
 Sign-in attempt limits and MCP call limits are counted per API process; question quotas are
 counted in PostgreSQL. A single API process is the supported setup.
 
+## Fonts and icons
+
+The interface uses Google Sans Flex and Google Sans Code (SIL Open Font License 1.1) and Material
+Symbols (Apache License 2.0), bundled with the app; nothing is loaded from other sites.

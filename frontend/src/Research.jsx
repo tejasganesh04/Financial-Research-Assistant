@@ -610,6 +610,7 @@ export default function ResearchView({ user, research }) {
           </label>
           <textarea
             id="question"
+            aria-describedby="question-hint"
             ref={input}
             rows={1}
             placeholder={
@@ -631,28 +632,22 @@ export default function ResearchView({ user, research }) {
               }
             }}
           />
-          <div className="composer-bar">
-            <span className="composer-hint">
-              {sending ? (
-                <>
-                  <Spinner size={12} /> {busy}
-                </>
-              ) : (
-                <span className="hint-keys">
-                  <kbd>Enter</kbd> to send · <kbd>Shift</kbd> + <kbd>Enter</kbd>{" "}
-                  for a new line
-                </span>
-              )}
+          <button
+            className="send-button"
+            type="submit"
+            aria-label="Send question"
+            disabled={!question.trim() || !!busy || thread.pending}
+          >
+            <Icon name="send" size={16} />
+          </button>
+          <span id="question-hint" className="sr-only">
+            Press Enter to send, or Shift and Enter for a new line.
+          </span>
+          {sending && (
+            <span className="composer-status" role="status">
+              <Spinner size={12} /> {busy}
             </span>
-            <button
-              className="send-button"
-              type="submit"
-              aria-label="Send question"
-              disabled={!question.trim() || !!busy || thread.pending}
-            >
-              <Icon name="send" size={16} />
-            </button>
-          </div>
+          )}
         </form>
         <div className="composer-footer">
           <span>
