@@ -3,6 +3,7 @@
 # conversations, approvals) and keeps the last 14 days. The knowledge base is not included; it
 # changes only when rebuilt, and is restored from its snapshot.
 set -eu
+umask 077
 ROOT=/opt/fra
 mkdir -p "$ROOT/backups"
 chmod 700 "$ROOT/backups"
