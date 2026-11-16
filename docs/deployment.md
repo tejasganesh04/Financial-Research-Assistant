@@ -117,14 +117,18 @@ Keep the `admin` account for yourself and hand out the others. Open
 
 ## Operations
 
-**Backups.** Back up PostgreSQL (accounts, conversations, approvals) daily, for example with cron:
+**Backups.** Back up PostgreSQL (accounts, conversations, approvals) daily. `deploy/backup.sh`,
+installed by `make deploy` as `/opt/fra/backup.sh`, writes a dump to `/opt/fra/backups` and keeps 14
+days; run it nightly:
 
 ```sh
-docker compose -f compose.minimal.yml -f compose.production.yml exec -T postgres \
-  pg_dump -U rag_user -Fc rag_agent > backups/rag_agent-$(date +%F).dump
+echo '20 3 * * * root /opt/fra/backup.sh >> /var/log/fra-backup.log 2>&1' > /etc/cron.d/fra-backup
 ```
 
-The Qdrant volume changes only when the knowledge base is rebuilt; keep the archive from step 2.
+Copy the dumps off the server now and then. To restore one:
+`docker compose ... exec -T postgres pg_restore -U rag_user -d rag_agent --clean < file.dump`.
+
+The Qdrant volume changes only when the knowledge base is rebuilt; keep the snapshot from step 2.
 
 **Updates.** From your own machine, `make deploy` sends the committed code to the server, builds
 the new image there, switches to it and waits until the API reports healthy. It needs the Google

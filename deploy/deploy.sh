@@ -28,4 +28,4 @@ echo "Deploying $REV to $GCP_INSTANCE ($GCP_PROJECT, $GCP_ZONE)..."
 gcloud compute scp "$ARCHIVE" "$GCP_INSTANCE:/tmp/fra-release.tar.gz" \
   --project "$GCP_PROJECT" --zone "$GCP_ZONE" --quiet
 gcloud compute ssh "$GCP_INSTANCE" --project "$GCP_PROJECT" --zone "$GCP_ZONE" --quiet \
-  --command "sudo sh -c 'for f in server-update.sh ci-receive.sh; do tar xzf /tmp/fra-release.tar.gz -O deploy/\$f > /opt/fra/\$f.new && chmod 755 /opt/fra/\$f.new && mv /opt/fra/\$f.new /opt/fra/\$f; done && /opt/fra/server-update.sh /tmp/fra-release.tar.gz $REV'"
+  --command "sudo sh -c 'for f in server-update.sh ci-receive.sh backup.sh; do tar xzf /tmp/fra-release.tar.gz -O deploy/\$f > /opt/fra/\$f.new && chmod 755 /opt/fra/\$f.new && mv /opt/fra/\$f.new /opt/fra/\$f; done && /opt/fra/server-update.sh /tmp/fra-release.tar.gz $REV'"
