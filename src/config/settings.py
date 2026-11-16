@@ -72,7 +72,8 @@ class Settings(BaseSettings):
     RETRIEVAL_TOP_K: int = 100
     # Reranker: narrows the candidates to the final set that feeds the grader + generator.
     # "voyage" calls Voyage's reranker and falls back to the local BGE cross-encoder on failure;
-    # "local" always uses the local model.
+    # "local" always uses the local model. rerank-2.5 (the measured setup) is billed per token;
+    # rerank-3 is Voyage's current model.
     RERANKER_PROVIDER: str = "voyage"
     VOYAGE_RERANK_MODEL: str = "rerank-2.5"
     RERANKER_TOP_K: int = 12

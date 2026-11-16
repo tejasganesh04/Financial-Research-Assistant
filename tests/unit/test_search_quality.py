@@ -59,10 +59,11 @@ def test_voyage_scores_order_chunks_and_name_the_model(monkeypatch):
     from src.services import reranker_service
 
     monkeypatch.setattr(reranker_service.settings, "RERANKER_PROVIDER", "voyage")
+    monkeypatch.setattr(reranker_service.settings, "VOYAGE_RERANK_MODEL", "rerank-3")
     monkeypatch.setattr(reranker_service, "voyage_scores", lambda query, documents: [0.1, 0.9])
     ranked = reranker_service.rerank("AMD revenue", [{"content": "risk"}, {"content": "income statement"}], top_k=2)
     assert [c["content"] for c in ranked] == ["income statement", "risk"]
-    assert ranked[0]["rerank_model"] == "rerank-2.5"
+    assert ranked[0]["rerank_model"] == "rerank-3"
 
 
 def test_voyage_failure_falls_back_to_the_local_model(monkeypatch):

@@ -2,7 +2,8 @@
 
 FastAPI serves the React build and API together at **http://localhost:8000/**.
 Docker also runs Qdrant and PostgreSQL. Use Docker Desktop and Docker
-Compose; Node is needed for the image build, not the running API.
+Compose; the image build compiles the React interface itself, so Node is only
+needed on your machine for frontend development.
 
 ## 1. Configure the app
 
@@ -25,8 +26,18 @@ OpenAI and Anthropic models are also supported. `compose.benchmark.yml` switches
 every step to OpenAI models for the answer benchmark (see the
 [evaluation story](docs/evaluation-story.md#reproducing-the-numbers)); it needs
 `OPENAI_API_KEY`. Selecting a provider profile does not change the required Voyage
-embedding model. `VOYAGE_API_KEY` is also used by the default reranker,
-Voyage rerank-2.5, which falls back to a local model if Voyage is unavailable.
+embedding model.
+
+`VOYAGE_API_KEY` also powers the default reranker. Voyage's free embedding
+allowance covers this project, but note two things before using its reranker:
+
+- **Cost:** rerank-2.5, the measured setup, is billed at $0.05 per million tokens
+  (about $0.001 per question). `VOYAGE_RERANK_MODEL=rerank-3` lists 200M free
+  tokens; `RERANKER_PROVIDER=local` uses a free local model instead.
+- **Rate limits:** without a payment method, Voyage allows about 3 requests and
+  10,000 tokens per minute. A reranking call is larger than that, so the app falls
+  back to the local model, and building the contextual knowledge base takes
+  more than a day. Adding a payment method raises the limits.
 
 ## 2. Start the services
 
@@ -36,11 +47,15 @@ From the project root:
 docker compose -f compose.minimal.yml -f compose.local.yml up -d --build
 ```
 
-The Dockerfile builds React and uses a published Python dependency image.
-Local bind mounts supply the application source; downloaded model files are
-kept in a separate Docker volume. Initial model loading can take time.
+The Dockerfile builds React and installs the Python packages pinned in
+`requirements.lock`; the first build takes about 5–10 minutes, and later builds
+reuse Docker's cache. Local bind mounts supply the application source; downloaded
+model files are kept in a separate Docker volume. Initial model loading can take time.
 
 Open **http://localhost:8000/**. API schemas are at **http://localhost:8000/docs**.
+
+The `Makefile` wraps the commands in this guide: `make up`, `make seed-db`,
+`make build-kb`, `make restart`, `make logs` and `make down`.
 
 ## 3. Restore an empty knowledge base
 

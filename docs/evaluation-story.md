@@ -241,7 +241,7 @@ An earlier analysis of the 21 answer pages lost at the reranker found that 10 ha
 ### What changed
 
 1. **Voyage rerank-2.5 replaces the local BGE reranker.**
-   - **Cost and speed:** about 1 second and roughly 20,000 tokens per question; the first 200M tokens are free.
+   - **Cost and speed:** about 1 second and roughly 20,000 tokens per question, billed at $0.05 per million tokens (about $0.001 per question). Voyage lists rerank-2.5 as an older model without free tokens; its current reranker, rerank-3, lists 200M free tokens.
    - **Memory:** it also removes a 2 GB model from the server's memory.
    - **Fallback:** if Voyage is unavailable, the app falls back to the local model automatically.
 2. **Rank fusion removed.** With a strong reranker, blending in the search rank no longer helped, so the final order is the reranker's own.
@@ -334,7 +334,7 @@ None of the four is a search failure. Two are arithmetic done by the language mo
 
 ## Reproducing the numbers
 
-The search check is free apart from Voyage's free tokens. Run it with the final settings:
+The search check makes no language-model calls. With the local reranker it is free; with Voyage rerank-2.5 one run reranks about 12M tokens (about $0.60). Run it with the final settings:
 
 ```sh
 docker compose -f compose.minimal.yml -f compose.local.yml run --rm --no-deps \

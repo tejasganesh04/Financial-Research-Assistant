@@ -89,6 +89,7 @@ include = [
   "DATA_SOURCES.md",
   "Makefile",
   "Dockerfile.local",
+  "requirements.lock",
   "compose.minimal.yml",
   "compose.local.yml",
   "compose.benchmark.yml",
