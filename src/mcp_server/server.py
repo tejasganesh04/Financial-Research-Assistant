@@ -114,7 +114,17 @@ def current_caller(ctx: Context | None) -> Caller:
     raise ToolError("Not signed in: an MCP token is required.")
 
 
+def _bounded(value: Any) -> Any:
+    """Caller-supplied values in the audit log, trimmed so a request cannot flood the log."""
+    if isinstance(value, str):
+        return value[:200]
+    if isinstance(value, list):
+        return [_bounded(v) for v in value[:20]]
+    return value
+
+
 def _audit(tool: str, caller: Caller | None, status: str, started: float, **details: Any) -> None:
+    details = {key: _bounded(value) for key, value in details.items()}
     audit.info(
         json.dumps(
             {

@@ -537,3 +537,10 @@ def test_http_declines_event_streams(mcp_http):
     token, _, _ = mcp_auth.create_mcp_token("analyst", "A", "analyst")
     response = mcp_http.get("/mcp", headers={"Accept": "text/event-stream", "Authorization": f"Bearer {token}"})
     assert response.status_code == 405
+
+
+def test_audit_log_trims_caller_supplied_values(caplog):
+    with caplog.at_level("INFO", logger="src.mcp_server.audit"):
+        server._audit("read_pages", ANALYST, "rejected", time.monotonic(), document="x" * 5000, pages=list(range(50)))
+    entry = json.loads(caplog.records[-1].getMessage())
+    assert len(entry["document"]) == 200 and len(entry["pages"]) == 20 and entry["user"] == "analyst"

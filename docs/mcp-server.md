@@ -132,6 +132,8 @@ The answer pages were in the results in every case; the mistakes came from choos
 
 - The rate limit is kept in memory for one API process; several processes would need a shared
   store such as Redis.
+- The document list is read once per API process, like the in-app catalog. Restart the API after
+  adding documents.
 - Tokens are signed with the app's `JWT_SECRET`. Rotating the secret revokes every token. A role
   change takes effect when the user creates a new token.
 - Clients get tokens from the app rather than through an OAuth sign-in flow. MCP's OAuth flow would
