@@ -40,4 +40,5 @@ until [ "$($COMPOSE ps api --format '{{.Health}}' 2>/dev/null)" = "healthy" ]; d
 done
 rm -rf "$ROOT/app.old"
 docker image prune -f >/dev/null
+docker builder prune -f --filter until=72h >/dev/null
 echo "Release $REV is live."
