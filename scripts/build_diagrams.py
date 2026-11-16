@@ -584,7 +584,93 @@ def build(v: Version, main: bool = False) -> tuple[str, int]:
     return "\n".join(parts) + "\n", total
 
 
+def mcp_access() -> tuple[str, int]:
+    """Two ways into the knowledge base: the in-app assistant and an employee's own assistant over MCP."""
+    w = 1600
+    left, right, col = 90, 830, 680
+
+    def box(x, y, bw, title, lines, kind, title_size=24):
+        fill, stroke, ink = PALETTE[kind]
+        bh = 74 + 31 * len(lines)
+        return bh, [
+            rect(x, y, bw, bh, fill, stroke, 14, 2),
+            text(x + 26, y + 42, [title], title_size, 700, ink),
+            text(x + 26, y + 80, lines, 20, 400, "#344F60", step=31),
+        ]
+
+    parts = [
+        text(left, 62, ["Two ways to use the knowledge base"], 34, 700, "#102B40"),
+        text(left, 100, ["Same search, same reranker, same role permissions"], 22, 400, "#5A7385"),
+    ]
+    _, a = box(left, 140, col, "Employee in the app", ["React interface · login token"], "intake")
+    _, b = box(right, 140, col, "Employee's own assistant", ["Claude Code, Claude Desktop · MCP token"], "intake")
+    h1, c = box(
+        left,
+        290,
+        col,
+        "In-app assistant (LangGraph)",
+        [
+            "Screens questions: private data, prompt injection",
+            "Routes, sets company and year filters, researches",
+            "Writes the answer, with an exact calculator",
+            "Checks the answer against the sources",
+            "Holds escalated access for Admin approval",
+        ],
+        "answer",
+    )
+    h2, d = box(
+        right,
+        290,
+        col,
+        "MCP server at /mcp",
+        [
+            "Checks the token: search-only, user's own role",
+            "Rate limit per user · audit log of every call",
+            "Tools: list_documents · search_documents · read_pages",
+            "The assistant decides what to search and",
+            "writes the answer itself",
+        ],
+        "approval",
+    )
+    core_y = 290 + max(h1, h2) + 80
+    hc, e = box(
+        left,
+        core_y,
+        right + col - left,
+        "Shared search core",
+        ["Role filter (document type, confidentiality) → hybrid search (meaning + keywords) → reranker → ranked pages"],
+        "evidence",
+    )
+    store_y = core_y + hc + 70
+    hs, f = box(
+        left + 330,
+        store_y,
+        right + col - left - 660,
+        "Qdrant knowledge base",
+        ["84 public filings · 32 companies"],
+        "store",
+    )
+    arrows = []
+    for x, h in ((left + col // 2, h1), (right + col // 2, h2)):
+        arrows.append(edge_svg(f"M{x} 245 L{x} 288", EDGE["main"]))
+        arrows.append(edge_svg(f"M{x} {290 + h} L{x} {core_y - 2}", EDGE["main"]))
+    mid = left + (right + col - left) // 2
+    arrows.append(edge_svg(f"M{mid} {core_y + hc} L{mid} {store_y - 2}", EDGE["loop"]))
+    total = store_y + hs + 60
+    head = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {total}" width="{w}" height="{total}" role="img">',
+        "<title>Financial Research Assistant: two ways to use the knowledge base</title>",
+        '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" '
+        'orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="context-stroke"/></marker></defs>',
+        rect(0, 0, w, total, "#FFFFFF", rx=0),
+    ]
+    return "\n".join(head + parts + a + b + c + d + e + f + arrows + ["</svg>"]) + "\n", total
+
+
 def main() -> None:
+    svg, total = mcp_access()
+    (OUT / "mcp-access.svg").write_text(svg)
+    print(f"mcp-access.svg 1600x{total}")
     (OUT / "versions").mkdir(parents=True, exist_ok=True)
     svg, total = build(CURRENT, main=True)
     (OUT / "langgraph-workflow.svg").write_text(svg)

@@ -87,6 +87,8 @@ The app also serves its search as an [MCP](https://modelcontextprotocol.io) serv
 `http://localhost:8000/mcp`. An employee's assistant can list, search and read the documents
 their role allows, then write the answer itself; answer checks and Admin approval stay in the app.
 
+![Two ways to use the knowledge base](docs/diagrams/mcp-access.png)
+
 ```sh
 make mcp-token MCP_USER=analyst    # prints a "claude mcp add ..." command to run
 ```

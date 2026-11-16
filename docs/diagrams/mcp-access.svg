@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 939" width="1600" height="939" role="img">
+<title>Financial Research Assistant: two ways to use the knowledge base</title>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="context-stroke"/></marker></defs>
+<rect x="0" y="0" width="1600" height="939" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="90" y="62" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="#102B40" text-anchor="start"><tspan x="90" dy="0">Two ways to use the knowledge base</tspan></text>
+<text x="90" y="100" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="400" fill="#5A7385" text-anchor="start"><tspan x="90" dy="0">Same search, same reranker, same role permissions</tspan></text>
+<rect x="90" y="140" width="680" height="105" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="2"/>
+<text x="116" y="182" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="116" dy="0">Employee in the app</tspan></text>
+<text x="116" y="220" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="116" dy="0">React interface · login token</tspan></text>
+<rect x="830" y="140" width="680" height="105" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="2"/>
+<text x="856" y="182" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="856" dy="0">Employee&#x27;s own assistant</tspan></text>
+<text x="856" y="220" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="856" dy="0">Claude Code, Claude Desktop · MCP token</tspan></text>
+<rect x="90" y="290" width="680" height="229" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="2"/>
+<text x="116" y="332" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="116" dy="0">In-app assistant (LangGraph)</tspan></text>
+<text x="116" y="370" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="116" dy="0">Screens questions: private data, prompt injection</tspan><tspan x="116" dy="31">Routes, sets company and year filters, researches</tspan><tspan x="116" dy="31">Writes the answer, with an exact calculator</tspan><tspan x="116" dy="31">Checks the answer against the sources</tspan><tspan x="116" dy="31">Holds escalated access for Admin approval</tspan></text>
+<rect x="830" y="290" width="680" height="229" rx="14" fill="#EEE5FA" stroke="#A385C6" stroke-width="2"/>
+<text x="856" y="332" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#5F3F81" text-anchor="start"><tspan x="856" dy="0">MCP server at /mcp</tspan></text>
+<text x="856" y="370" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="856" dy="0">Checks the token: search-only, user&#x27;s own role</tspan><tspan x="856" dy="31">Rate limit per user · audit log of every call</tspan><tspan x="856" dy="31">Tools: list_documents · search_documents · read_pages</tspan><tspan x="856" dy="31">The assistant decides what to search and</tspan><tspan x="856" dy="31">writes the answer itself</tspan></text>
+<rect x="90" y="599" width="1420" height="105" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="2"/>
+<text x="116" y="641" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="116" dy="0">Shared search core</tspan></text>
+<text x="116" y="679" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="116" dy="0">Role filter (document type, confidentiality) → hybrid search (meaning + keywords) → reranker → ranked pages</tspan></text>
+<rect x="420" y="774" width="760" height="105" rx="14" fill="#FFFFFF" stroke="#69AC94" stroke-width="2"/>
+<text x="446" y="816" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="446" dy="0">Qdrant knowledge base</tspan></text>
+<text x="446" y="854" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="446" dy="0">84 public filings · 32 companies</tspan></text>
+<path d="M430 245 L430 288" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M430 245 L430 288" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M430 519 L430 597" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M430 519 L430 597" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M1170 245 L1170 288" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1170 245 L1170 288" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M1170 519 L1170 597" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1170 519 L1170 597" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M800 704 L800 772" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M800 704 L800 772" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+</svg>

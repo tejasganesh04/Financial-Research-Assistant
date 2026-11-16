@@ -12,6 +12,8 @@ The knowledge base can be used in two ways:
 Both use the same search, the same reranker and the same role permissions. An MCP caller never
 sees a document its role cannot see.
 
+![Two ways to use the knowledge base](diagrams/mcp-access.png)
+
 | | In-app assistant | MCP (employee's assistant) |
 | --- | --- | --- |
 | Who writes the answer | The app's models and prompts | The employee's assistant |
