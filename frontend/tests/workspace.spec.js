@@ -8,24 +8,204 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
     reviewed: false,
     messages: [],
     pending: mode === "pending",
+    signedIn: false,
+    refreshes: 0,
+    rejectNextToken: false,
+    users: [
+      {
+        username: "admin",
+        name: "Avery Admin",
+        role: "admin",
+        role_label: "Administrator",
+        department: "IT",
+        active: true,
+        locked_until: null,
+        created_at: "2026-11-01T10:00:00Z",
+        password_changed_at: "2026-11-01T10:00:00Z",
+        last_login_at: "2026-11-16T10:00:00Z",
+        last_seen_at: "2026-11-16T10:00:00Z",
+        web_sessions: 1,
+        mcp_sessions: 0,
+      },
+      {
+        username: "analyst",
+        name: "Riley Analyst",
+        role: "analyst",
+        role_label: "Analyst",
+        department: "Research",
+        active: true,
+        locked_until: "2099-01-01T00:00:00Z",
+        created_at: "2026-11-01T10:00:00Z",
+        password_changed_at: "2026-11-01T10:00:00Z",
+        last_login_at: null,
+        last_seen_at: null,
+        web_sessions: 0,
+        mcp_sessions: 1,
+      },
+    ],
+  };
+  const permissions = {
+    allowed_doc_types: role === "admin" ? ["*"] : ["10k", "10q", "8k"],
+    allowed_confidentiality: role === "admin" ? ["*"] : ["public"],
   };
   const user = {
     user_id: role,
     name: `Demo ${role}`,
     role,
     department: "Research",
+    permissions,
   };
+  const session = () => ({
+    access_token: "test-token",
+    token_type: "bearer",
+    expires_in: 3600,
+    user,
+  });
   const source = { file: "MICROSOFT_2016_10K.pdf", page: 52, doc_type: "10k" };
   await page.route("**/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
-    const json = (body) => route.fulfill({ json: body });
-    if (path === "/v1/auth/login")
-      return json({ ...user, access_token: "test-token" });
+    const method = request.method();
+    const json = (body, status = 200) => route.fulfill({ status, json: body });
+    if (path === "/v1/auth/login") {
+      const body = request.postDataJSON();
+      if (body.password === "wrong-password")
+        return json({ detail: "Incorrect username or password." }, 401);
+      state.signedIn = true;
+      return json(session());
+    }
+    if (path === "/v1/auth/refresh") {
+      state.refreshes += 1;
+      return state.signedIn && !state.expired
+        ? json(session())
+        : json({ detail: "Your session has ended. Sign in again." }, 401);
+    }
+    if (path === "/v1/auth/logout") {
+      state.signedIn = false;
+      return route.fulfill({ status: 204 });
+    }
+    if (path === "/v1/oauth/server")
+      return json({
+        enabled: true,
+        mcp_url: "https://research.example.com/mcp",
+      });
+    if (path.startsWith("/v1/oauth/requests/") && method === "GET")
+      return path.endsWith("/expired")
+        ? json(
+            {
+              detail:
+                "This connection request has expired or was already used.",
+            },
+            404,
+          )
+        : json({
+            client_name: "Claude Code",
+            redirect_host: "localhost",
+            redirect_is_local: true,
+            scopes: [
+              {
+                scope: "documents:read",
+                description:
+                  "Search and read the documents your role can access",
+              },
+            ],
+            resource: "https://research.example.com/mcp",
+            access_token_minutes: 60,
+          });
     expect(request.headers().authorization).toBe("Bearer test-token");
-    if (state.expired)
-      return route.fulfill({ status: 401, json: { detail: "Token expired" } });
+    if (state.expired || state.rejectNextToken) {
+      state.rejectNextToken = false;
+      return route.fulfill({
+        status: 401,
+        json: { detail: "Token has expired" },
+      });
+    }
     if (path === "/v1/auth/me") return json(user);
+    if (path === "/v1/auth/sessions")
+      return json({
+        sessions: [
+          {
+            id: "s1",
+            kind: "web",
+            user_agent: "Mozilla/5.0 (Macintosh; Mac OS X) Chrome/140",
+            created_at: "2026-11-16T10:00:00Z",
+            last_used_at: "2026-11-16T10:00:00Z",
+            current: true,
+          },
+          {
+            id: "s2",
+            kind: "mcp",
+            client_name: "Claude Code",
+            created_at: "2026-11-15T10:00:00Z",
+            last_used_at: "2026-11-16T09:00:00Z",
+            current: false,
+          },
+        ],
+      });
+    if (path === "/v1/auth/password") {
+      const body = request.postDataJSON();
+      if (body.current_password !== "old-password-123")
+        return json({ detail: "Your current password is incorrect." }, 400);
+      return json(session());
+    }
+    if (path === "/v1/admin/users" && method === "GET")
+      return json({ users: state.users });
+    if (path === "/v1/admin/users" && method === "POST") {
+      const body = request.postDataJSON();
+      state.created = body;
+      return json(
+        {
+          user: {
+            ...state.users[1],
+            username: body.username,
+            name: body.name,
+            locked_until: null,
+          },
+          password: "Abcd-Efgh-Jkmn-Pqrs",
+        },
+        201,
+      );
+    }
+    if (/^\/v1\/admin\/users\/[^/]+\/sessions$/.test(path))
+      return json({ sessions: [] });
+    if (/^\/v1\/admin\/users\/[^/]+\/password$/.test(path)) {
+      state.reset = request.postDataJSON();
+      return json({
+        user: state.users[1],
+        password: state.reset.password ? null : "Wxyz-Abcd-Efgh-Jkmn",
+      });
+    }
+    if (/^\/v1\/admin\/users\/[^/]+\/deactivate$/.test(path)) {
+      state.users[1] = { ...state.users[1], active: false };
+      return json({ user: state.users[1] });
+    }
+    if (/^\/v1\/admin\/users\/[^/]+\/unlock$/.test(path)) {
+      state.users[1] = { ...state.users[1], locked_until: null };
+      return json({ user: state.users[1] });
+    }
+    if (path === "/v1/admin/activity")
+      return json({
+        events: [
+          {
+            id: 2,
+            at: "2026-11-16T10:00:00Z",
+            username: "analyst",
+            actor: null,
+            event: "login_failed",
+            ip: "10.0.0.2",
+            detail: { reason: "password" },
+          },
+          {
+            id: 1,
+            at: "2026-11-16T09:00:00Z",
+            username: "analyst",
+            actor: null,
+            event: "mcp_connected",
+            ip: null,
+            detail: { client: "Claude Code" },
+          },
+        ],
+      });
     if (path === "/v1/conversations") return json({ threads: [] });
     if (/\/messages\/stream$/.test(path) && request.method() === "POST") {
       state.submissions += 1;
@@ -41,14 +221,37 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
       ];
       if (mode === "rate-limit") {
         const events = [
-          { type: "request_started", request_id: "request-limit", thread_id: id, sanitized_message: sanitized },
-          { type: "node_start", node: "grader", label: "Evaluating relevance", request_id: "request-limit" },
-          { type: "error", code: "provider_rate_limited", status: 429, provider: "Groq",
-            model: "openai/gpt-oss-20b", node: "grader", retry_after_seconds: 17, request_id: "request-limit",
-            message: "Groq model openai/gpt-oss-20b was rate limited at node grader. Wait at least 17 seconds before trying again. No answer was released for this request." },
+          {
+            type: "request_started",
+            request_id: "request-limit",
+            thread_id: id,
+            sanitized_message: sanitized,
+          },
+          {
+            type: "node_start",
+            node: "grader",
+            label: "Evaluating relevance",
+            request_id: "request-limit",
+          },
+          {
+            type: "error",
+            code: "provider_rate_limited",
+            status: 429,
+            provider: "Groq",
+            model: "openai/gpt-oss-20b",
+            node: "grader",
+            retry_after_seconds: 17,
+            request_id: "request-limit",
+            message:
+              "Groq model openai/gpt-oss-20b was rate limited at node grader. Wait at least 17 seconds before trying again. No answer was released for this request.",
+          },
         ];
-        return route.fulfill({ contentType: "text/event-stream",
-          body: events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") });
+        return route.fulfill({
+          contentType: "text/event-stream",
+          body: events
+            .map((event) => `data: ${JSON.stringify(event)}\n\n`)
+            .join(""),
+        });
       }
       if (mode === "disconnect")
         return route.fulfill({
@@ -152,22 +355,34 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
 
 async function login(page, account = "analyst") {
   await page.goto("/");
-  await page.getByLabel("Demo accounts").selectOption(account);
+  await page.getByLabel("Username").fill(account);
+  await page.getByLabel("Password").fill("a-test-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Research workspace" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Ask a financial question")).toBeVisible();
 }
 
-test("message length is shown only after rejection and the question remains editable", async ({ page }) => {
+const SIGN_IN_HEADING = { name: "Sign in to Financial Research" };
+
+test("message length is shown only after rejection and the question remains editable", async ({
+  page,
+}) => {
   const state = await mockBackend(page);
   await page.route("**/messages/stream", async (route) => {
     const message = route.request().postDataJSON().message;
     if (message.length <= 2000) return route.fallback();
-    return route.fulfill({ status: 422, json: { detail: [{
-      type: "string_too_long", loc: ["body", "message"],
-      msg: "String should have at most 2000 characters", ctx: { max_length: 2000 },
-    }] } });
+    return route.fulfill({
+      status: 422,
+      json: {
+        detail: [
+          {
+            type: "string_too_long",
+            loc: ["body", "message"],
+            msg: "String should have at most 2000 characters",
+            ctx: { max_length: 2000 },
+          },
+        ],
+      },
+    });
   });
   await login(page);
   const input = page.getByLabel("Ask a financial question");
@@ -175,45 +390,68 @@ test("message length is shown only after rejection and the question remains edit
   await input.fill(longQuestion);
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(input).not.toHaveAttribute("maxlength", /.+/);
-  await page.getByRole("button", { name: "Send question", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("2,000 characters or fewer");
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "2,000 characters or fewer",
+  );
   await expect(input).toHaveValue(longQuestion);
   await expect(page.locator(".message.user")).toHaveCount(0);
   expect(state.submissions).toBe(0);
   await input.fill("Microsoft revenue?");
-  await page.getByRole("button", { name: "Send question", exact: true }).click();
-  await expect(page.getByText("$32,780 million", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  await expect(
+    page.getByText("$32,780 million", { exact: true }),
+  ).toBeVisible();
   expect(state.submissions).toBe(1);
 });
 
 for (const streamedError of [false, true]) {
-  test(`full conversation shows a limit only on submit (${streamedError ? "SSE" : "HTTP"})`, async ({ page }) => {
+  test(`full conversation shows a limit only on submit (${streamedError ? "SSE" : "HTTP"})`, async ({
+    page,
+  }) => {
     const state = await mockBackend(page);
     let limitedPath;
-    const message = "This conversation has reached 20 questions. Please start a new conversation.";
+    const message =
+      "This conversation has reached 20 questions. Please start a new conversation.";
     await page.route("**/messages/stream", async (route) => {
       const path = new URL(route.request().url()).pathname;
       limitedPath ||= path;
       if (path !== limitedPath) return route.fallback();
       return streamedError
-        ? route.fulfill({ contentType: "text/event-stream",
-            body: `data: ${JSON.stringify({ type: "error", status: 409, message })}\n\n` })
+        ? route.fulfill({
+            contentType: "text/event-stream",
+            body: `data: ${JSON.stringify({ type: "error", status: 409, message })}\n\n`,
+          })
         : route.fulfill({ status: 409, json: { detail: message } });
     });
     await login(page);
     await expect(page.getByText(/20 questions/)).toHaveCount(0);
     const input = page.getByLabel("Ask a financial question");
     await input.fill("Microsoft revenue?");
-    await page.getByRole("button", { name: "Send question", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Send question", exact: true })
+      .click();
     await expect(page.getByRole("alert")).toContainText(message);
-    await expect(page.getByRole("alert")).not.toContainText("Check saved history");
+    await expect(page.getByRole("alert")).not.toContainText(
+      "Check saved history",
+    );
     await expect(input).toHaveValue("Microsoft revenue?");
     await expect(page.locator(".message.user")).toHaveCount(0);
     expect(state.submissions).toBe(0);
-    await page.getByRole("button", { name: "New conversation", exact: true }).click();
+    await page
+      .getByRole("button", { name: "New conversation", exact: true })
+      .click();
     await input.fill("Microsoft revenue?");
-    await page.getByRole("button", { name: "Send question", exact: true }).click();
-    await expect(page.getByText("$32,780 million", { exact: true })).toBeVisible();
+    await page
+      .getByRole("button", { name: "Send question", exact: true })
+      .click();
+    await expect(
+      page.getByText("$32,780 million", { exact: true }),
+    ).toBeVisible();
     expect(state.submissions).toBe(1);
   });
 }
@@ -223,9 +461,7 @@ test("login, sample fill, complete answer, sources, refresh and logout", async (
 }) => {
   const state = await mockBackend(page);
   await login(page);
-  await expect(
-    page.getByRole("button", { name: "Approvals", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Approvals" })).toHaveCount(0);
   await page.getByRole("button", { name: /Find a figure/ }).click();
   expect(state.submissions).toBe(0);
   await page
@@ -241,9 +477,7 @@ test("login, sample fill, complete answer, sources, refresh and logout", async (
   ).toBeVisible();
   expect(state.submissions).toBe(1);
   await page.getByRole("button", { name: /MICROSOFT_2016_10K.pdf/ }).click();
-  await expect(
-    page.getByText(/original PDF is not stored locally/),
-  ).toBeVisible();
+  await expect(page.getByText(/original PDF is not stored/)).toBeVisible();
   await page.reload();
   await page.getByText("Request details", { exact: true }).click();
   await expect(page.getByText("request-test", { exact: true })).toBeVisible();
@@ -252,9 +486,11 @@ test("login, sample fill, complete answer, sources, refresh and logout", async (
   ).toBeVisible();
   expect(state.submissions).toBe(1);
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Welcome back" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
+  expect(state.signedIn).toBe(false);
+  // Signing out clears the refresh cookie on the server, so a reload stays signed out.
+  await page.reload();
+  await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
 });
 
 test("a failed request shows an error without resubmitting", async ({
@@ -270,22 +506,33 @@ test("a failed request shows an error without resubmitting", async ({
   expect(state.submissions).toBe(1);
 });
 
-test("rate limits name the model and node, keep the trace link and never resubmit", async ({ page }) => {
+test("rate limits name the model and node, keep the trace link and never resubmit", async ({
+  page,
+}) => {
   const state = await mockBackend(page, { mode: "rate-limit" });
   await login(page);
   await page.getByLabel("Ask a financial question").fill("Microsoft revenue?");
-  await page.getByRole("button", { name: "Send question", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
   const alert = page.getByRole("alert");
   await expect(alert).toContainText("Groq model openai/gpt-oss-20b");
   await expect(alert).toContainText("rate limited at node grader");
   await expect(alert).toContainText("17 seconds");
   await page.getByText("Request details", { exact: true }).click();
   await expect(page.getByText("request-limit", { exact: true })).toBeVisible();
-  await page.screenshot({ path: "../logs/rate-limit-browser.png", fullPage: true });
+  await page.screenshot({
+    path: "../logs/rate-limit-browser.png",
+    fullPage: true,
+  });
   await page.getByLabel("Ask a financial question").fill("Another question?");
-  await expect(page.getByRole("button", { name: "Send question", exact: true })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Send question", exact: true }),
+  ).toBeEnabled();
   expect(state.submissions).toBe(1);
-  await expect(page.getByText("No relevant information", { exact: false })).toHaveCount(0);
+  await expect(
+    page.getByText("No relevant information", { exact: false }),
+  ).toHaveCount(0);
 });
 
 test("pending answer is hidden and later released by read-only polling", async ({
@@ -311,7 +558,7 @@ test("pending answer is hidden and later released by read-only polling", async (
 test("admin can review; rejection requires a reason", async ({ page }) => {
   const state = await mockBackend(page, { role: "admin" });
   await login(page, "admin");
-  await page.getByRole("button", { name: "Approvals", exact: true }).click();
+  await page.getByRole("link", { name: /Approvals/ }).click();
   await page
     .getByRole("button", { name: /Review this financial answer/ })
     .click();
@@ -342,7 +589,7 @@ test("small screen has no horizontal overflow", async ({ page }) => {
 test("admin can approve without a rejection note", async ({ page }) => {
   const state = await mockBackend(page, { role: "admin" });
   await login(page, "admin");
-  await page.getByRole("button", { name: "Approvals", exact: true }).click();
+  await page.getByRole("link", { name: /Approvals/ }).click();
   await page
     .getByRole("button", { name: /Review this financial answer/ })
     .click();
@@ -361,14 +608,8 @@ test("expired sessions return to login without submitting a question", async ({
   await login(page);
   state.expired = true;
   await page.getByRole("button", { name: "Refresh conversation list" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Welcome back" }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(() =>
-      sessionStorage.getItem("financial-research-token"),
-    ),
-  ).toBeNull();
+  await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
+  await expect(page.getByText("Your session has ended")).toBeVisible();
   expect(state.submissions).toBe(0);
 });
 
@@ -376,9 +617,7 @@ test("capture the demo layout for visual review", async ({ page }) => {
   await mockBackend(page);
   await page.setViewportSize({ width: 1360, height: 900 });
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Welcome back" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
   await page.screenshot({ path: "../logs/frontend-login.png", fullPage: true });
   await login(page);
   await page.screenshot({
@@ -402,10 +641,9 @@ test("capture the demo layout for visual review", async ({ page }) => {
 
 test("management cannot see approvals", async ({ page }) => {
   await mockBackend(page, { role: "c_level" });
-  await login(page, "clevel");
-  await expect(
-    page.getByRole("button", { name: "Approvals", exact: true }),
-  ).toHaveCount(0);
+  await login(page, "executive");
+  await expect(page.getByRole("link", { name: "Approvals" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0);
 });
 
 test("HR can fill an explicit access request without submitting it", async ({
@@ -591,4 +829,220 @@ test("progress stages arrive before the complete answer", async ({ page }) => {
     page.getByText("The complete checked answer.", { exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => window.stageRequests)).toBe(1);
+});
+
+// ── Sessions ────────────────────────────────────────────────────────────────
+
+test("the access token is never written to browser storage", async ({
+  page,
+}) => {
+  await mockBackend(page);
+  await login(page);
+  const stored = await page.evaluate(() =>
+    JSON.stringify({ ...localStorage, ...sessionStorage }),
+  );
+  expect(stored).not.toContain("test-token");
+});
+
+test("a wrong password shows a clear error and stays on sign-in", async ({
+  page,
+}) => {
+  await mockBackend(page);
+  await page.goto("/");
+  await page.getByLabel("Username").fill("analyst");
+  await page.getByLabel("Password").fill("wrong-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Incorrect username or password.",
+  );
+  await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
+});
+
+test("an expired access token is renewed silently and the request retried", async ({
+  page,
+}) => {
+  const state = await mockBackend(page);
+  await login(page);
+  const before = state.refreshes;
+  state.rejectNextToken = true;
+  await page.getByRole("button", { name: "Refresh conversation list" }).click();
+  await expect.poll(() => state.refreshes).toBe(before + 1);
+  await expect(page.getByLabel("Ask a financial question")).toBeVisible();
+  await expect(page.getByRole("heading", SIGN_IN_HEADING)).toHaveCount(0);
+});
+
+test("there is no sign-up and no demo account picker", async ({ page }) => {
+  await mockBackend(page);
+  await page.goto("/");
+  await expect(
+    page.getByText(/sign up|create an account|demo account/i),
+  ).toHaveCount(0);
+  await expect(page.getByText("There is no public sign-up.")).toBeVisible();
+});
+
+// ── Administration ──────────────────────────────────────────────────────────
+
+test("admin manages users: reset a password and see it once", async ({
+  page,
+}) => {
+  const state = await mockBackend(page, { role: "admin" });
+  await login(page, "admin");
+  await page.getByRole("link", { name: "Users" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Users", level: 1 }),
+  ).toBeVisible();
+  await expect(page.getByText("Locked")).toBeVisible();
+  await page.getByRole("button", { name: "Manage analyst" }).click();
+  const panel = page.getByRole("dialog", { name: "Manage Riley Analyst" });
+  await panel.getByRole("button", { name: "Reset", exact: true }).click();
+  await page.getByRole("button", { name: "Reset password" }).click();
+  await expect(page.getByText("Wxyz-Abcd-Efgh-Jkmn")).toBeVisible();
+  expect(state.reset.password).toBeNull();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText("Wxyz-Abcd-Efgh-Jkmn")).toHaveCount(0);
+});
+
+test("admin deactivation asks for confirmation; unlock is offered for locked users", async ({
+  page,
+}) => {
+  const state = await mockBackend(page, { role: "admin" });
+  await login(page, "admin");
+  await page.goto("/admin/users");
+  await page.getByRole("button", { name: "Manage analyst" }).click();
+  await page.getByRole("button", { name: "Unlock", exact: true }).click();
+  await expect(
+    page.getByText("Riley Analyst can sign in again."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Deactivate", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Deactivate Riley Analyst?" }),
+  ).toBeVisible();
+  await page
+    .getByRole("dialog", { name: "Deactivate Riley Analyst?" })
+    .getByRole("button", { name: "Deactivate" })
+    .click();
+  await expect(
+    page.getByText("Riley Analyst has been deactivated."),
+  ).toBeVisible();
+  expect(state.users[1].active).toBe(false);
+});
+
+test("admin adds a user and gets their first password", async ({ page }) => {
+  const state = await mockBackend(page, { role: "admin" });
+  await login(page, "admin");
+  await page.goto("/admin/users");
+  await page.getByRole("button", { name: "Add user" }).click();
+  await page.getByLabel("Full name").fill("Jane Doe");
+  await page.getByLabel("Username").fill("Jane.Doe");
+  await page.getByLabel("Role").selectOption("finance");
+  await page.getByRole("button", { name: "Create user" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "User created" }),
+  ).toBeVisible();
+  await expect(page.getByText("Abcd-Efgh-Jkmn-Pqrs")).toBeVisible();
+  expect(state.created).toMatchObject({
+    username: "jane.doe",
+    name: "Jane Doe",
+    role: "finance",
+  });
+});
+
+test("admin activity lists sign-in events in plain words", async ({ page }) => {
+  await mockBackend(page, { role: "admin" });
+  await login(page, "admin");
+  await page.getByRole("link", { name: "Activity" }).click();
+  await expect(page.getByText("Failed sign-in")).toBeVisible();
+  await expect(page.getByText("wrong password")).toBeVisible();
+  await expect(page.getByText("Connected an MCP client")).toBeVisible();
+});
+
+test("non-admins are sent back from admin pages", async ({ page }) => {
+  await mockBackend(page);
+  await login(page);
+  await page.goto("/admin/users");
+  await expect(page.getByLabel("Ask a financial question")).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+// ── Account, Connect and MCP consent ────────────────────────────────────────
+
+test("account page changes the password and lists sessions", async ({
+  page,
+}) => {
+  await mockBackend(page);
+  await login(page);
+  await page.getByRole("link", { name: /Demo analyst/ }).click();
+  await expect(
+    page.locator(".session-list").getByText("Claude Code"),
+  ).toBeVisible();
+  await expect(page.getByText("This browser")).toBeVisible();
+  await page.getByLabel("Current password").fill("not-the-password");
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill("a-new-long-passphrase");
+  await page.getByLabel("Confirm new password").fill("a-different-passphrase");
+  await expect(page.getByText("The new passwords do not match.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Change password" }),
+  ).toBeDisabled();
+  await page.getByLabel("Confirm new password").fill("a-new-long-passphrase");
+  await page.getByRole("button", { name: "Change password" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "current password is incorrect",
+  );
+  await page.getByLabel("Current password").fill("old-password-123");
+  await page.getByRole("button", { name: "Change password" }).click();
+  await expect(page.getByText(/Password changed/)).toBeVisible();
+});
+
+test("connect page shows the server's MCP address", async ({ page }) => {
+  await mockBackend(page);
+  await login(page);
+  await page.getByRole("link", { name: "Connect Claude Code" }).click();
+  await expect(
+    page.getByText(
+      "claude mcp add --transport http financial-research https://research.example.com/mcp",
+    ),
+  ).toBeVisible();
+});
+
+test("MCP consent: sign in, allow, and return to the client", async ({
+  page,
+}) => {
+  await mockBackend(page);
+  let approved = false;
+  await page.route("**/v1/oauth/requests/req-1/approve", (route) => {
+    approved = true;
+    route.fulfill({
+      json: {
+        redirect_url: "http://localhost:53682/callback?code=abc&state=xyz",
+      },
+    });
+  });
+  let returned = "";
+  await page.route("http://localhost:53682/**", (route) => {
+    returned = route.request().url();
+    route.fulfill({ body: "Authentication complete" });
+  });
+  await page.goto("/oauth/consent?request=req-1");
+  await expect(
+    page.getByRole("heading", { name: "Connect Claude Code" }),
+  ).toBeVisible();
+  await page.getByLabel("Username").fill("analyst");
+  await page.getByLabel("Password").fill("a-test-password");
+  await page.getByRole("button", { name: "Sign in and continue" }).click();
+  await expect(
+    page.getByText("Search and read the documents your role can access"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Allow access" }).click();
+  await expect.poll(() => returned).toContain("code=abc");
+  expect(approved).toBe(true);
+});
+
+test("MCP consent explains an expired request", async ({ page }) => {
+  await mockBackend(page);
+  await page.goto("/oauth/consent?request=expired");
+  await expect(
+    page.getByRole("heading", { name: "Connection request unavailable" }),
+  ).toBeVisible();
 });

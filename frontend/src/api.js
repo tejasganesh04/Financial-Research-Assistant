@@ -1,30 +1,5 @@
 import { readEvents } from "./stream.js";
-import axios from "axios";
-
-export const TOKEN_KEY = "financial-research-token";
-// Same-origin API in the Docker setup.
-const client = axios.create({ baseURL: "/v1", timeout: 20000 });
-
-// Attach this tab's JWT to every request.
-client.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem(TOKEN_KEY);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// A 401 from a protected endpoint expires the local session; a failed login stays on the login form.
-client.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (
-      error.response?.status === 401 &&
-      !error.config.url.includes("/auth/login")
-    ) {
-      window.dispatchEvent(new Event("session-expired"));
-    }
-    return Promise.reject(error);
-  },
-);
+import { client } from "./session.js";
 
 export function errorMessage(error) {
   const detail = error.response?.data?.detail;
@@ -40,58 +15,98 @@ export function errorMessage(error) {
       .join(" ");
   }
   if (error.code === "ECONNABORTED")
-    return "The backend timed out. Check saved history before trying again.";
+    return "The server took too long to respond. Check saved history before trying again.";
   if (error.code === "ERR_NETWORK")
-    return "Could not connect to the backend. Check that the local services are running.";
+    return "Could not reach the server. Check your connection and try again.";
   return error.message || "The request could not be completed.";
 }
 
+const enc = encodeURIComponent;
+const data = (request) => request.then((r) => r.data);
+
 export const api = {
-  login: (username, password) =>
-    client.post("/auth/login", { username, password }).then((r) => r.data),
-  me: () => client.get("/auth/me").then((r) => r.data),
+  me: () => data(client.get("/auth/me")),
+  changePassword: (current_password, new_password) =>
+    data(client.post("/auth/password", { current_password, new_password })),
+  sessions: () => data(client.get("/auth/sessions")).then((d) => d.sessions),
+  endSession: (id) => client.delete(`/auth/sessions/${enc(id)}`),
+
   conversations: () =>
     client
       .get("/conversations", { params: { limit: 100 } })
       .then((r) => r.data.threads),
-  conversation: (id) =>
-    client.get(`/conversations/${encodeURIComponent(id)}`).then((r) => r.data),
-  result: (id) =>
-    client
-      .get(`/conversations/${encodeURIComponent(id)}/result`)
-      .then((r) => r.data),
+  conversation: (id) => data(client.get(`/conversations/${enc(id)}`)),
+  result: (id) => data(client.get(`/conversations/${enc(id)}/result`)),
+  deleteConversation: (id) => client.delete(`/conversations/${enc(id)}`),
+
   approvals: () => client.get("/approvals").then((r) => r.data.approvals),
-  approval: (id) =>
-    client.get(`/approvals/${encodeURIComponent(id)}`).then((r) => r.data),
+  approval: (id) => data(client.get(`/approvals/${enc(id)}`)),
   decide: (id, decision, reason) =>
-    client
-      .post(`/approvals/${encodeURIComponent(id)}/${decision}`, { reason })
-      .then((r) => r.data),
-  // One streaming POST per question; not retried automatically, to avoid repeating paid work.
+    data(client.post(`/approvals/${enc(id)}/${decision}`, { reason })),
+
+  // Administration
+  users: () => data(client.get("/admin/users")).then((d) => d.users),
+  roles: () => data(client.get("/admin/roles")),
+  createUser: (body) => data(client.post("/admin/users", body)),
+  updateUser: (username, body) =>
+    data(client.patch(`/admin/users/${enc(username)}`, body)),
+  resetPassword: (username, password) =>
+    data(
+      client.post(`/admin/users/${enc(username)}/password`, {
+        password: password || null,
+      }),
+    ),
+  signOutEverywhere: (username) =>
+    data(client.post(`/admin/users/${enc(username)}/sign-out`)),
+  setActive: (username, active) =>
+    data(
+      client.post(
+        `/admin/users/${enc(username)}/${active ? "activate" : "deactivate"}`,
+      ),
+    ),
+  unlock: (username) =>
+    data(client.post(`/admin/users/${enc(username)}/unlock`)),
+  userSessions: (username) =>
+    data(client.get(`/admin/users/${enc(username)}/sessions`)).then(
+      (d) => d.sessions,
+    ),
+  endUserSession: (username, id) =>
+    client.delete(`/admin/users/${enc(username)}/sessions/${enc(id)}`),
+  activity: (params) =>
+    data(client.get("/admin/activity", { params })).then((d) => d.events),
+
+  // MCP connection and consent
+  mcpServer: () => data(client.get("/oauth/server")),
+  oauthRequest: (id) => data(client.get(`/oauth/requests/${enc(id)}`)),
+  oauthDecide: (id, decision) =>
+    data(client.post(`/oauth/requests/${enc(id)}/${decision}`)),
+
+  // One streaming POST per question; never retried after it starts, to avoid repeating paid work.
   async ask(id, message, onEvent, signal) {
     let response;
     try {
       response = await client.post(
-        `/conversations/${encodeURIComponent(id)}/messages/stream`,
+        `/conversations/${enc(id)}/messages/stream`,
         { message },
         { adapter: "fetch", responseType: "stream", timeout: 0, signal },
       );
     } catch (error) {
-      // Validation/access errors are JSON, but this request uses a stream adapter.
-      // Decode their body so the existing error display can show the backend's explanation.
+      // Validation and access errors are JSON, but this request uses a stream adapter.
       if (error.response?.data?.getReader) {
-        const detail = await new Response(error.response.data).json().catch(() => null);
+        const detail = await new Response(error.response.data)
+          .json()
+          .catch(() => null);
         if (detail) error.response.data = detail;
       }
       throw error;
     }
     await readEvents(response.data, onEvent);
   },
+
   async download(file) {
-    const response = await client.get(
-      `/documents/${encodeURIComponent(file)}`,
-      { responseType: "blob" },
-    );
+    const response = await client.get(`/documents/${enc(file)}`, {
+      responseType: "blob",
+    });
     const url = URL.createObjectURL(response.data);
     const link = document.createElement("a");
     link.href = url;

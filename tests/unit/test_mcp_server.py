@@ -453,6 +453,7 @@ def test_app_serves_mcp_and_oauth_discovery():
     metadata = client.get("/.well-known/oauth-authorization-server").json()
     assert metadata["registration_endpoint"].endswith("/register")
     assert metadata["code_challenge_methods_supported"] == ["S256"]
+    assert client.get("/v1/oauth/server").json() == {"enabled": True, "mcp_url": settings.mcp_resource_url}
     # The old manual token endpoint is gone; MCP clients sign in with OAuth.
     assert client.post("/v1/auth/mcp-token").status_code in (404, 405)
 
