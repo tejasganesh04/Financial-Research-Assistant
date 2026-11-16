@@ -15,6 +15,8 @@ extra access hold the drafted answer for Admin review before release.
 - Admin approval or rejection of explicitly escalated answers.
 - Saved conversations, live processing stages and document/page references.
 - Local request traces with workflow decisions, timings and provider-reported token usage.
+- An [MCP server](docs/mcp-server.md) so employees' own AI assistants, such as Claude Code, can search
+  the same documents under the same role permissions.
 
 ## Run locally
 
@@ -79,6 +81,19 @@ The [evaluation story](docs/evaluation-story.md) explains each version: why it w
 changed, what changed, examples, and what was tried and dropped. Each version has a
 [workflow diagram](docs/diagrams/versions/).
 
+## Use from Claude Code and other AI assistants (MCP)
+
+The app also serves its search as an [MCP](https://modelcontextprotocol.io) server at
+`http://localhost:8000/mcp`. An employee's assistant can list, search and read the documents
+their role allows, then write the answer itself; answer checks and Admin approval stay in the app.
+
+```sh
+make mcp-token MCP_USER=analyst    # prints a "claude mcp add ..." command to run
+```
+
+On FinanceBench the search tool returns the answer page within its default 8 results for 145 of
+150 questions. The [MCP guide](docs/mcp-server.md) covers the tools, tokens, limits and other clients.
+
 ## Code layout
 
 | Folder | Contents |
@@ -89,12 +104,15 @@ changed, what changed, examples, and what was tried and dropped. Each version ha
 | `src/services/` | Retrieval, reranking, models, privacy, persistence and request traces |
 | `src/config/` | Settings, prompts and role permissions |
 | `src/models/` | Request/response schemas and graph state |
+| `src/mcp_server/` | MCP server: document search tools, tokens and the `/mcp` endpoint |
 | `scripts/seed_from_hf.py` | Restore the published knowledge base into an empty Qdrant collection |
 | `scripts/build_contextual_collection.py` | Build the knowledge base with contextual chunk headers |
 | `scripts/build_diagrams.py` | Generate the workflow diagrams |
+| `scripts/create_mcp_token.py` | Create an MCP token and print the Claude Code command |
 | `tests/` | Unit and integration regression checks |
-| `tests/evaluation/financebench/` | Search check and answer benchmark |
+| `tests/evaluation/financebench/` | Search check, MCP search check and answer benchmark |
 | `docs/evaluation-story.md` | How each version was measured and improved |
+| `docs/mcp-server.md` | MCP tools, connection, tokens and limits |
 | `docs/diagrams/` | Workflow diagrams, one per version, and editable sources |
 
 ## Checks

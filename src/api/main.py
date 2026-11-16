@@ -170,8 +170,9 @@ for r in _routers:
 if settings.MCP_ENABLED:
     from starlette.routing import Route
 
-    from src.mcp_server.server import http_endpoint
+    from src.mcp_server.server import http_endpoint, mcp
 
+    mcp._mcp_server.version = app.version  # report this app's version, not the SDK's
     app.router.routes.append(Route("/mcp", endpoint=http_endpoint, include_in_schema=False))
 
 if (FRONTEND_DIR / "assets").is_dir():
