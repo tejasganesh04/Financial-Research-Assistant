@@ -138,6 +138,29 @@ docker compose -f compose.minimal.yml -f compose.production.yml up -d --build ap
 
 Account tables are created or extended automatically at start-up.
 
+**Automatic deploys.** `.github/workflows/ci.yml` runs the tests on every push and pull request and,
+for pushes to `main` that pass, sends the release to the server. On the server a `deploy` user holds
+one SSH key whose only permitted command is `/opt/fra/ci-receive.sh`, which reads the release from
+standard input and runs `/opt/fra/server-update.sh` through `sudo`; the key cannot open a shell or
+read the settings. `make deploy` installs both scripts. Create the user and the key once:
+
+```sh
+ssh-keygen -t ed25519 -N "" -C github-actions-deploy -f ci_deploy_key
+# on the server, as root:
+useradd --create-home --shell /bin/sh deploy
+install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+echo 'command="/opt/fra/ci-receive.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty <contents of ci_deploy_key.pub>' \
+  > /home/deploy/.ssh/authorized_keys
+chown deploy:deploy /home/deploy/.ssh/authorized_keys && chmod 600 /home/deploy/.ssh/authorized_keys
+echo 'deploy ALL=(root) NOPASSWD: /opt/fra/server-update.sh' > /etc/sudoers.d/fra-deploy
+chmod 440 /etc/sudoers.d/fra-deploy
+```
+
+Then add four repository secrets (Settings → Secrets and variables → Actions, or `gh secret set`):
+`DEPLOY_HOST` (the server's address), `DEPLOY_SSH_KEY` (the private key), `DEPLOY_KNOWN_HOSTS`
+(the output of `ssh-keyscan -t ed25519 <address>`) and `DEPLOY_URL` (such as
+`https://research.example.com`). Without `DEPLOY_HOST` the deploy job does nothing.
+
 **Checking a deployment.** `frontend/tests/live-check.mjs` drives a real browser against a running
 server: sign-in, a real question, the account page, an MCP client connecting through OAuth, every
 admin action, the lockout, the phone layout and the theme. It creates a temporary account and

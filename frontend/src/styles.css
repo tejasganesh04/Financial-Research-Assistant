@@ -2306,38 +2306,35 @@ button.account-row:disabled {
 .composer.disabled {
   opacity: 0.7;
 }
+.composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  padding: 8px 8px 8px 0;
+}
 .composer textarea {
   display: block;
   border: 0;
   box-shadow: none !important;
   background: transparent;
   resize: none;
-  padding: 18px 24px 4px;
-  min-height: 56px;
+  padding: 8px 12px 8px 24px;
+  min-height: 40px;
   max-height: 220px;
   font-size: 16px;
   line-height: 24px;
 }
-.composer-bar {
+.composer-status {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 8px 8px 24px;
-}
-.composer-hint {
-  display: inline-flex;
-  align-items: center;
   gap: 8px;
-  color: var(--text-3);
+  padding: 6px 24px 2px;
+  color: var(--text-2);
   font-size: 12px;
   line-height: 16px;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
-.composer-hint .spinner {
+.composer-status .spinner {
   color: var(--primary);
 }
 .send-button {
@@ -2661,14 +2658,8 @@ button.account-row:disabled {
   .review-detail {
     padding: 20px 16px;
   }
-  .hint-keys {
-    display: none;
-  }
   .composer textarea {
-    padding: 16px 20px 0;
-  }
-  .composer-bar {
-    padding: 0 8px 8px 20px;
+    padding-left: 20px;
   }
   .modal-footer {
     flex-wrap: wrap;
