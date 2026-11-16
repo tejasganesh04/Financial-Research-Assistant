@@ -56,3 +56,27 @@ def test_lookup_failure_keeps_the_original_chunks(monkeypatch):
     monkeypatch.setattr(context_expander, "get_qdrant_client", broken)
     assert context_expander.context_expander_node({"relevant_chunks": [chunk(1)]}) == {}
     assert context_expander.context_expander_node({"relevant_chunks": []}) == {}
+
+
+def test_neighbours_are_limited_to_the_request_access(monkeypatch):
+    client = client_with({4: "assets"})
+    monkeypatch.setattr(context_expander, "get_qdrant_client", lambda: client)
+    context_expander.context_expander_node({"relevant_chunks": [chunk(5)], "user_role": "analyst"})
+    conditions = {c.key: c.match.any for c in client.scroll.call_args.kwargs["scroll_filter"].must[2:]}
+    assert conditions == {"doc_type": ["10k", "10q", "8k"], "confidentiality": ["public"]}
+
+
+def test_escalated_scope_and_admin_access_reach_neighbours(monkeypatch):
+    client = client_with({4: "assets"})
+    monkeypatch.setattr(context_expander, "get_qdrant_client", lambda: client)
+    state = {
+        "relevant_chunks": [chunk(5)],
+        "user_role": "analyst",
+        "allowed_doc_types": ["10k", "board_report"],
+        "access_scope": {"doc_types": ["10k", "board_report"], "confidentiality": ["public", "confidential"]},
+    }
+    context_expander.context_expander_node(state)
+    conditions = {c.key: c.match.any for c in client.scroll.call_args.kwargs["scroll_filter"].must[2:]}
+    assert conditions == {"doc_type": ["10k", "board_report"], "confidentiality": ["public", "confidential"]}
+    context_expander.context_expander_node({"relevant_chunks": [chunk(5)], "user_role": "admin"})
+    assert len(client.scroll.call_args.kwargs["scroll_filter"].must) == 2
