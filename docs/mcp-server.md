@@ -119,6 +119,14 @@ Median search time 1.1 s. Reproduce with
 `python tests/evaluation/financebench/measure_mcp_search.py --run <name>` (no language model is
 called; one embedding and one rerank per question).
 
+### Role permissions
+
+The knowledge base holds public filings only, so the permissions were also checked on a temporary
+copy in which real chunks were relabelled as an internal expense policy and a confidential board
+report. With the real search, each role listed, found and read exactly what it may see: analysts
+the public filing only, HR the policy only, finance both, and C-level and Admin everything. The
+board report could not be listed, searched or read by any other role.
+
 ### With an assistant
 
 A small, free model (Groq GPT-OSS 120B) was given only these tools over MCP and asked 10
