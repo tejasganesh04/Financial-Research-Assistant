@@ -474,3 +474,60 @@ def test_token_endpoint_requires_login_and_valid_lifetime():
         "/v1/auth/mcp-token", json={"days": 365}, headers={"Authorization": f"Bearer {login['access_token']}"}
     )
     assert response.status_code == 422
+
+
+# ── Company names as assistants write them ───────────────────────────────────
+
+AMERICANS = [
+    Document("AMEX_2022_10K", "AMEX_2022_10K.pdf", "american_express", "American Express", 2022, "10k", "public", 9),
+    Document(
+        "AWK_2021_10K", "AWK_2021_10K.pdf", "american_water_works", "American Water Works", 2021, "10k", "public", 9
+    ),
+    Document("LMT_2022_10K", "LMT_2022_10K.pdf", "lockheed_martin", "Lockheed Martin", 2022, "10k", "public", 9),
+    Document("COST_2021_10K", "COST_2021_10K.pdf", "costco", "Costco", 2021, "10k", "public", 9),
+]
+
+
+@pytest.mark.parametrize(
+    ("name", "slug"),
+    [
+        ("Amazon.com, Inc.", "amazon"),
+        ("The 3M Company", "3m"),
+        ("Lockheed", "lockheed_martin"),
+        ("Lockheed Martin Corporation", "lockheed_martin"),
+        ("Costco Wholesale", "costco"),
+        ("American Water", "american_water_works"),
+        ("AXP", "american_express"),
+    ],
+)
+def test_company_names_with_suffixes_prefixes_and_tickers(name, slug):
+    assert knowledge.resolve_companies([name], list(DOCS[:4]) + AMERICANS) == [slug]
+
+
+def test_ambiguous_company_name_lists_the_choices():
+    with pytest.raises(RequestError, match="ambiguous: 'American' matches American Express, American Water Works"):
+        knowledge.resolve_companies(["American"], AMERICANS)
+
+
+@pytest.mark.parametrize("name", ["Micro", "Inc", "Apple", "", "Ama"])
+def test_partial_words_and_unknown_names_do_not_match(name):
+    with pytest.raises(RequestError):
+        knowledge.resolve_companies([name], list(DOCS[:4]) + AMERICANS)
+
+
+def test_fuzzy_matching_never_reaches_hidden_companies():
+    with pytest.raises(RequestError) as error:
+        knowledge.resolve_companies(["Acme Holdings Inc"], knowledge.visible_documents(ANALYST))
+    assert "Acme" not in str(error.value).split("match company")[1].split("Companies you can search")[1]
+
+
+def test_results_group_chunks_by_page_in_rank_order():
+    ranked = [
+        chunk("A.pdf", 5, 51, "best on page 5", score=0.9),
+        chunk("A.pdf", 7, 70, "page 7", score=0.8),
+        chunk("A.pdf", 5, 50, "earlier on page 5", score=0.7),
+        chunk("A.pdf", 9, 90, "page 9", score=0.6),
+    ]
+    groups = knowledge.page_passages(ranked, max_results=2)
+    assert [[c["metadata"]["chunk_index"] for c in g] for g in groups] == [[51, 50], [70]]
+    assert knowledge._passage_text(groups[0]) == "earlier on page 5\nbest on page 5"

@@ -1,4 +1,4 @@
-.PHONY: up down restart logs ps seed-db build-kb run test test-unit test-integration lint format check clean
+.PHONY: up down restart logs ps seed-db build-kb mcp-token run test test-unit test-integration lint format check clean
 
 COMPOSE = docker compose -f compose.minimal.yml -f compose.local.yml
 
@@ -24,6 +24,11 @@ seed-db:
 
 build-kb:
 	$(COMPOSE) exec -T api python scripts/build_contextual_collection.py --target financial_docs_v3
+
+# --- MCP server: create a token and print the Claude Code command (docs/mcp-server.md) ---
+MCP_USER ?= analyst
+mcp-token:
+	python3 scripts/create_mcp_token.py --username $(MCP_USER)
 
 # --- Local development (API on the host; Qdrant and PostgreSQL in Docker) ---
 run:
