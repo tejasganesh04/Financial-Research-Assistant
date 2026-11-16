@@ -349,3 +349,18 @@ async def test_schema_setup_is_repeatable_and_purge_runs(accounts):
     await user_store.ensure_schema(accounts)
     await user_store.purge_expired(accounts)
     assert await user_store.count_accounts(accounts) == 3
+
+
+async def test_admin_edits_profiles_and_passwords_cannot_contain_the_username(accounts):
+    async with client() as c:
+        admin = await sign_in(c, "admin")
+        edited = await c.patch(
+            "/v1/admin/users/analyst", json={"name": "Riley Chen", "department": "Equity"}, headers=bearer(admin)
+        )
+        assert edited.status_code == 200
+        assert edited.json()["user"]["name"] == "Riley Chen" and edited.json()["user"]["department"] == "Equity"
+        assert (await c.patch("/v1/admin/users/nobody", json={"name": "X"}, headers=bearer(admin))).status_code == 404
+        weak = await c.post(
+            "/v1/admin/users/analyst/password", json={"password": "my-analyst-password"}, headers=bearer(admin)
+        )
+        assert weak.status_code == 400 and "username" in weak.json()["detail"]

@@ -59,7 +59,7 @@ def needs_rehash(stored: str) -> bool:
 DUMMY_HASH = hash_password(secrets.token_urlsafe(16))
 
 
-def password_problem(password: str) -> str | None:
+def password_problem(password: str, username: str | None = None) -> str | None:
     """Why a new password is not acceptable, or None."""
     if len(password) < MIN_LENGTH:
         return f"Use at least {MIN_LENGTH} characters."
@@ -69,6 +69,8 @@ def password_problem(password: str) -> str | None:
         return "Remove spaces from the start and end."
     if len(set(password)) < 5:
         return "Use a less repetitive password."
+    if username and len(username) >= 3 and username.lower() in password.lower():
+        return "Don't include the username in the password."
     return None
 
 

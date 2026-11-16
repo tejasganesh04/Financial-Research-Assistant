@@ -218,6 +218,7 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
   const [notice, setNotice] = useState("");
   const [confirm, setConfirm] = useState(null);
   const [resetting, setResetting] = useState(false);
+  const [editing, setEditing] = useState(false);
   const isMe = user.username === me.user_id;
   const s = status(user);
 
@@ -236,7 +237,7 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
   }, [user.username]);
 
   const drawer = useRef(null);
-  const dialogOpen = !!confirm || resetting;
+  const dialogOpen = !!confirm || resetting || editing;
   useEffect(() => {
     const previous = document.activeElement;
     drawer.current?.focus();
@@ -323,6 +324,16 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
           <Alert>{error}</Alert>
           <Alert kind="success">{notice}</Alert>
 
+          <div className="drawer-row">
+            <h3 className="drawer-section">Details</h3>
+            <button
+              className="link-button"
+              onClick={() => setEditing(true)}
+              disabled={!!busy}
+            >
+              Edit
+            </button>
+          </div>
           <dl className="detail-grid">
             <div>
               <dt>Status</dt>
@@ -495,6 +506,17 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
           <p className="modal-text">{confirm.body}</p>
         </Modal>
       )}
+      {editing && (
+        <EditProfile
+          user={user}
+          onClose={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false);
+            setNotice("Details saved.");
+            await onChanged();
+          }}
+        />
+      )}
       {resetting && (
         <ResetPassword
           user={user}
@@ -541,6 +563,73 @@ function ActionRow({
         {button}
       </button>
     </div>
+  );
+}
+
+function EditProfile({ user, onClose, onSaved }) {
+  const [name, setName] = useState(user.name);
+  const [department, setDepartment] = useState(user.department || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api.updateUser(user.username, { name, department });
+      await onSaved();
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={`Edit ${user.username}`}
+      description="The name appears in the app and on answers they send for review."
+      onClose={onClose}
+    >
+      <form onSubmit={submit} className="stack">
+        <Alert>{error}</Alert>
+        <div className="field">
+          <label htmlFor="edit-name">Full name</label>
+          <input
+            id="edit-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            maxLength={80}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="edit-department">
+            Department <span className="muted">(optional)</span>
+          </label>
+          <input
+            id="edit-department"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            maxLength={80}
+          />
+        </div>
+        <div className="modal-footer inline">
+          <button
+            type="button"
+            className="button secondary"
+            onClick={onClose}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button className="button primary" disabled={busy || !name.trim()}>
+            {busy && <Spinner />}
+            Save
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
