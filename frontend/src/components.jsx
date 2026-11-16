@@ -148,21 +148,20 @@ export function Spinner({ size = 14 }) {
   );
 }
 
-// People get a steady colour of their own, as in an address book.
+// Each initial has its own colour, as in an address book.
 const AVATAR_COLORS = [
   "#1a73e8",
+  "#b06000",
   "#188038",
   "#8430ce",
-  "#b80672",
   "#007b83",
-  "#b06000",
+  "#b80672",
   "#3f51b5",
   "#5f6368",
 ];
 
 export function Avatar({ name = "", size = 32 }) {
-  let hash = 0;
-  for (const char of name) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
+  const initial = initials(name)[0];
   return (
     <span
       className="avatar"
@@ -170,11 +169,12 @@ export function Avatar({ name = "", size = 32 }) {
         width: size,
         height: size,
         fontSize: Math.round(size * 0.45),
-        "--avatar": AVATAR_COLORS[hash % AVATAR_COLORS.length],
+        "--avatar":
+          AVATAR_COLORS[initial.codePointAt(0) % AVATAR_COLORS.length],
       }}
       aria-hidden="true"
     >
-      {initials(name)[0]}
+      {initial}
     </span>
   );
 }
