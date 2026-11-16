@@ -404,7 +404,7 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
             )}
             {user.active ? (
               <ActionRow
-                icon="x"
+                icon="block"
                 title="Deactivate"
                 text={
                   isMe

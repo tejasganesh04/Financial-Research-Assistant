@@ -1,18 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Account from "./Account.jsx";
 import AdminActivity from "./AdminActivity.jsx";
 import AdminUsers from "./AdminUsers.jsx";
 import { api } from "./api.js";
 import Approvals from "./Approvals.jsx";
-import {
-  Avatar,
-  Badge,
-  Brand,
-  Icon,
-  Logo,
-  Spinner,
-  roleName,
-} from "./components.jsx";
+import { Avatar, Brand, Icon, Logo, Spinner, roleName } from "./components.jsx";
 import Connect from "./Connect.jsx";
 import Consent from "./Consent.jsx";
 import ResearchView, { ConversationList, useResearch } from "./Research.jsx";
@@ -24,6 +16,7 @@ import {
   signOut,
 } from "./session.js";
 import SignIn from "./SignIn.jsx";
+import { applyTheme, storedTheme } from "./theme.js";
 
 const ADMIN_PATHS = ["/approvals", "/admin/users", "/admin/activity"];
 const KNOWN_PATHS = ["/", "/account", "/connect", ...ADMIN_PATHS];
@@ -142,13 +135,6 @@ function Shell({ user, path, onSignOut }) {
     </a>
   );
 
-  const title = {
-    "/approvals": "Approvals",
-    "/admin/users": "Users",
-    "/admin/activity": "Activity",
-    "/account": "Account",
-    "/connect": "Connect Claude Code",
-  }[view];
   const threadTitle =
     research.history.find((item) => item.thread_id === research.thread.id)
       ?.title ||
@@ -177,15 +163,15 @@ function Shell({ user, path, onSignOut }) {
           }}
           disabled={!!research.busy}
         >
-          <Icon name="plus" size={15} />
+          <Icon name="edit" size={19} />
           New conversation
         </button>
         <nav className="nav" aria-label="Workspace">
-          {navItem("/", "chat", "Research")}
+          {navItem("/", "search", "Research")}
           {admin &&
             navItem(
               "/approvals",
-              "shield",
+              "review",
               "Approvals",
               pending > 0 ? <span className="nav-count">{pending}</span> : null,
             )}
@@ -207,29 +193,6 @@ function Shell({ user, path, onSignOut }) {
         />
         <div className="sidebar-footer">
           {navItem("/connect", "terminal", "Connect Claude Code")}
-          <div className="profile">
-            <a
-              href="/account"
-              className="profile-link"
-              onClick={linkHandler("/account")}
-              title="Account settings"
-            >
-              <Avatar name={user.name} size={30} />
-              <span className="profile-text">
-                <strong>{user.name}</strong>
-                <small>{roleName(user.role)}</small>
-              </span>
-            </a>
-            <button
-              className="icon-button"
-              onClick={signOutEverywhereHere}
-              disabled={research.sending}
-              aria-label="Sign out"
-              title="Sign out"
-            >
-              <Icon name="logout" size={16} />
-            </button>
-          </div>
         </div>
       </aside>
       <div className="sidebar-scrim" onClick={() => setMenuOpen(false)} />
@@ -247,12 +210,20 @@ function Shell({ user, path, onSignOut }) {
           {view === "/" ? (
             <h1 className="topbar-title">{threadTitle}</h1>
           ) : (
-            <div className="topbar-title">{title}</div>
+            <div className="topbar-title" />
           )}
-          <Badge tone="neutral">
-            <Icon name="shield" size={12} />
+          <span
+            className="topbar-role"
+            title="Your role decides which documents you can search"
+          >
+            <Icon name="shield" size={14} />
             {roleName(user.role)}
-          </Badge>
+          </span>
+          <AccountMenu
+            user={user}
+            onSignOut={signOutEverywhereHere}
+            signOutDisabled={research.sending}
+          />
         </header>
         <main className="content">
           {/* The research view stays mounted so a running question survives moving between pages. */}
@@ -266,6 +237,97 @@ function Shell({ user, path, onSignOut }) {
           {view === "/connect" && <Connect user={user} />}
         </main>
       </div>
+    </div>
+  );
+}
+
+// The avatar in the corner opens the account: who is signed in, appearance, and signing out.
+function AccountMenu({ user, onSignOut, signOutDisabled }) {
+  const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState(storedTheme);
+  const root = useRef(null);
+  const { path } = useLocation();
+
+  useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const outside = (event) => {
+      if (!root.current?.contains(event.target)) setOpen(false);
+    };
+    const escape = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        root.current?.querySelector(".account-button")?.focus();
+      }
+    };
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+
+  function choose(next) {
+    applyTheme(next);
+    setTheme(next);
+  }
+
+  return (
+    <div className="account" ref={root}>
+      <button
+        className="account-button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={`Account: ${user.name}`}
+        title={`${user.name} (${user.user_id})`}
+      >
+        <Avatar name={user.name} size={32} />
+      </button>
+      {open && (
+        <div className="account-menu" role="dialog" aria-label="Account">
+          <span className="account-id">{user.user_id}</span>
+          <Avatar name={user.name} size={72} />
+          <strong className="account-greeting">Hi, {user.name}</strong>
+          <span className="account-role">{roleName(user.role)}</span>
+          <a
+            href="/account"
+            className="button secondary"
+            onClick={linkHandler("/account")}
+          >
+            Manage your account
+          </a>
+          <div className="account-card">
+            <div className="account-row">
+              <Icon name={theme === "dark" ? "dark" : "light"} size={16} />
+              <span>Appearance</span>
+              <div className="segmented" role="group" aria-label="Appearance">
+                <button
+                  aria-pressed={theme === "light"}
+                  onClick={() => choose("light")}
+                >
+                  Light
+                </button>
+                <button
+                  aria-pressed={theme === "dark"}
+                  onClick={() => choose("dark")}
+                >
+                  Dark
+                </button>
+              </div>
+            </div>
+            <button
+              className="account-row"
+              onClick={onSignOut}
+              disabled={signOutDisabled}
+            >
+              <Icon name="logout" size={16} />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

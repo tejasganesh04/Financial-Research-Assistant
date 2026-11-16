@@ -389,7 +389,21 @@ async function login(page, account = "analyst") {
   await expect(page.getByLabel("Ask a financial question")).toBeVisible();
 }
 
-const SIGN_IN_HEADING = { name: "Sign in to Financial Research" };
+const SIGN_IN_HEADING = { name: "Sign in", exact: true };
+
+// Signing out and account settings live in the menu behind the avatar.
+async function openAccountMenu(page) {
+  await page.getByRole("button", { name: /^Account:/ }).click();
+  await expect(page.getByRole("dialog", { name: "Account" })).toBeVisible();
+}
+
+async function signOut(page) {
+  await openAccountMenu(page);
+  await page
+    .getByRole("dialog", { name: "Account" })
+    .getByRole("button", { name: "Sign out" })
+    .click();
+}
 
 test("message length is shown only after rejection and the question remains editable", async ({
   page,
@@ -513,7 +527,7 @@ test("login, sample fill, complete answer, sources, refresh and logout", async (
     page.getByText("$32,780 million", { exact: true }),
   ).toBeVisible();
   expect(state.submissions).toBe(1);
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await signOut(page);
   await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
   expect(state.signedIn).toBe(false);
   // Signing out clears the refresh cookie on the server, so a reload stays signed out.
@@ -999,7 +1013,8 @@ test("account page changes the password and lists sessions", async ({
 }) => {
   await mockBackend(page);
   await login(page);
-  await page.getByRole("link", { name: /Demo analyst/ }).click();
+  await openAccountMenu(page);
+  await page.getByRole("link", { name: "Manage your account" }).click();
   await expect(
     page.locator(".session-list").getByText("Claude Code"),
   ).toBeVisible();
@@ -1094,7 +1109,7 @@ test("signing out in one tab signs out the others", async ({ context }) => {
   await mockBackend(second);
   // The mock's sign-in state is per page, so sign the second tab in directly.
   await login(second);
-  await first.getByRole("button", { name: "Sign out" }).click();
+  await signOut(first);
   await expect(second.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
   await expect(
     second.getByText("You signed out in another tab."),
@@ -1151,4 +1166,35 @@ test("sign-in explains how to recover a forgotten password", async ({
   await expect(
     page.getByText("Ask your administrator to reset it."),
   ).toBeVisible();
+});
+
+test("the account menu shows who is signed in and closes with Escape", async ({
+  page,
+}) => {
+  await mockBackend(page);
+  await login(page);
+  await openAccountMenu(page);
+  const menu = page.getByRole("dialog", { name: "Account" });
+  await expect(menu.getByText("Hi, Demo analyst")).toBeVisible();
+  await expect(menu.getByText("Analyst", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+});
+
+test("light is the default appearance and the dark choice is remembered", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await mockBackend(page);
+  await login(page);
+  // The device prefers dark, but the app starts light until the person chooses otherwise.
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await openAccountMenu(page);
+  await page.getByRole("button", { name: "Dark" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await openAccountMenu(page);
+  await page.getByRole("button", { name: "Light" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
