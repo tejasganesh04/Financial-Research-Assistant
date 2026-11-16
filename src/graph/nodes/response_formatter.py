@@ -24,6 +24,16 @@ def scope_note(state: RAGState) -> str:
     return "\n\n**Note:** " + " ".join(notes) if notes else ""
 
 
+def calculation_note(state: RAGState) -> str:
+    """Say how calculated figures were produced, so a reader knows what to check."""
+    if not any(item.get("steps") for item in state.get("calculations") or []):
+        return ""
+    return (
+        "\n\n**Calculations:** worked out with an exact calculator from the figures cited above. "
+        "Check that those figures are the right ones for your question."
+    )
+
+
 def not_found_message(state: RAGState) -> str:
     """Say what was searched, limited to the documents this user can access."""
     companies = state.get("target_companies") or []
@@ -85,13 +95,14 @@ def response_formatter_node(state: RAGState) -> dict:
                 "**Note:** This answer could not be fully verified against source documents. "
                 "Please verify the information independently.\n\n" + answer
             )
-        answer += scope_note(state)
+        answer += calculation_note(state) + scope_note(state)
 
     metadata = {
         "sources": sources,
         "confidence": hallucination_score,
         "chunks_used": len(chunks),
         "hallucination_status": hallucination_status,
+        "calculations": [step for item in state.get("calculations") or [] for step in item.get("steps", [])],
     }
 
     return {

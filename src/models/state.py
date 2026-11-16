@@ -68,6 +68,7 @@ class RAGState(TypedDict):
     # --- Generation ---
     # A draft is kept here while checking/review is pending; it is not yet a released assistant message.
     generated_answer: str
+    calculations: list[dict]  # calculator programs and results behind the current draft
 
     # --- Hallucination Check ---
     hallucination_status: str  # "grounded", "hallucinated", "unverified"

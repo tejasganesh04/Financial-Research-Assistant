@@ -6,6 +6,8 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.config.prompts import (
+    HALLUCINATION_CALCULATIONS_TEMPLATE,
+    HALLUCINATION_CALCULATOR_PROMPT,
     HALLUCINATION_CHECK_SYSTEM_PROMPT,
     HALLUCINATION_CHECK_USER_TEMPLATE,
 )
@@ -19,19 +21,17 @@ from src.services.provider_errors import raise_if_rate_limited
 logger = logging.getLogger(__name__)
 
 
-def _build_system_message(llm) -> SystemMessage:
+def _build_system_message(llm, with_calculations: bool = False) -> SystemMessage:
     """Build the checker instructions; add an Anthropic cache marker when supported."""
+    text = HALLUCINATION_CHECK_SYSTEM_PROMPT + (HALLUCINATION_CALCULATOR_PROMPT if with_calculations else "")
     if isinstance(llm, ChatAnthropic):
-        return SystemMessage(
-            content=[
-                {
-                    "type": "text",
-                    "text": HALLUCINATION_CHECK_SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ]
-        )
-    return SystemMessage(content=HALLUCINATION_CHECK_SYSTEM_PROMPT)
+        return SystemMessage(content=[{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}])
+    return SystemMessage(content=text)
+
+
+def calculation_steps(calculations: list[dict] | None) -> list[str]:
+    """Successful calculator steps behind the draft, as `name = expression = value` lines."""
+    return [step for item in calculations or [] for step in item.get("steps", [])]
 
 
 def hallucination_checker_node(state: RAGState) -> dict:
@@ -54,6 +54,10 @@ def hallucination_checker_node(state: RAGState) -> dict:
     )
 
     user_prompt = HALLUCINATION_CHECK_USER_TEMPLATE.format(sources=sources, answer=answer)
+    # Exact calculator results let the checker verify a computed figure by its inputs instead of redoing arithmetic.
+    steps = calculation_steps(state.get("calculations"))
+    if steps:
+        user_prompt += HALLUCINATION_CALCULATIONS_TEMPLATE.format(calculations="\n".join(steps))
     retry_count = state.get("generation_retry_count", 0)
 
     llm = None
@@ -63,7 +67,7 @@ def hallucination_checker_node(state: RAGState) -> dict:
         structured_llm = llm.with_structured_output(HallucinationCheck)
         result: HallucinationCheck = structured_llm.invoke(
             [
-                _build_system_message(llm),
+                _build_system_message(llm, with_calculations=bool(steps)),
                 HumanMessage(content=user_prompt),
             ]
         )
