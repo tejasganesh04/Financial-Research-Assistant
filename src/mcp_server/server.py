@@ -316,6 +316,14 @@ class _SessionEndpoint:
             response = JSONResponse({"detail": "The MCP server is not running."}, status_code=503)
             await response(scope, receive, send)
             return
+        if scope.get("method") == "GET":
+            # Stateless: the server never sends unprompted messages, so a GET event stream would only
+            # hold a connection open. The protocol lets servers decline it with 405.
+            response = JSONResponse(
+                {"detail": "This server answers POST requests only."}, status_code=405, headers={"Allow": "POST"}
+            )
+            await response(scope, receive, send)
+            return
         await self.manager.handle_request(scope, receive, send)
 
 

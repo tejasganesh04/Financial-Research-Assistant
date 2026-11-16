@@ -109,6 +109,19 @@ Requested values are added to the user's ordinary scope for that question. A
 supported drafted answer from an expanded search waits for Admin approval.
 Approval releases that answer; it does not permanently change the role.
 
+## Connect an AI assistant (MCP)
+
+The API serves document search for MCP clients at `http://localhost:8000/mcp`. Create a token
+with the account whose access the assistant should have, then run the command it prints:
+
+```sh
+make mcp-token MCP_USER=analyst
+# or: python3 scripts/create_mcp_token.py --username analyst --password analyst123
+```
+
+`claude mcp list` then shows `financial-research` as connected. MCP tokens can only search and
+read documents, and the app's own API rejects them. See the [MCP guide](docs/mcp-server.md).
+
 ## Storage and request traces
 
 - **Qdrant:** indexed chunks, metadata, dense vectors and sparse vectors.

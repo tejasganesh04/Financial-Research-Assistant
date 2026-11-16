@@ -531,3 +531,9 @@ def test_results_group_chunks_by_page_in_rank_order():
     groups = knowledge.page_passages(ranked, max_results=2)
     assert [[c["metadata"]["chunk_index"] for c in g] for g in groups] == [[51, 50], [70]]
     assert knowledge._passage_text(groups[0]) == "earlier on page 5\nbest on page 5"
+
+
+def test_http_declines_event_streams(mcp_http):
+    token, _, _ = mcp_auth.create_mcp_token("analyst", "A", "analyst")
+    response = mcp_http.get("/mcp", headers={"Accept": "text/event-stream", "Authorization": f"Bearer {token}"})
+    assert response.status_code == 405
