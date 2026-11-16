@@ -37,7 +37,10 @@ class ScriptedModel(BaseChatModel):
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
         self.seen.append({"messages": list(messages), "tools": kwargs.get("tools")})
-        return ChatResult(generations=[ChatGeneration(message=self.replies.pop(0))])
+        reply = self.replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return ChatResult(generations=[ChatGeneration(message=reply)])
 
     def bind_tools(self, tools, **kwargs):
         return self.bind(tools=tools, **kwargs)
@@ -144,3 +147,19 @@ def test_reader_note_only_when_a_calculation_succeeded():
     assert with_calc["response_metadata"]["calculations"] == ["dpo = 97.7"]
     failed_only = response_formatter.response_formatter_node({**base, "calculations": [{"error": "Line 1: bad"}]})
     assert "Calculations" not in failed_only["final_response"]
+
+
+async def test_malformed_tool_call_from_the_provider_is_retried(model, monkeypatch):
+    from src.services import llm_retry
+
+    monkeypatch.setattr(llm_retry, "DEFAULT_BACKOFF_SECONDS", (0.0,))
+    model.replies = [RuntimeError("Error code: 400 - {'code': 'tool_use_failed'}"), AIMessage(content="Answer")]
+    result = await generator.generator_node(dict(STATE))
+    assert result["generated_answer"] == "Answer" and len(model.seen) == 2
+
+
+async def test_permanent_provider_errors_are_not_retried(model):
+    model.replies = [ValueError("invalid api key"), AIMessage(content="never used")]
+    with pytest.raises(RuntimeError, match="answer provider is unavailable"):
+        await generator.generator_node(dict(STATE))
+    assert len(model.seen) == 1
