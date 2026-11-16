@@ -86,6 +86,7 @@ async def test_round_limit_forces_an_answer_without_tools(model, monkeypatch):
     assert last["tools"] is None
     assert "a = 1 + 1 = 2" in last["messages"][-1].content and "b = 2 + 2 = 4" in last["messages"][-1].content
     assert not any(isinstance(m, ToolMessage) for m in last["messages"])
+    assert GENERATOR_CALCULATOR_PROMPT not in last["messages"][0].content
 
 
 async def test_disabled_calculator_sends_no_tools(model, monkeypatch):
