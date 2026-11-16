@@ -11,8 +11,8 @@ import hashlib
 import hmac
 import secrets
 
-# About 50 ms and 32 MB per hash: slow for guessing, fine for a handful of sign-ins.
-N, R, P = 2**15, 8, 1
+# About 150 ms and 32 MB per hash: slow for guessing, fine for a handful of sign-ins.
+N, R, P = 2**15, 8, 3  # OWASP minimum for 32 MB of memory
 SALT_BYTES = 16
 KEY_BYTES = 32
 MAX_MEMORY = 64 * 1024 * 1024
