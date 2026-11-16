@@ -108,17 +108,31 @@ def caller_from_claims(claims: dict) -> Caller | None:
     )
 
 
+def redirect_allowed(uri: str) -> bool:
+    """Loopback addresses (clients on the user's computer, such as Claude Code), or https on an allowed host.
+
+    Registration is open, so this is what stops a stranger from registering a client that sends
+    authorization codes to their own server and asking a user to approve it.
+    """
+    parsed = urlparse(uri)
+    host = (parsed.hostname or "").lower()
+    if parsed.fragment or parsed.username or parsed.password:
+        return False
+    if parsed.scheme in ("http", "https") and host in LOOPBACK_HOSTS:
+        return True
+    if parsed.scheme != "https":
+        return False
+    return any(host == allowed or host.endswith("." + allowed) for allowed in settings.MCP_REDIRECT_HOSTS)
+
+
 def _check_redirect_uris(client: OAuthClientInformationFull) -> None:
     for uri in client.redirect_uris or []:
-        parsed = urlparse(str(uri))
-        if parsed.fragment:
-            raise RegistrationError("invalid_redirect_uri", "Redirect URIs must not contain a fragment.")
-        if parsed.scheme == "http" and (parsed.hostname or "") not in LOOPBACK_HOSTS:
+        if not redirect_allowed(str(uri)):
             raise RegistrationError(
-                "invalid_redirect_uri", "Plain http redirect URIs are only allowed for localhost; use https."
+                "invalid_redirect_uri",
+                f"Redirect URI {str(uri)[:200]!r} is not allowed. Use a localhost address, or ask the administrator "
+                "to add the client's https host to MCP_REDIRECT_HOSTS.",
             )
-        if parsed.scheme in ("javascript", "data", "file"):
-            raise RegistrationError("invalid_redirect_uri", f"Redirect URI scheme {parsed.scheme!r} is not allowed.")
 
 
 class OAuthProvider:

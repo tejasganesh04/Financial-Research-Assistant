@@ -1374,6 +1374,9 @@ input[aria-invalid="true"] {
   background: rgba(9, 9, 11, 0.32);
   animation: fade 0.15s ease-out;
 }
+.drawer:focus {
+  outline: none;
+}
 .drawer {
   position: absolute;
   top: 0;

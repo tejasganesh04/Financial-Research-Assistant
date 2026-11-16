@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "./api.js";
 import {
   Alert,
@@ -235,6 +235,21 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
     loadSessions();
   }, [user.username]);
 
+  const drawer = useRef(null);
+  const dialogOpen = !!confirm || resetting;
+  useEffect(() => {
+    const previous = document.activeElement;
+    drawer.current?.focus();
+    return () => previous?.focus?.();
+  }, []);
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === "Escape" && !dialogOpen) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [dialogOpen]);
+
   async function run(label, action, message) {
     setBusy(label);
     setError("");
@@ -287,6 +302,8 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
         role="dialog"
         aria-modal="true"
         aria-label={`Manage ${user.name}`}
+        ref={drawer}
+        tabIndex={-1}
       >
         <header className="drawer-header">
           <div className="user-cell large">

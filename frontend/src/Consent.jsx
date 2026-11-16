@@ -140,6 +140,15 @@ export default function Consent({ requestId, user, onSignedIn, onSignedOut }) {
                   </li>
                 </ul>
 
+                {!request.redirect_is_local && (
+                  <Alert
+                    kind="warning"
+                    title={`Access will be sent to ${request.redirect_host}`}
+                  >
+                    Only continue if you started this connection yourself, from{" "}
+                    {client}.
+                  </Alert>
+                )}
                 <Alert>{error}</Alert>
 
                 <div className="consent-actions">
