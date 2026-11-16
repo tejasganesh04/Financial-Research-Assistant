@@ -692,6 +692,24 @@ input[aria-invalid="true"] {
   gap: 14px;
 }
 .auth-form .button {
+  margin-top: 2px;
+}
+.forgot {
+  margin-top: -4px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.forgot summary {
+  width: fit-content;
+  cursor: pointer;
+  list-style: none;
+  color: var(--accent);
+  font-weight: 500;
+}
+.forgot summary::-webkit-details-marker {
+  display: none;
+}
+.forgot p {
   margin-top: 6px;
 }
 .auth-footnote {
@@ -931,6 +949,51 @@ input[aria-invalid="true"] {
   min-height: 0;
   padding-bottom: 8px;
   scrollbar-width: thin;
+}
+.conversation-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+.conversation-row:hover,
+.conversation-row:focus-within {
+  background: var(--bg-hover);
+}
+.conversation-row.selected {
+  background: var(--bg-active);
+}
+.conversation-row.selected .conversation-item {
+  color: var(--text);
+  font-weight: 500;
+}
+.conversation-row .conversation-item {
+  flex: 1;
+  min-width: 0;
+  background: none;
+}
+.conversation-row .conversation-item:hover:not(:disabled) {
+  background: none;
+}
+.conversation-delete {
+  position: absolute;
+  right: 4px;
+  opacity: 0;
+  background: var(--bg-hover);
+}
+.conversation-row.selected .conversation-delete {
+  background: var(--bg-active);
+}
+.conversation-row:hover .conversation-delete,
+.conversation-delete:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .conversation-delete {
+    opacity: 1;
+    position: static;
+    background: none;
+  }
 }
 .conversation-item {
   display: flex;
@@ -1405,6 +1468,14 @@ input[aria-invalid="true"] {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+.drawer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drawer-row .drawer-section {
+  margin-top: 0;
 }
 .drawer-section {
   font-size: 13px;

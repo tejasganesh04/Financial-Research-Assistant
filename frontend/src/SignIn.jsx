@@ -70,6 +70,13 @@ export function SignInForm({
           disabled={busy}
         />
       </div>
+      <details className="forgot">
+        <summary>Forgot your password?</summary>
+        <p>
+          Ask your administrator to reset it. For security, passwords can’t be
+          recovered by email.
+        </p>
+      </details>
       <button className="button primary block" disabled={busy}>
         {busy ? <Spinner /> : null}
         {busy ? "Signing in…" : submitLabel}

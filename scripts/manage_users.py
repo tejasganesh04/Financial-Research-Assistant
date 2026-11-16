@@ -39,12 +39,12 @@ SEED_ACCOUNTS = [
 ACTOR = "cli"
 
 
-def _ask_password() -> str:
+def _ask_password(username: str | None = None) -> str:
     if not sys.stdin.isatty():
         raise SystemExit("No terminal to type a password into; use --generate.")
     while True:
         first = getpass.getpass("New password: ")
-        problem = passwords.password_problem(first)
+        problem = passwords.password_problem(first, username)
         if problem:
             print(problem)
             continue
@@ -127,7 +127,7 @@ async def run(pool, args) -> int:
         return 0
 
     if args.command == "create":
-        password = passwords.generate_password() if args.generate else _ask_password()
+        password = passwords.generate_password() if args.generate else _ask_password(args.username)
         await user_store.create_account(
             pool, args.username, args.name, args.role, password, args.department, actor=ACTOR
         )
@@ -142,7 +142,7 @@ async def run(pool, args) -> int:
         return 1
 
     if args.command == "set-password":
-        password = passwords.generate_password() if args.generate else _ask_password()
+        password = passwords.generate_password() if args.generate else _ask_password(account.username)
         await user_store.set_password(pool, account.username, password, actor=ACTOR)
         print(f"Password changed for {account.username}; their sessions have been ended.")
         if args.generate:

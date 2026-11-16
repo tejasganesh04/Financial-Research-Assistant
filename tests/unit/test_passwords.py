@@ -48,6 +48,11 @@ def test_password_policy(password, problem):
     assert (result is None) if problem is None else (problem in result)
 
 
+def test_passwords_must_not_contain_the_username():
+    assert "username" in passwords.password_problem("analyst-is-my-password", "Analyst")
+    assert passwords.password_problem("a-perfectly-fine-passphrase", "analyst") is None
+
+
 def test_generated_passwords_are_readable_strong_and_unique():
     generated = {passwords.generate_password() for _ in range(50)}
     assert len(generated) == 50

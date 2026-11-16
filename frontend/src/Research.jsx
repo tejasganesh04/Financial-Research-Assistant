@@ -5,6 +5,7 @@ import {
   Answer,
   Icon,
   Logo,
+  Modal,
   RequestDetails,
   Sources,
   Spinner,
@@ -93,6 +94,12 @@ export function useResearch(user) {
     setError("");
     setNotice("");
     sessionStorage.removeItem(THREAD_KEY);
+  }
+
+  async function deleteConversation(id) {
+    await api.deleteConversation(id);
+    if (thread.id === id) newConversation();
+    await refreshHistory();
   }
 
   function reset() {
@@ -275,6 +282,7 @@ export function useResearch(user) {
     refreshHistory,
     openConversation,
     newConversation,
+    deleteConversation,
     submit,
     reset,
   };
@@ -282,6 +290,23 @@ export function useResearch(user) {
 
 export function ConversationList({ research, active, onOpen }) {
   const { history, historyLoaded, thread, busy } = research;
+  const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  async function confirmDelete() {
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      await research.deleteConversation(deleting.thread_id);
+      setDeleting(null);
+    } catch (e) {
+      setDeleteError(errorMessage(e));
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   return (
     <div className="conversation-section">
       <div className="sidebar-heading">
@@ -298,28 +323,80 @@ export function ConversationList({ research, active, onOpen }) {
       </div>
       <div className="conversation-list">
         {history.length ? (
-          history.map((item) => (
-            <button
-              className={`conversation-item ${active && thread.id === item.thread_id ? "selected" : ""}`}
-              key={item.thread_id}
-              onClick={() => onOpen(item.thread_id)}
-              disabled={!!busy}
-              title={item.title || "Untitled conversation"}
-            >
-              <span className="conversation-title">
-                {item.title || "Untitled conversation"}
-              </span>
-              {item.is_interrupted && (
-                <span className="pending-dot" title="Awaiting review" />
-              )}
-            </button>
-          ))
+          history.map((item) => {
+            const title = item.title || "Untitled conversation";
+            return (
+              <div
+                className={`conversation-row ${active && thread.id === item.thread_id ? "selected" : ""}`}
+                key={item.thread_id}
+              >
+                <button
+                  className="conversation-item"
+                  onClick={() => onOpen(item.thread_id)}
+                  disabled={!!busy}
+                  title={title}
+                >
+                  <span className="conversation-title">{title}</span>
+                  {item.is_interrupted && (
+                    <span className="pending-dot" title="Awaiting review" />
+                  )}
+                </button>
+                {!item.is_interrupted && (
+                  <button
+                    className="icon-button small conversation-delete"
+                    onClick={() => {
+                      setDeleteError("");
+                      setDeleting(item);
+                    }}
+                    disabled={!!busy}
+                    aria-label={`Delete conversation: ${title}`}
+                    title="Delete"
+                  >
+                    <Icon name="trash" size={13} />
+                  </button>
+                )}
+              </div>
+            );
+          })
         ) : (
           <p className="sidebar-empty">
             {historyLoaded ? "No conversations yet." : "Loading…"}
           </p>
         )}
       </div>
+      {deleting && (
+        <Modal
+          title="Delete this conversation?"
+          description={deleting.title || "Untitled conversation"}
+          onClose={() => !deleteBusy && setDeleting(null)}
+          footer={
+            <>
+              <button
+                className="button secondary"
+                onClick={() => setDeleting(null)}
+                disabled={deleteBusy}
+              >
+                Cancel
+              </button>
+              <button
+                className="button danger"
+                onClick={confirmDelete}
+                disabled={deleteBusy}
+              >
+                {deleteBusy && <Spinner />}
+                Delete
+              </button>
+            </>
+          }
+        >
+          <div className="stack">
+            <p className="modal-text">
+              Its questions, answers and request details are removed for good.
+            </p>
+            <Alert>{deleteError}</Alert>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

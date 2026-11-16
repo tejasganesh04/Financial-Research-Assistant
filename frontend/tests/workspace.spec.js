@@ -221,7 +221,20 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
           },
         ],
       });
-    if (path === "/v1/conversations") return json({ threads: [] });
+    if (path === "/v1/conversations")
+      return json({ threads: state.threads || [] });
+    if (/^\/v1\/conversations\/[^/]+$/.test(path) && method === "DELETE") {
+      state.deleted = path.split("/")[3];
+      state.threads = (state.threads || []).filter(
+        (t) => t.thread_id !== state.deleted,
+      );
+      return route.fulfill({ status: 204 });
+    }
+    if (/^\/v1\/admin\/users\/[^/]+$/.test(path) && method === "PATCH") {
+      state.updated = request.postDataJSON();
+      state.users[1] = { ...state.users[1], ...state.updated };
+      return json({ user: state.users[1] });
+    }
     if (/\/messages\/stream$/.test(path) && request.method() === "POST") {
       state.submissions += 1;
       const id = path.split("/")[3];
@@ -1085,5 +1098,57 @@ test("signing out in one tab signs out the others", async ({ context }) => {
   await expect(second.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
   await expect(
     second.getByText("You signed out in another tab."),
+  ).toBeVisible();
+});
+
+test("a conversation can be deleted after confirmation", async ({ page }) => {
+  const state = await mockBackend(page);
+  state.threads = [
+    { thread_id: "t-1", title: "Amazon payables", is_interrupted: false },
+    { thread_id: "t-2", title: "Held for review", is_interrupted: true },
+  ];
+  await login(page);
+  await expect(
+    page.getByRole("button", { name: "Delete conversation: Held for review" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Delete conversation: Amazon payables" })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Delete this conversation?",
+  });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Delete" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(state.deleted).toBe("t-1");
+  await expect(
+    page.getByRole("button", { name: "Amazon payables" }),
+  ).toHaveCount(0);
+});
+
+test("admin edits a user's name and department", async ({ page }) => {
+  const state = await mockBackend(page, { role: "admin" });
+  await login(page, "admin");
+  await page.goto("/admin/users");
+  await page.getByRole("button", { name: "Manage analyst" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByLabel("Full name").fill("Riley Chen");
+  await page.getByLabel("Department").fill("Equity Research");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Details saved.")).toBeVisible();
+  expect(state.updated).toEqual({
+    name: "Riley Chen",
+    department: "Equity Research",
+  });
+});
+
+test("sign-in explains how to recover a forgotten password", async ({
+  page,
+}) => {
+  await mockBackend(page);
+  await page.goto("/");
+  await page.getByText("Forgot your password?").click();
+  await expect(
+    page.getByText("Ask your administrator to reset it."),
   ).toBeVisible();
 });

@@ -223,8 +223,8 @@ def _check_role(role: str) -> str:
     return role
 
 
-def _check_new_password(password: str) -> None:
-    problem = passwords.password_problem(password)
+def _check_new_password(password: str, username: str | None = None) -> None:
+    problem = passwords.password_problem(password, username)
     if problem:
         raise AccountError(problem)
 
@@ -311,7 +311,7 @@ async def create_account(
     name = (name or "").strip()
     if not name or len(name) > 80:
         raise AccountError("Give a display name of 1 to 80 characters.")
-    _check_new_password(password)
+    _check_new_password(password, username)
     async with pool.connection() as conn:
         cur = await _query(
             conn,
@@ -328,8 +328,8 @@ async def create_account(
 
 async def set_password(pool, username: str, password: str, actor: str | None = None) -> Account:
     """Set a new password, end every session of the account and clear any lockout."""
-    _check_new_password(password)
     username = normalize_username(username)
+    _check_new_password(password, username)
     async with pool.connection() as conn:
         async with conn.transaction():
             cur = await _query(
@@ -667,6 +667,7 @@ async def record_event(
     pool, event: str, *, username: str | None = None, actor: str | None = None, ip: str | None = None, **detail
 ) -> None:
     """Append to the account activity log; never fails the request that triggered it."""
+    logger.info("auth event %s user=%s actor=%s ip=%s %s", event, username, actor, ip, detail or "")
     try:
         async with pool.connection() as conn:
             await conn.execute(
