@@ -1,13 +1,18 @@
 # Financial Research Assistant
 
-A financial-document research app with a demo React interface, FastAPI backend and
-LangGraph workflow. Employees ask questions in natural language and receive
+A private financial-document research app with a React interface, FastAPI backend and
+LangGraph workflow. Invited users ask questions in natural language and receive
 answers grounded in documents available to their role. Explicit requests for
-extra access hold the drafted answer for Admin review before release.
+extra access hold the drafted answer for Admin review before release. The same
+accounts can connect their own AI assistant, such as Claude Code, over MCP.
 
 ## Features
 
-- Fixed demo accounts, JWT authentication and role-based search permissions.
+- Invitation-only accounts (no sign-up) stored in PostgreSQL with scrypt password hashes,
+  one-hour access tokens, rotating refresh tokens in an httpOnly cookie, account lockout and
+  per-user question limits. Admins reset passwords, sign people out everywhere and deactivate
+  accounts from the Users page; every sign-in and change is in the Activity log.
+- Role-based search permissions, applied in the app and over MCP.
 - Input privacy filtering and two model-based prompt-injection checks.
 - Simple lookups with hybrid retrieval, reranking, relevance grading and bounded search retries.
 - A research path that decomposes questions, collects evidence and checks for missing information.
@@ -29,8 +34,14 @@ With Docker Desktop running and a configured `.env`:
 docker compose -f compose.minimal.yml -f compose.local.yml up -d --build
 ```
 
-Open **http://localhost:8000/**. Demo login: `analyst` / `analyst123`.
-API documentation: **http://localhost:8000/docs**.
+Create the accounts (one per role; the generated passwords are printed once):
+
+```sh
+make users
+```
+
+Open **http://localhost:8000/** and sign in. API documentation (development only):
+**http://localhost:8000/docs**. To host it for others, see [deployment](docs/deployment.md).
 
 The default demo profile uses **Groq GPT-OSS 20B** for smaller model tasks and
 **GPT-OSS 120B** for synthesis, answers and grounding checks. **Voyage Finance 2**
@@ -92,37 +103,43 @@ their role allows, then write the answer itself; answer checks and Admin approva
 ![Two ways to use the knowledge base](docs/diagrams/mcp-access.png)
 
 ```sh
-make mcp-token MCP_USER=analyst    # prints a "claude mcp add ..." command to run
+claude mcp add --transport http financial-research http://localhost:8000/mcp
 ```
 
+Then run `/mcp` in Claude Code and choose **Authenticate**: a browser tab opens on the app, the
+user signs in with their usual account and allows access (OAuth). Claude Code renews its access
+hourly; a password change, deactivation or "sign out everywhere" stops it within the hour.
+
 On FinanceBench the search tool returns the answer page within its default 8 results for 145 of
-150 questions. The [MCP guide](docs/mcp-server.md) covers the tools, tokens, limits and other clients.
+150 questions. The [MCP guide](docs/mcp-server.md) covers the tools, sign-in, limits and other clients.
 
 ## Code layout
 
 | Folder | Contents |
 | --- | --- |
 | `frontend/` | React screens, Axios requests, styles and browser tests |
-| `src/api/` | Login, conversations, Admin approvals, PDF access and health routes |
+| `src/api/` | Sign-in, admin, MCP consent, conversations, approvals, PDF access and health routes |
 | `src/graph/` | Graph construction, routing decisions and workflow nodes |
-| `src/services/` | Retrieval, reranking, models, privacy, persistence and request traces |
+| `src/services/` | Retrieval, reranking, models, privacy, accounts and sessions, rate limits, persistence and request traces |
 | `src/config/` | Settings, prompts and role permissions |
 | `src/models/` | Request/response schemas and graph state |
-| `src/mcp_server/` | MCP server: document search tools, tokens and the `/mcp` endpoint |
+| `src/mcp_server/` | MCP server: document search tools, OAuth sign-in and the `/mcp` endpoint |
 | `scripts/seed_from_hf.py` | Restore the published knowledge base into an empty Qdrant collection |
 | `scripts/build_contextual_collection.py` | Build the knowledge base with contextual chunk headers |
 | `scripts/build_diagrams.py` | Generate the workflow diagrams |
-| `scripts/create_mcp_token.py` | Create an MCP token and print the Claude Code command |
+| `scripts/manage_users.py` | Create accounts, set passwords, sign out, deactivate (`make users`) |
 | `tests/` | Unit and integration regression checks |
 | `tests/evaluation/financebench/` | Search check, MCP search check and answer benchmark |
 | `docs/evaluation-story.md` | How each version was measured and improved |
-| `docs/mcp-server.md` | MCP tools, connection, tokens and limits |
+| `docs/mcp-server.md` | MCP tools, connection, sign-in and limits |
+| `docs/deployment.md` | Hosting with HTTPS (Caddy), production settings and backups |
 | `docs/diagrams/` | Workflow diagrams, one per version, and editable sources |
 
 ## Checks
 
-Backend tests use mocked model responses; integration tests need separately
-configured test services. Frontend tests intercept API requests.
+Backend tests use mocked model responses; account, session and OAuth tests run against an
+isolated PostgreSQL database named in `TEST_POSTGRES_URL` (its name must end in `_test`).
+Frontend tests intercept API requests.
 
 ```sh
 python -m pytest tests/unit tests/integration
@@ -131,6 +148,6 @@ npm test
 npm run build
 ```
 
-Fixed accounts and a single API worker keep the local demo simple. A production
-rollout would need real account management and shared concurrency controls.
+Sign-in attempt limits and MCP call limits are counted per API process; question quotas are
+counted in PostgreSQL. A single API process is the supported setup.
 

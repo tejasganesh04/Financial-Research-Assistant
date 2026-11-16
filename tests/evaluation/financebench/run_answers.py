@@ -15,7 +15,9 @@ questions that already have an answer.
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -105,12 +107,18 @@ def main():
     parser.add_argument("--run", required=True, help="Run name; results go to tests/evaluation/results/<run>/")
     parser.add_argument("--base-url", default="http://localhost:8000")
     parser.add_argument("--user", default="analyst")
-    parser.add_argument("--password", default="analyst123")
+    parser.add_argument(
+        "--password",
+        default=os.environ.get("FRA_PASSWORD"),
+        help="The account's password (default: the FRA_PASSWORD environment variable, else asked for)",
+    )
     parser.add_argument("--limit", type=int, default=None, help="Answer at most this many new questions")
     parser.add_argument("--pause", type=int, default=30, help="Seconds between questions, to respect free-tier limits")
     parser.add_argument("--max-attempts", type=int, default=4)
     args = parser.parse_args()
 
+    if not args.password:
+        args.password = getpass.getpass(f"Password for {args.user}: ")
     out_dir = RESULTS / args.run
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "answers.jsonl"
@@ -127,7 +135,7 @@ def main():
         for index, question in enumerate(questions):
             if index:
                 time.sleep(args.pause)
-            if time.monotonic() - token_time > 12 * 3600:
+            if time.monotonic() - token_time > 45 * 60:  # access tokens last 60 minutes
                 token, token_time = login(args.base_url, args.user, args.password), time.monotonic()
             print(f"[{index + 1}/{len(questions)}] {question['financebench_id']}", flush=True)
             outcome = ask(args.base_url, token, question["question"], args.max_attempts)

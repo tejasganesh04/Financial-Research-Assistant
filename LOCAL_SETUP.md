@@ -15,7 +15,7 @@ The default template selects Groq-only language-model calls:
 | `GROQ_API_KEY` | GPT-OSS 20B and 120B language-model calls |
 | `VOYAGE_API_KEY` | New query embeddings in the snapshot's vector space |
 | `POSTGRES_PASSWORD` | Private password for the local database |
-| `JWT_SECRET` | Private signing key for demo login tokens |
+| `JWT_SECRET` | Private signing key for access tokens (at least 32 characters) |
 | `EMBEDDING_MODEL=voyage-finance-2` | Must match the published snapshot |
 | `EMBEDDING_DIMENSIONS=1024` | Must match the published snapshot |
 
@@ -83,19 +83,42 @@ docker compose -f compose.minimal.yml -f compose.local.yml exec -T api python sc
 
 Then set `QDRANT_COLLECTION=financial_docs_v3` in `.env` and restart the API.
 
-## Demo accounts and permissions
+## Accounts and permissions
 
-| Username | Password | Search permissions | Review answers? |
+There is no sign-up. Create one account per role once the API is running; each password is
+generated, printed once and stored only as a scrypt hash:
+
+```sh
+make users          # creates admin, analyst, finance, hr and executive (existing ones are kept)
+make users-list     # status, open sessions and last sign-in
+make user-password USER=analyst   # set a new password; ends that user's sessions
+```
+
+`scripts/manage_users.py` also creates further accounts and signs out, deactivates or unlocks
+them. Administrators can do the same from the **Users** page in the app.
+
+| Username | Role | Search permissions | Review answers? |
 | --- | --- | --- | --- |
-| `analyst` | `analyst123` | Public 10-K, 10-Q and 8-K filings | No |
-| `finance` | `finance123` | Filings, invoices and expense policies; public/internal | No |
-| `hr` | `hr123` | Expense policies; public/internal | No |
-| `clevel` | `clevel123` | All supported types and confidentiality levels | No |
-| `admin` | `admin123` | All supported types and confidentiality levels | Yes |
+| `analyst` | Analyst | Public 10-K, 10-Q and 8-K filings | No |
+| `finance` | Finance | Filings, invoices and expense policies; public/internal | No |
+| `hr` | HR | Expense policies; public/internal | No |
+| `executive` | Executive (`c_level`) | All supported types and confidentiality levels | No |
+| `admin` | Administrator | All supported types and confidentiality levels | Yes |
 
-Accounts are fixed in `src/api/routes/auth.py`; permissions are defined in
-`src/config/rbac_config.py`. The active dataset contains public filings, so
-supported permission categories do not imply that matching documents are loaded.
+Permissions are defined in `src/config/rbac_config.py`. The active dataset contains public
+filings, so supported permission categories do not imply that matching documents are loaded.
+
+### Sign-in sessions
+
+- Signing in returns a 60-minute access token, kept only in the page's memory, and sets a refresh
+  token in an httpOnly, `SameSite=Strict` cookie that page scripts cannot read. The page renews
+  the access token before it expires and after a reload.
+- Refresh tokens rotate on every use; reusing an old one ends the session. A session ends after
+  7 days without use or 30 days after sign-in (`SESSION_IDLE_DAYS`, `SESSION_MAX_DAYS`).
+- Five wrong passwords in a row lock the account for 15 minutes; sign-in attempts are also
+  limited per IP address. Each user may ask 60 questions an hour and 300 a day (`.env`).
+- Changing a password, "sign out everywhere" and deactivation end sessions at once; an access
+  token already issued stops working when it expires, within the hour.
 
 Normal questions search within the user's permissions. To request extra access,
 place an explicit command on the first line, for example as HR:
@@ -111,21 +134,22 @@ Approval releases that answer; it does not permanently change the role.
 
 ## Connect an AI assistant (MCP)
 
-The API serves document search for MCP clients at `http://localhost:8000/mcp`. Create a token
-with the account whose access the assistant should have, then run the command it prints:
+The API serves document search for MCP clients at `http://localhost:8000/mcp`, signed in with
+the same accounts through OAuth:
 
 ```sh
-make mcp-token MCP_USER=analyst
-# or: python3 scripts/create_mcp_token.py --username analyst --password analyst123
+claude mcp add --transport http financial-research http://localhost:8000/mcp
 ```
 
-`claude mcp list` then shows `financial-research` as connected. MCP tokens can only search and
-read documents, and the app's own API rejects them. See the [MCP guide](docs/mcp-server.md).
+In Claude Code, run `/mcp`, choose `financial-research` and **Authenticate**. The browser opens
+the app's consent page; sign in and select **Allow access**. The **Connect Claude Code** page in
+the app shows the same steps with the configured address. See the [MCP guide](docs/mcp-server.md).
 
 ## Storage and request traces
 
 - **Qdrant:** indexed chunks, metadata, dense vectors and sparse vectors.
-- **PostgreSQL:** graph checkpoints, conversations and approval state.
+- **PostgreSQL:** accounts, sessions, OAuth clients, the activity log, question quotas, graph
+  checkpoints, conversations and approval state.
 - **`logs/traces/`:** local request reports, excluded from Git.
 
 Expand **Request details** beneath a question to find its request ID and report
@@ -180,6 +204,13 @@ python3.13 -m venv .venv
 .venv/bin/python -m pytest tests/unit tests/integration
 ```
 
-Service integration tests need explicit test configuration. Keep test databases
-separate from the working demo. Browser tests use local Chrome and mocked API
+Account, session and OAuth tests need an isolated database: create one whose name ends in
+`_test` and pass it as `TEST_POSTGRES_URL` (the tests drop and recreate the account tables):
+
+```sh
+docker compose -f compose.minimal.yml -f compose.local.yml exec postgres createdb -U rag_user rag_agent_test
+TEST_POSTGRES_URL=postgresql://rag_user:<password>@localhost:5432/rag_agent_test .venv/bin/python -m pytest tests/integration
+```
+
+Keep test databases separate from the working app. Browser tests use local Chrome and mocked API
 responses; `npm test` and `npm run build` run from `frontend/`.

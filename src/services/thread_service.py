@@ -221,7 +221,7 @@ async def list_all_threads(pool, limit: int = 200) -> list[dict[str, Any]]:
 
 
 # Return persisted owner identity for viewing history and authorizing review.
-# Demo account definitions live in auth.py.
+# Accounts are stored in PostgreSQL (src/services/user_store.py).
 async def get_thread_owner_role(pool, thread_id: str) -> tuple[str | None, str | None, str | None, str | None]:
     """Return (user_id, role, name, department) for the thread's creator.
     All None if not found. Older callers using a 2-tuple unpacking should

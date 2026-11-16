@@ -25,7 +25,7 @@ ROLE_PERMISSIONS: dict[str, dict] = {
 
 # Unknown roles fall back to analyst permissions.
 def get_permissions(role: str) -> dict:
-    """Read the fixed demo role permissions from this file."""
+    """Read the fixed role permissions from this file."""
     return ROLE_PERMISSIONS.get(role, ROLE_PERMISSIONS["analyst"])
 
 
