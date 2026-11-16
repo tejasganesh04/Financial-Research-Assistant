@@ -138,6 +138,16 @@ docker compose -f compose.minimal.yml -f compose.production.yml up -d --build ap
 
 Account tables are created or extended automatically at start-up.
 
+**Checking a deployment.** `frontend/tests/live-check.mjs` drives a real browser against a running
+server: sign-in, a real question, the account page, an MCP client connecting through OAuth, every
+admin action, the lockout, the phone layout and the theme. It creates a temporary account and
+deactivates it at the end.
+
+```sh
+cd frontend
+BASE=https://research.example.com ADMIN_PASSWORD=... node tests/live-check.mjs   # ASK=0 skips the question
+```
+
 **Rotating the signing key.** Changing `JWT_SECRET` and restarting ends every access token at
 once; browsers and MCP clients renew with their refresh tokens.
 
