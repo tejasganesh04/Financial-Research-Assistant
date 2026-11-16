@@ -1,4 +1,4 @@
-.PHONY: up down restart logs ps seed-db build-kb users users-list user-password run test test-unit test-integration lint format check clean
+.PHONY: up down restart logs ps seed-db build-kb users users-list user-password deploy run test test-unit test-integration lint format check clean
 
 COMPOSE = docker compose -f compose.minimal.yml -f compose.local.yml
 
@@ -36,6 +36,10 @@ users-list:
 # make user-password USER=analyst   (prompts for the new password; ends the user's sessions)
 user-password:
 	$(COMPOSE) exec api python scripts/manage_users.py set-password $(USER)
+
+# --- Deployment: send the committed code to the server and rebuild (docs/deployment.md) ---
+deploy:
+	sh deploy/deploy.sh
 
 # --- Local development (API on the host; Qdrant and PostgreSQL in Docker) ---
 run:

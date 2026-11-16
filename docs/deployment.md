@@ -14,8 +14,9 @@ Docker network.
 
 ## What you need
 
-- A Linux server with Docker and about **4 GB of memory** (the API loads a local fallback reranker
-  and the knowledge base is about 68,000 chunks), and 10 GB of disk.
+- A Linux server with Docker, **4 GB of memory** and 30 GB of disk. In use the stack takes about
+  3 GB: the API about 2 GB (it holds the question-screening models), Qdrant about 0.5 GB, and
+  PostgreSQL and Caddy little. Add a 4 GB swap file; the image build needs the headroom.
 - A domain name, for example `research.example.com`, with a DNS `A` record pointing at the server.
   Ports 80 and 443 must be open; Caddy uses them to obtain the certificate.
 - API keys for the models you use (see `.env.example`) and a Voyage key for query embeddings.
@@ -55,26 +56,32 @@ Limits worth reviewing for your budget (defaults shown):
 | `MCP_RATE_LIMIT_PER_MINUTE` | 30 | Searches and page reads per user from MCP clients |
 | `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES` | 5 / 15 | Account lockout after wrong passwords |
 | `ACCESS_TOKEN_MINUTES` | 60 | Longest time a revoked session keeps working |
+| `RERANKER_LOCAL_FALLBACK` | off in production | If Voyage reranking fails, keep the search order rather than load a 2 GB local model |
 | `SESSION_IDLE_DAYS` / `SESSION_MAX_DAYS` | 7 / 30 | When a browser or MCP client must sign in again |
 
 ## 2. Bring the knowledge base
 
-Copy the existing Qdrant data rather than embedding the corpus again. On the machine that has it:
+Copy the collection the app searches rather than embedding the corpus again. A Qdrant snapshot of
+one collection is about 450 MB. On the machine that has it:
 
 ```sh
-docker run --rm -v financialresearchassistant_qdrant_data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/qdrant-data.tgz -C /data .
+curl -X POST "http://localhost:6333/collections/financial_docs_v3/snapshots?wait=true"
+# note the "name" in the reply, then download it:
+curl -o financial_docs_v3.snapshot \
+  "http://localhost:6333/collections/financial_docs_v3/snapshots/<name>"
 ```
 
-Copy `qdrant-data.tgz` to the server, then restore it into the production volume before the first
-start (the volume name starts with the folder name of the checkout):
+Copy `financial_docs_v3.snapshot` to the server. Qdrant is not reachable from outside there, so
+start it alone and upload the snapshot from a container on the same Docker network:
 
 ```sh
-docker volume create <folder>_qdrant_data
-docker run --rm -v <folder>_qdrant_data:/data -v "$PWD":/backup alpine \
-  tar xzf /backup/qdrant-data.tgz -C /data
+docker compose -f compose.minimal.yml -f compose.production.yml up -d qdrant
+docker run --rm --network <project>_rag-net -v "$PWD":/backup:ro curlimages/curl:8.10.1 \
+  -sS -X POST "http://qdrant:6333/collections/financial_docs_v3/snapshots/upload?priority=snapshot" \
+  -F "snapshot=@/backup/financial_docs_v3.snapshot"
 ```
 
+`<project>` is the Compose project name: `COMPOSE_PROJECT_NAME` in `.env`, or the folder name.
 Alternatively restore the published snapshot and build the contextual collection as in
 [local setup](../LOCAL_SETUP.md#3-restore-an-empty-knowledge-base) (this embeds again).
 
@@ -119,7 +126,10 @@ docker compose -f compose.minimal.yml -f compose.production.yml exec -T postgres
 
 The Qdrant volume changes only when the knowledge base is rebuilt; keep the archive from step 2.
 
-**Updates.**
+**Updates.** From your own machine, `make deploy` sends the committed code to the server, builds
+the new image there, switches to it and waits until the API reports healthy. It needs the Google
+Cloud CLI signed in and `deploy/target.env` (see `deploy/target.env.example`). A failed build leaves
+the running release untouched. On a server you manage by hand:
 
 ```sh
 git pull
