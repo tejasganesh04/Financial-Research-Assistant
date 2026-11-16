@@ -115,6 +115,19 @@ Median search time 1.1 s. Reproduce with
 `python tests/evaluation/financebench/measure_mcp_search.py --run <name>` (no language model is
 called; one embedding and one rerank per question).
 
+### With an assistant
+
+A small, free model (Groq GPT-OSS 120B) was given only these tools over MCP and asked 10
+FinanceBench questions, with results trimmed to fit its 8,000 tokens-per-minute limit:
+
+| Outcome | Questions |
+| --- | --- |
+| Correct (7) | Adobe free-cash-flow conversion; Best Buy cash change (the question names no company, so the assistant found it with `list_documents`); 3M capital expenditure; Coca-Cola return on assets; Boeing net PP&E; MGM's weakest region (read the full segment table with `read_pages`); Activision fixed-asset turnover |
+| Wrong (2) | Amcor quick ratio: used a "Deed of Cross Guarantee" balance sheet (a subset of subsidiaries) ranked above the consolidated one; Best Buy gross margins: correct yearly figures, but called the trend unstable |
+| Did not finish (1) | Amazon DPO: the model repeatedly produced malformed tool calls, a known GPT-OSS formatting fault |
+
+The answer pages were in the results in every case; the mistakes came from choosing between them.
+
 ## Limits
 
 - The rate limit is kept in memory for one API process; several processes would need a shared
