@@ -80,3 +80,22 @@ def test_voyage_failure_falls_back_to_the_local_model(monkeypatch):
     ranked = reranker_service.rerank("AMD revenue", [{"content": "a"}, {"content": "b"}], top_k=2)
     assert [c["content"] for c in ranked] == ["b", "a"]
     assert ranked[0]["rerank_model"] == reranker_service.RERANKER_MODEL
+
+
+def test_voyage_failure_keeps_search_order_without_local_fallback(monkeypatch):
+    from src.services import reranker_service
+
+    def unavailable(query, documents):
+        raise ConnectionError("voyage down")
+
+    def must_not_load():
+        raise AssertionError("the local model must not load")
+
+    monkeypatch.setattr(reranker_service.settings, "RERANKER_PROVIDER", "voyage")
+    monkeypatch.setattr(reranker_service.settings, "RERANKER_LOCAL_FALLBACK", False)
+    monkeypatch.setattr(reranker_service, "voyage_scores", unavailable)
+    monkeypatch.setattr(reranker_service, "get_reranker", must_not_load)
+    chunks = [{"content": c} for c in ("first", "second", "third")]
+    ranked = reranker_service.rerank("AMD revenue", chunks, top_k=2)
+    assert [c["content"] for c in ranked] == ["first", "second"]
+    assert ranked[0]["rerank_model"] == reranker_service.SEARCH_ORDER

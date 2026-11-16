@@ -136,6 +136,9 @@ class Settings(BaseSettings):
     # "local" always uses the local model. rerank-2.5 (the measured setup) is billed per token;
     # rerank-3 is Voyage's current model.
     RERANKER_PROVIDER: str = "voyage"
+    # When Voyage fails, rank with the local BGE cross-encoder (about 2 GB to download and to hold in
+    # memory). False keeps the search order instead, so a small server is not pushed out of memory.
+    RERANKER_LOCAL_FALLBACK: bool = True
     VOYAGE_RERANK_MODEL: str = "rerank-2.5"
     RERANKER_TOP_K: int = 12
     # Add statement wording for named financial concepts to the search and reranking text.

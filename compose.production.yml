@@ -11,6 +11,8 @@ services:
     environment:
       ENVIRONMENT: production
       REQUEST_TRACE_DIR: /app/logs/traces
+      # If Voyage fails, keep the search order rather than load a 2 GB local reranker on a small server.
+      RERANKER_LOCAL_FALLBACK: ${RERANKER_LOCAL_FALLBACK:-false}
     # Only Caddy can reach the API, so the forwarded client address can be trusted.
     command:
       [
