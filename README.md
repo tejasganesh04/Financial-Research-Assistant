@@ -11,6 +11,8 @@ extra access hold the drafted answer for Admin review before release.
 - Input privacy filtering and two model-based prompt-injection checks.
 - Simple lookups with hybrid retrieval, reranking, relevance grading and bounded search retries.
 - A research path that decomposes questions, collects evidence and checks for missing information.
+- An exact calculator the answer model calls for arithmetic; answers show each formula with its
+  numbers, and the grounding check verifies a calculation's inputs instead of redoing it.
 - Answer grounding checks with feedback for a bounded revision.
 - Admin approval or rejection of explicitly escalated answers.
 - Saved conversations, live processing stages and document/page references.
