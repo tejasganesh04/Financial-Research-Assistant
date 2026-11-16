@@ -94,6 +94,24 @@ class TokenResponse(BaseModel):
     department: str
 
 
+class McpTokenRequest(BaseModel):
+    """Optional lifetime for a new MCP token; the server's default applies when omitted."""
+
+    days: int | None = None
+
+
+class McpTokenResponse(BaseModel):
+    """A search-only token for MCP clients. Shown once; the API itself does not accept it."""
+
+    access_token: str
+    token_type: str = "bearer"
+    token_id: str
+    expires_at: str
+    role: str
+    scope: str
+    mcp_url: str
+
+
 class UserPermissions(BaseModel):
     """Role-derived RBAC permissions surfaced on `/auth/me`."""
 
