@@ -163,3 +163,15 @@ async def test_permanent_provider_errors_are_not_retried(model):
     with pytest.raises(RuntimeError, match="answer provider is unavailable"):
         await generator.generator_node(dict(STATE))
     assert len(model.seen) == 1
+
+
+async def test_persistent_malformed_tool_calls_fall_back_to_a_plain_answer(model, monkeypatch):
+    from src.services import llm_retry
+
+    monkeypatch.setattr(llm_retry, "DEFAULT_BACKOFF_SECONDS", (0.0,))
+    failure = RuntimeError("Error code: 400 - {'code': 'tool_use_failed'}")
+    model.replies = [failure, failure, failure, AIMessage(content="Plain answer")]
+    result = await generator.generator_node(dict(STATE))
+    assert result == {"generated_answer": "Plain answer", "calculations": []}
+    last = model.seen[-1]
+    assert last["tools"] is None and GENERATOR_CALCULATOR_PROMPT not in last["messages"][0].content

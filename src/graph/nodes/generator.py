@@ -19,7 +19,7 @@ from src.services.calculator import FUNCTION_HELP, calculate
 from src.services.guardrails_service import detect_pii
 from src.services.llm_factory import LLMFactory
 from src.services.llm_retry import aretry_llm_call
-from src.services.provider_errors import raise_if_rate_limited
+from src.services.provider_errors import is_rate_limited, raise_if_rate_limited
 from src.services.request_trace import record
 
 logger = logging.getLogger(__name__)
@@ -237,15 +237,22 @@ async def generator_node(state: RAGState) -> dict:
     try:
         llm = LLMFactory.get_generator_llm()
         tool_llm = _with_calculator(llm)
-        system = _build_system_message(llm)
-        if tool_llm is not None:
-            system = _with_calculator_instructions(system)
-        messages = [system, HumanMessage(content=user_prompt)]
+        plain_messages = [_build_system_message(llm), HumanMessage(content=user_prompt)]
         calculations: list[dict] = []
+        result = None
         if tool_llm is not None:
-            result, calculations = await _answer_with_calculator(llm, tool_llm, messages)
-        else:
-            result = await llm.ainvoke(messages)
+            messages = [_with_calculator_instructions(plain_messages[0]), plain_messages[1]]
+            try:
+                result, calculations = await _answer_with_calculator(llm, tool_llm, messages)
+            except Exception as error:
+                # A provider that keeps mangling tool calls should not cost the user the answer.
+                if is_rate_limited(error) or "tool_use_failed" not in str(error):
+                    raise
+                logger.warning("Calculator tool calls failed; answering without the calculator")
+                record("calculator_unavailable", reason="tool_use_failed")
+                calculations = []
+        if result is None:
+            result = await llm.ainvoke(plain_messages)
         answer = _text(result)
         if not answer:
             raise RuntimeError("The answer provider returned no response.")
