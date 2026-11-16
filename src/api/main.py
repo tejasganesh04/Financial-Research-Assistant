@@ -84,6 +84,7 @@ async def lifespan(app: FastAPI):
         if await user_store.count_accounts(app.state.pool) == 0:
             logger.warning("No user accounts exist yet. Create them with: make users")
         housekeeping = asyncio.create_task(_housekeeping(app.state.pool))
+    warming = asyncio.create_task(_warm_models()) if settings.WARM_MODELS_ON_START else None
 
     logger.info(f"RAG Agent API starting (environment={settings.ENVIRONMENT})")
     async with AsyncExitStack() as stack:
@@ -96,6 +97,8 @@ async def lifespan(app: FastAPI):
             logger.info("MCP server available at /mcp (OAuth issuer %s)", settings.public_url)
         yield
 
+    if warming is not None and not warming.done():
+        warming.cancel()
     if housekeeping is not None:
         housekeeping.cancel()
         with suppress(asyncio.CancelledError):
@@ -104,6 +107,17 @@ async def lifespan(app: FastAPI):
     if app.state.pool:
         await app.state.pool.close()
     logger.info("RAG Agent API shutting down")
+
+
+async def _warm_models() -> None:
+    import anyio
+
+    from src.services.model_loading import warm_local_models
+
+    try:
+        await anyio.to_thread.run_sync(warm_local_models, abandon_on_cancel=True)
+    except Exception:
+        logger.exception("Could not preload the question-screening models; they load on the first question")
 
 
 async def _housekeeping(pool) -> None:

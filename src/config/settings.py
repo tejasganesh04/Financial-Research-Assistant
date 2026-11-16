@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     def public_url(self) -> str:
         return self.PUBLIC_URL.rstrip("/")
 
+    # Load the local question-screening models in the background at start-up, so the first question
+    # does not wait for them (the first start on a new server downloads them).
+    WARM_MODELS_ON_START: bool = True
+
     # --- Calculator tool for the answer model (exact arithmetic) ---
     CALCULATOR_ENABLED: bool = True
     # Model turns that may call the calculator before the answer must be written.

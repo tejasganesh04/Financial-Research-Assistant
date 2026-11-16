@@ -85,8 +85,11 @@ docker compose -f compose.minimal.yml -f compose.production.yml up -d --build
 docker compose -f compose.minimal.yml -f compose.production.yml logs -f caddy api
 ```
 
-Caddy obtains the certificate on first start. Then create the accounts; each password is printed
-once:
+Caddy obtains the certificate on first start. On the first start the API also downloads its
+question-screening models (a few hundred MB, kept in the `hf_cache` volume) in the background; the
+log says `Question-screening models ready` when done. Questions asked before then wait for it.
+
+Then create the accounts; each password is printed once:
 
 ```sh
 docker compose -f compose.minimal.yml -f compose.production.yml exec api python scripts/manage_users.py seed
