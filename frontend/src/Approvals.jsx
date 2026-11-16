@@ -3,29 +3,41 @@ import { api, errorMessage } from "./api.js";
 import {
   Alert,
   Answer,
+  Badge,
+  EmptyState,
   Icon,
-  Sources,
+  PageHeader,
   RequestDetails,
+  Sources,
+  Spinner,
   roleName,
 } from "./components.jsx";
 
-export default function Approvals() {
+export default function Approvals({ onCountChange }) {
   const [items, setItems] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  async function load() {
+    const approvals = await api.approvals();
+    setItems(approvals);
+    onCountChange?.(approvals.length);
+  }
+
   async function refresh() {
     setBusy("loading");
     setError("");
     try {
-      setItems(await api.approvals());
+      await load();
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setBusy("");
+      setLoaded(true);
     }
   }
   useEffect(() => {
@@ -46,13 +58,14 @@ export default function Approvals() {
       setBusy("");
     }
   }
+
   async function decide(decision) {
     if (!selected || busy) return;
     if (decision === "reject" && !reason.trim()) {
       setError("Add a reason before rejecting this answer.");
       return;
     }
-    setBusy("deciding");
+    setBusy(decision);
     setError("");
     try {
       await api.decide(selected.thread_id, decision, reason.trim());
@@ -63,7 +76,7 @@ export default function Approvals() {
       );
       setSelected(null);
       setReason("");
-      setItems(await api.approvals());
+      await load();
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -72,102 +85,118 @@ export default function Approvals() {
   }
 
   return (
-    <div className="approvals-page">
-      <div className="approvals-intro">
-        <div>
-          <h2>Pending approvals</h2>
-          <p>
-            Review the question, draft and supporting sources before making a
-            decision.
-          </p>
-        </div>
-        <button
-          className="button secondary"
-          onClick={refresh}
-          disabled={!!busy}
-        >
-          <Icon name="refresh" size={15} />
-          Refresh
-        </button>
-      </div>
+    <div className="page">
+      <PageHeader
+        title="Approvals"
+        description="Answers that used access beyond the requester’s role. Review the draft and its sources before releasing it."
+        actions={
+          <button
+            className="button secondary"
+            onClick={refresh}
+            disabled={!!busy}
+          >
+            <Icon name="refresh" size={14} />
+            Refresh
+          </button>
+        }
+      />
       <Alert>{error}</Alert>
       <Alert kind="success">{notice}</Alert>
-      <div className="approval-layout">
-        <section className="approval-list" aria-label="Pending requests">
+      <div className="review-layout">
+        <section className="panel review-queue" aria-label="Pending requests">
+          <div className="panel-heading">
+            <span>Pending</span>
+            <Badge>{items.length}</Badge>
+          </div>
           {items.length ? (
-            items.map((item) => (
-              <button
-                className={`approval-item ${selected?.thread_id === item.thread_id ? "selected" : ""}`}
-                key={item.thread_id}
-                onClick={() => open(item.thread_id)}
-                disabled={!!busy}
-              >
-                <span className="approval-item-meta">
-                  <span className="pill amber">Awaiting review</span>
-                  <span>{roleName(item.requester_role)}</span>
-                </span>
-                <strong>{item.query}</strong>
-                <small>
-                  {item.requester_name || item.requester_user_id} ·{" "}
-                  {item.sources_count} sources
-                </small>
-              </button>
-            ))
-          ) : (
-            <div className="empty-list">
-              <Icon name="check" size={25} />
-              <h3>
-                {busy === "loading" ? "Loading requests…" : "All caught up"}
-              </h3>
-              <p>No pending requests available for your role.</p>
+            <div className="queue-list">
+              {items.map((item) => (
+                <button
+                  className={`queue-item ${selected?.thread_id === item.thread_id ? "selected" : ""}`}
+                  key={item.thread_id}
+                  onClick={() => open(item.thread_id)}
+                  disabled={!!busy}
+                >
+                  <strong>{item.query}</strong>
+                  <span>
+                    {item.requester_name || item.requester_user_id} ·{" "}
+                    {roleName(item.requester_role)} · {item.sources_count}{" "}
+                    {item.sources_count === 1 ? "source" : "sources"}
+                  </span>
+                </button>
+              ))}
             </div>
+          ) : (
+            <EmptyState
+              icon="check"
+              title={!loaded ? "Loading requests…" : "All caught up"}
+            >
+              {loaded && "No answers are waiting for review."}
+            </EmptyState>
           )}
         </section>
-        <section className="review-panel">
+
+        <section className="panel review-detail">
           {selected ? (
             <>
-              <div className="review-top">
-                <span className="section-label">
-                  REQUEST FROM {roleName(selected.requester_role).toUpperCase()}
+              <div className="review-meta">
+                <Badge tone="warning" dot>
+                  Awaiting review
+                </Badge>
+                <span>
+                  {selected.requester_name} ·{" "}
+                  {roleName(selected.requester_role)}
+                  {selected.requester_department
+                    ? ` · ${selected.requester_department}`
+                    : ""}
                 </span>
-                <span className="pill amber">Awaiting review</span>
               </div>
-              <h2>{selected.query}</h2>
-              <p className="muted">
-                {selected.requester_name} · {selected.requester_department}
-              </p>
-              <p className="muted">{selected.reason}</p>
+              <h2 className="review-question">{selected.query}</h2>
+              {selected.reason && <p className="muted">{selected.reason}</p>}
               {selected.access_scope && (
-                <p className="muted">
-                  Effective search: {selected.access_scope.doc_types.join(", ")}{" "}
-                  · {selected.access_scope.confidentiality.join(", ")}. Approval
-                  releases this answer only.
-                </p>
+                <dl className="scope-list">
+                  <div>
+                    <dt>Document types searched</dt>
+                    <dd>{selected.access_scope.doc_types.join(", ")}</dd>
+                  </div>
+                  <div>
+                    <dt>Confidentiality</dt>
+                    <dd>{selected.access_scope.confidentiality.join(", ")}</dd>
+                  </div>
+                </dl>
               )}
               <RequestDetails requestId={selected.request_id} />
-              <div className="review-rule" />
-              <h3 className="section-label">DRAFT ANSWER</h3>
-              <Answer>{selected.draft_answer}</Answer>
-              <Sources sources={selected.sources} />
-              <div className="decision-form">
-                <label htmlFor="review-reason">
-                  Review note{" "}
-                  <span className="muted">(required to reject)</span>
-                </label>
-                <textarea
-                  id="review-reason"
-                  rows={3}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  disabled={!!busy}
-                  placeholder="Explain your decision…"
-                />
-                <div className="decision-buttons">
+              <div className="draft">
+                <div className="draft-label">Draft answer</div>
+                <Answer>{selected.draft_answer}</Answer>
+                <Sources sources={selected.sources} />
+              </div>
+              <div className="decision">
+                <div className="field">
+                  <label htmlFor="review-reason">
+                    Review note{" "}
+                    <span className="muted">(required to reject)</span>
+                  </label>
+                  <textarea
+                    id="review-reason"
+                    rows={3}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    disabled={!!busy}
+                    placeholder="Explain your decision…"
+                  />
+                </div>
+                <div className="decision-actions">
+                  <span className="muted small">
+                    Approving releases this answer only; it does not change the
+                    role.
+                  </span>
                   <button
                     className="button danger-outline"
                     onClick={() => decide("reject")}
                     disabled={!!busy}
                   >
+                    {busy === "reject" && <Spinner />}
                     Reject answer
                   </button>
                   <button
@@ -175,22 +204,25 @@ export default function Approvals() {
                     onClick={() => decide("approve")}
                     disabled={!!busy}
                   >
-                    <Icon name="check" size={16} />
-                    {busy === "deciding" ? "Saving…" : "Approve & release"}
+                    {busy === "approve" ? (
+                      <Spinner />
+                    ) : (
+                      <Icon name="check" size={15} />
+                    )}
+                    Approve & release
                   </button>
                 </div>
               </div>
             </>
           ) : (
-            <div className="review-placeholder">
-              <Icon name="shield" size={33} />
-              <h3>
-                {busy === "opening"
-                  ? "Opening request…"
-                  : "Select a request to review"}
-              </h3>
-              <p>The draft answer and its sources will appear here.</p>
-            </div>
+            <EmptyState
+              icon="shield"
+              title={
+                busy === "opening" ? "Opening request…" : "Select a request"
+              }
+            >
+              The question, draft answer and its sources will appear here.
+            </EmptyState>
           )}
         </section>
       </div>

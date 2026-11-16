@@ -30,6 +30,12 @@ def _provider():
     return provider
 
 
+@router.get("/server")
+async def server_info() -> dict:
+    """Where MCP clients connect (shown on the Connect page)."""
+    return {"enabled": settings.MCP_ENABLED, "mcp_url": settings.mcp_resource_url}
+
+
 EXPIRED = "This connection request has expired or was already used. Start the connection again from your client."
 
 
