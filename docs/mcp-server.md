@@ -46,6 +46,8 @@ Behaviour worth knowing:
 - **Errors** are plain sentences the assistant can act on, for example the fiscal years that are
   available. They never reveal whether a restricted document exists.
 - **Document text** is returned as data with a notice not to follow instructions inside it.
+- **Response size** stays small: a default search returns about 2,500 to 4,000 tokens, five pages
+  about 2,000, and the full document list about 2,500.
 
 ## Connect Claude Code
 
