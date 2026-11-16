@@ -26,14 +26,17 @@ const fromHistory = (data) => ({
 
 const SUGGESTIONS = [
   [
+    "search",
     "Find a figure",
     "What was Microsoft’s cost of goods sold in FY2016? Give the answer in USD millions.",
   ],
   [
+    "compare",
     "Compare years",
     "Compare Microsoft’s total revenue in FY2016 and FY2023. Cite each year’s filing.",
   ],
   [
+    "calculate",
     "Explain a calculation",
     "How do Microsoft’s FY2016 revenue and cost of revenue reconcile to gross profit? Show the calculation.",
   ],
@@ -435,6 +438,11 @@ export default function ResearchView({ user, research }) {
   useLayoutEffect(() => {
     const panel = chatScroll.current;
     if (!panel || !followLatest.current) return;
+    // An empty conversation shows the welcome from its top, however small the screen.
+    if (!thread.messages.length) {
+      panel.scrollTop = 0;
+      return;
+    }
     if (getComputedStyle(panel).overflowY === "visible") {
       window.scrollTo({
         top: document.documentElement.scrollHeight,
@@ -481,7 +489,7 @@ export default function ResearchView({ user, research }) {
                 a calculation. Every answer cites its sources.
               </p>
               <div className="suggestions">
-                {SUGGESTIONS.map(([title, text]) => (
+                {SUGGESTIONS.map(([icon, title, text]) => (
                   <button
                     key={title}
                     onClick={() => pickSuggestion(text)}
@@ -489,12 +497,25 @@ export default function ResearchView({ user, research }) {
                   >
                     <strong>{title}</strong>
                     <span>{text}</span>
+                    <span className="suggestion-icon">
+                      <Icon name={icon} size={16} />
+                    </span>
                   </button>
                 ))}
               </div>
               <div className="corpus-note">
-                <span className="status-dot" />
-                32 companies · 84 SEC filings · 10-K, 10-Q and 8-K reports
+                <span className="chip">
+                  <Icon name="database" size={14} />
+                  32 companies
+                </span>
+                <span className="chip">
+                  <Icon name="file" size={14} />
+                  84 SEC filings
+                </span>
+                <span className="chip">
+                  <Icon name="done" size={14} />
+                  10-K, 10-Q and 8-K reports
+                </span>
               </div>
             </section>
           )}

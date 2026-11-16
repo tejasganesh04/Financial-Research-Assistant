@@ -77,10 +77,12 @@ export function SignInForm({
           recovered by email.
         </p>
       </details>
-      <button className="button primary block" disabled={busy}>
-        {busy ? <Spinner /> : null}
-        {busy ? "Signing in…" : submitLabel}
-      </button>
+      <div className="auth-actions">
+        <button className="button primary" disabled={busy}>
+          {busy ? <Spinner /> : null}
+          {busy ? "Signing in…" : submitLabel}
+        </button>
+      </div>
     </form>
   );
 }
@@ -88,21 +90,26 @@ export function SignInForm({
 export default function SignIn({ onSignedIn, notice }) {
   return (
     <main className="auth-page">
-      <div className="auth-card">
+      <div className="auth-card wide">
         <div className="auth-heading">
-          <Logo size={40} />
-          <h1>Sign in to Financial Research</h1>
-          <p>Cited answers from company filings, for invited members.</p>
+          <Logo size={44} />
+          <h1>Sign in</h1>
+          <p>to continue to Financial Research</p>
         </div>
-        <Alert kind="info">{notice}</Alert>
-        <SignInForm onSignedIn={onSignedIn} />
-        <p className="auth-footnote">
-          <Icon name="lock" size={13} />
-          Accounts are created by your administrator. There is no public
-          sign-up.
-        </p>
+        <div className="auth-main">
+          <Alert kind="info">{notice}</Alert>
+          <SignInForm onSignedIn={onSignedIn} />
+          <p className="auth-footnote">
+            <Icon name="lock" size={14} />
+            Accounts are created by your administrator. There is no public
+            sign-up.
+          </p>
+        </div>
       </div>
-      <footer className="auth-legal">Financial Research Assistant</footer>
+      <footer className="auth-legal">
+        Financial Research Assistant · Cited answers from company filings, for
+        invited members.
+      </footer>
     </main>
   );
 }

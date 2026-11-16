@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api } from "./api.js";
+import { ICON_PATHS } from "./icons.js";
 
 export const ROLE_NAMES = {
   analyst: "Analyst",
@@ -52,127 +53,19 @@ export const formatDateTime = (value) =>
       })
     : "—";
 
-const ICONS = {
-  chart: (
-    <>
-      <path d="M4 19V13M10 19V9M16 19V5" />
-      <path d="M3 21h18" />
-    </>
-  ),
-  plus: <path d="M12 5v14M5 12h14" />,
-  send: <path d="M5 12h13M13 6l6 6-6 6" />,
-  chat: (
-    <path d="M20 15a3 3 0 0 1-3 3H8l-5 3V6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3Z" />
-  ),
-  shield: (
-    <>
-      <path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z" />
-      <path d="m9 12 2 2 4-4" />
-    </>
-  ),
-  logout: <path d="M10 4H5v16h5M15 8l4 4-4 4M9 12h10" />,
-  file: <path d="M14 3H6v18h12V7ZM14 3v4h4M9 13h6M9 17h4" />,
-  arrow: <path d="m9 6 6 6-6 6" />,
-  back: <path d="m15 6-6 6 6 6" />,
-  refresh: (
-    <>
-      <path d="M20 5v5h-5M4 19v-5h5" />
-      <path d="M6.5 9A7 7 0 0 1 19 9.5M17.5 15A7 7 0 0 1 5 14.5" />
-    </>
-  ),
-  check: <path d="m5 12 4.5 4.5L19 7" />,
-  users: (
-    <>
-      <circle cx="9" cy="8" r="3.5" />
-      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" />
-    </>
-  ),
-  user: (
-    <>
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
-    </>
-  ),
-  key: (
-    <>
-      <circle cx="8" cy="15" r="4" />
-      <path d="m11 12 9-9M17 6l3 3M14 9l2 2" />
-    </>
-  ),
-  terminal: (
-    <>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="m7 9 3 3-3 3M13 15h4" />
-    </>
-  ),
-  plug: (
-    <>
-      <path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0Z" />
-      <path d="M12 17v4" />
-    </>
-  ),
-  copy: (
-    <>
-      <rect x="9" y="9" width="11" height="11" rx="2" />
-      <path d="M5 15V6a2 2 0 0 1 2-2h8" />
-    </>
-  ),
-  x: <path d="M6 6l12 12M18 6 6 18" />,
-  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
-  lock: (
-    <>
-      <rect x="5" y="11" width="14" height="10" rx="2" />
-      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-    </>
-  ),
-  activity: <path d="M3 12h4l3 7 4-14 3 7h4" />,
-  monitor: (
-    <>
-      <rect x="3" y="4" width="18" height="12" rx="2" />
-      <path d="M8 20h8M12 16v4" />
-    </>
-  ),
-  more: (
-    <>
-      <circle cx="5" cy="12" r="1" />
-      <circle cx="12" cy="12" r="1" />
-      <circle cx="19" cy="12" r="1" />
-    </>
-  ),
-  trash: <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />,
-  info: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 11v5M12 8h.01" />
-    </>
-  ),
-  alert: (
-    <>
-      <path d="M12 3 2 20h20Z" />
-      <path d="M12 10v4M12 17h.01" />
-    </>
-  ),
-  sparkle: (
-    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />
-  ),
-  external: <path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" />,
-};
-
 export function Icon({ name, size = 16 }) {
+  // Material Symbols are drawn for a 20-24px box; callers pass the old, smaller optical sizes.
+  const box = Math.round(size * 1.25);
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      width={box}
+      height={box}
+      viewBox="0 -960 960 960"
+      fill="currentColor"
       aria-hidden="true"
       className="icon"
     >
-      {ICONS[name]}
+      <path d={ICON_PATHS[name]} />
     </svg>
   );
 }
@@ -184,25 +77,41 @@ export function Logo({ size = 28 }) {
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      <svg viewBox="0 0 28 28" width={size} height={size}>
-        <rect width="28" height="28" rx="7" className="logo-bg" />
-        <path d="M9 19v-3.5M14 19v-7" className="logo-bars" />
-        <path d="M19 19V8" className="logo-line" />
+      <svg viewBox="0 0 32 32" width={size} height={size}>
+        <rect
+          x="3"
+          y="17"
+          width="7"
+          height="12"
+          rx="3.5"
+          className="logo-bar-1"
+        />
+        <rect
+          x="12.5"
+          y="10"
+          width="7"
+          height="19"
+          rx="3.5"
+          className="logo-bar-2"
+        />
+        <rect
+          x="22"
+          y="3"
+          width="7"
+          height="26"
+          rx="3.5"
+          className="logo-bar-3"
+        />
       </svg>
     </span>
   );
 }
 
-export function Brand({ compact = false }) {
+export function Brand() {
   return (
     <div className="brand">
       <Logo />
-      {!compact && (
-        <span className="brand-name">
-          Financial Research
-          <small>Assistant</small>
-        </span>
-      )}
+      <span className="brand-name">Financial Research</span>
     </div>
   );
 }
@@ -210,8 +119,8 @@ export function Brand({ compact = false }) {
 export function Alert({ children, kind = "error", title }) {
   if (!children) return null;
   const icon = {
-    error: "alert",
-    success: "check",
+    error: "error",
+    success: "done",
     info: "info",
     warning: "alert",
   }[kind];
@@ -239,14 +148,33 @@ export function Spinner({ size = 14 }) {
   );
 }
 
-export function Avatar({ name, size = 32 }) {
+// People get a steady colour of their own, as in an address book.
+const AVATAR_COLORS = [
+  "#1a73e8",
+  "#188038",
+  "#8430ce",
+  "#b80672",
+  "#007b83",
+  "#b06000",
+  "#3f51b5",
+  "#5f6368",
+];
+
+export function Avatar({ name = "", size = 32 }) {
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
   return (
     <span
       className="avatar"
-      style={{ width: size, height: size, fontSize: size * 0.38 }}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.45),
+        "--avatar": AVATAR_COLORS[hash % AVATAR_COLORS.length],
+      }}
       aria-hidden="true"
     >
-      {initials(name)}
+      {initials(name)[0]}
     </span>
   );
 }
