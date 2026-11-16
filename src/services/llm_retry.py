@@ -53,6 +53,9 @@ _TRANSIENT_MARKERS = (
     "broken pipe",
     "apiconnectionerror",
     "apitimeouterror",
+    # Groq GPT-OSS occasionally emits malformed structured output or tool calls; a new attempt usually succeeds.
+    "output_parse_failed",
+    "tool_use_failed",
 )
 
 
@@ -123,3 +126,21 @@ def retry_llm_call(
     if last_exc:
         raise last_exc
     raise RuntimeError(f"{label}: retry loop exited without returning or raising")
+
+
+async def aretry_llm_call(fn, *, label: str = "llm call", max_attempts: int = DEFAULT_MAX_ATTEMPTS):
+    """Async form of retry_llm_call for awaitable model calls."""
+    import asyncio
+
+    for attempt in range(max_attempts):
+        try:
+            return await fn()
+        except Exception as exc:
+            if is_rate_limited(exc) or not is_transient_error(exc) or attempt >= max_attempts - 1:
+                raise
+            delay = DEFAULT_BACKOFF_SECONDS[min(attempt, len(DEFAULT_BACKOFF_SECONDS) - 1)]
+            logger.warning(
+                f"{label}: transient failure on attempt {attempt + 1}/{max_attempts}, "
+                f"retrying in {delay:.1f}s: {type(exc).__name__}: {str(exc)[:200]}"
+            )
+            await asyncio.sleep(delay)

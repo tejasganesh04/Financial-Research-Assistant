@@ -18,6 +18,7 @@ from src.models.state import RAGState
 from src.services.calculator import FUNCTION_HELP, calculate
 from src.services.guardrails_service import detect_pii
 from src.services.llm_factory import LLMFactory
+from src.services.llm_retry import aretry_llm_call
 from src.services.provider_errors import raise_if_rate_limited
 from src.services.request_trace import record
 
@@ -123,7 +124,7 @@ async def _answer_with_calculator(llm, tool_llm, messages: list) -> tuple[AIMess
     """Let the model call the calculator a bounded number of times, then return its answer."""
     calculations: list[dict] = []
     for _ in range(settings.CALCULATOR_MAX_ROUNDS):
-        response = await tool_llm.ainvoke(messages)
+        response = await aretry_llm_call(lambda: tool_llm.ainvoke(messages), label="generator with calculator")
         calls = getattr(response, "tool_calls", None) or []
         if not calls:
             return response, calculations
