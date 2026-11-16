@@ -44,6 +44,7 @@ hpack==4.1.0
 httpcore==1.0.9
 httptools==0.8.0
 httpx==0.28.1
+httpx-sse==0.4.3
 huggingface_hub==0.36.2
 hyperframe==6.1.0
 idna==3.18
@@ -53,6 +54,8 @@ joblib==1.5.3
 json_repair==0.44.1
 jsonpatch==1.33
 jsonpointer==3.1.1
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
 langchain-anthropic==0.3.22
 langchain-core==0.3.86
 langchain-groq==0.3.8
@@ -68,6 +71,7 @@ llm-guard==0.3.16
 loguru==0.7.3
 markdown-it-py==4.2.0
 MarkupSafe==3.0.3
+mcp==1.30.0
 mdurl==0.1.2
 ml_dtypes==0.6.0
 mmh3==5.2.1
@@ -108,13 +112,16 @@ Pygments==2.20.0
 PyJWT==2.13.0
 python-dateutil==3.0.0
 python-dotenv==1.2.2
+python-multipart==0.0.33
 PyYAML==6.0.3
 qdrant-client==1.14.3
+referencing==0.37.0
 regex==2024.11.6
 requests==2.34.2
 requests-file==3.0.1
 requests-toolbelt==1.0.0
 rich==14.3.4
+rpds-py==2026.9.1
 safetensors==0.7.0
 scikit-learn==1.9.0
 scipy==1.17.1

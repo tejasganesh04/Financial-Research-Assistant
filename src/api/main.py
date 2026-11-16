@@ -1,7 +1,7 @@
 import logging
 import os
 import subprocess
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 
@@ -76,7 +76,13 @@ async def lifespan(app: FastAPI):
         app.state.pool = None
 
     logger.info(f"RAG Agent API starting (environment={settings.ENVIRONMENT})")
-    yield
+    async with AsyncExitStack() as stack:
+        if settings.MCP_ENABLED:
+            from src.mcp_server.server import http_lifespan
+
+            await stack.enter_async_context(http_lifespan())
+            logger.info("MCP server available at /mcp")
+        yield
 
     if app.state.pool:
         await app.state.pool.close()
@@ -159,6 +165,14 @@ _routers = [health, auth, conversations, approvals, documents]
 
 for r in _routers:
     app.include_router(r.router, prefix=f"/v{API_VERSION}")
+
+# Document search for external AI assistants (Claude Code, Claude Desktop, ...); see src/mcp_server.
+if settings.MCP_ENABLED:
+    from starlette.routing import Route
+
+    from src.mcp_server.server import http_endpoint
+
+    app.router.routes.append(Route("/mcp", endpoint=http_endpoint, include_in_schema=False))
 
 if (FRONTEND_DIR / "assets").is_dir():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="frontend-assets")

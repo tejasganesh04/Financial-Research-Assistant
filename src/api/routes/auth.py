@@ -1,10 +1,15 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.api.dependencies import get_current_user
 from src.config.rbac_config import get_permissions
+from src.config.settings import settings
 from src.models.auth import User
 from src.models.schemas import (
     LoginRequest,
+    McpTokenRequest,
+    McpTokenResponse,
     TokenResponse,
     UserMeResponse,
     UserPermissions,
@@ -57,4 +62,32 @@ async def me(user: User = Depends(get_current_user)) -> UserMeResponse:
             allowed_doc_types=perms["allowed_doc_types"],
             allowed_confidentiality=perms["allowed_confidentiality"],
         ),
+    )
+
+
+@router.post("/mcp-token", response_model=McpTokenResponse)
+async def create_mcp_access_token(
+    request: McpTokenRequest | None = None, user: User = Depends(get_current_user)
+) -> McpTokenResponse:
+    """Issue a search-only token for MCP clients, with the caller's own role.
+
+    It needs an ordinary login; an MCP token cannot create another token or use the API.
+    """
+    if not settings.MCP_ENABLED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The MCP server is disabled.")
+    from src.mcp_server.auth import SCOPE, create_mcp_token
+
+    try:
+        token, expires, token_id = create_mcp_token(
+            user.user_id, user.name, user.role, user.department, days=request.days if request else None
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+    return McpTokenResponse(
+        access_token=token,
+        token_id=token_id,
+        expires_at=datetime.fromtimestamp(expires, timezone.utc).isoformat(),
+        role=user.role,
+        scope=SCOPE,
+        mcp_url=f"{settings.MCP_PUBLIC_URL.rstrip('/')}/mcp",
     )

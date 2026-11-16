@@ -41,6 +41,20 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRY_HOURS: int = 24
 
+    # --- MCP server (document search for external AI assistants, at /mcp) ---
+    MCP_ENABLED: bool = True
+    # Address clients use to reach this API; shown when a token is created.
+    MCP_PUBLIC_URL: str = "http://localhost:8000"
+    MCP_TOKEN_EXPIRY_DAYS: int = 30
+    MCP_TOKEN_MAX_DAYS: int = 90
+    # Searches and page reads per user per minute (each search makes one embedding and one rerank call).
+    MCP_RATE_LIMIT_PER_MINUTE: int = 30
+    # Host headers accepted at /mcp (protection against DNS rebinding). Add your domain when hosting.
+    MCP_ALLOWED_HOSTS: list[str] = ["localhost:*", "127.0.0.1:*", "[::1]:*"]
+    MCP_ALLOWED_ORIGINS: list[str] = ["http://localhost:*", "http://127.0.0.1:*", "http://[::1]:*"]
+    # Token ids (the token_id shown when a token is created) that are no longer accepted.
+    MCP_REVOKED_TOKEN_IDS: list[str] = []
+
     # --- Qdrant ---
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
