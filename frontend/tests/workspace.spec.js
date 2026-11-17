@@ -538,9 +538,8 @@ test("login, sample fill, complete answer, sources, refresh and logout", async (
   ).toBeVisible();
   await page.getByText("Request details", { exact: true }).click();
   await expect(page.getByText("request-test", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText("logs/traces/request-test/summary.md", { exact: true }),
-  ).toBeVisible();
+  // Server file paths are not shown; the ID is what to quote.
+  await expect(page.getByText(/logs\/traces/)).toHaveCount(0);
   expect(state.submissions).toBe(1);
   await page.getByRole("button", { name: /MICROSOFT_2016_10K.pdf/ }).click();
   await expect(page.getByText(/original PDF is not stored/)).toBeVisible();

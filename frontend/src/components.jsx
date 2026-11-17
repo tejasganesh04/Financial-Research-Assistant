@@ -348,8 +348,9 @@ export function Answer({ children }) {
   );
 }
 
+// The request ID names this answer in the server's records and its LangSmith trace; quote it
+// when reporting a problem.
 export function RequestDetails({ requestId }) {
-  const path = requestId ? `logs/traces/${requestId}/summary.md` : "";
   return (
     <details className="request-details">
       <summary>Request details</summary>
@@ -357,8 +358,6 @@ export function RequestDetails({ requestId }) {
         <div className="request-details-body">
           <span>Request ID</span>
           <CopyField value={requestId} label="Copy request ID" />
-          <span>Server report</span>
-          <CopyField value={path} label="Copy report path" />
         </div>
       ) : (
         <small>
