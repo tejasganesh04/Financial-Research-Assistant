@@ -113,7 +113,9 @@ export default function AdminUsers({ me }) {
                   <th>Status</th>
                   <th>Last active</th>
                   <th>Signed in on</th>
-                  <th aria-label="Actions" />
+                  <th>
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -298,7 +300,7 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
       className="drawer-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <aside
+      <div
         className="drawer"
         role="dialog"
         aria-modal="true"
@@ -310,7 +312,7 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
           <div className="user-cell large">
             <Avatar name={user.name} size={44} />
             <div>
-              <strong>{user.name}</strong>
+              <h2 className="drawer-title">{user.name}</h2>
               <span>
                 {user.username} · {user.role_label || roleName(user.role)}
               </span>
@@ -485,7 +487,7 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
             <p className="muted small">No active sessions.</p>
           )}
         </div>
-      </aside>
+      </div>
 
       {confirm && (
         <Modal

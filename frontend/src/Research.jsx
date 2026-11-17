@@ -574,7 +574,7 @@ export default function ResearchView({ user, research }) {
                 <Icon name="shield" size={18} />
               </span>
               <div>
-                <h3>Waiting for review</h3>
+                <h2>Waiting for review</h2>
                 <p>
                   This question asked for access beyond your role, so an
                   administrator reviews the answer before it is released. It

@@ -398,3 +398,21 @@ test("reloading reopens the conversation that was open", async ({ page }) => {
   await expect(page.getByText("Question 30 in thread-2")).toBeVisible();
   await expect.poll(() => atBottom(page)).toBe(true);
 });
+
+test("the research and connect pages pass an accessibility audit", async ({
+  page,
+}) => {
+  const { AxeBuilder } = await import("@axe-core/playwright");
+  await mock(page);
+  await openConversation(page, 1);
+  for (const path of ["/", "/connect", "/account"]) {
+    if (path !== "/") await page.goto(path);
+    await page.waitForTimeout(400);
+    const result = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(
+      result.violations.map((v) => `${path}: ${v.id} ${v.nodes[0]?.target}`),
+    ).toEqual([]);
+  }
+});

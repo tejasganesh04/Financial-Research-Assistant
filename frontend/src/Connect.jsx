@@ -34,7 +34,7 @@ export default function Connect({ user }) {
           <li>
             <span className="step-number">1</span>
             <div>
-              <h3>Add the server</h3>
+              <h2>Add the server</h2>
               <p>Run this once in a terminal:</p>
               <CopyField value={command} label="Copy command" />
             </div>
@@ -42,7 +42,7 @@ export default function Connect({ user }) {
           <li>
             <span className="step-number">2</span>
             <div>
-              <h3>Sign in</h3>
+              <h2>Sign in</h2>
               <p>
                 In Claude Code, type <code>/mcp</code>, choose{" "}
                 <strong>financial-research</strong> and select{" "}
@@ -54,7 +54,7 @@ export default function Connect({ user }) {
           <li>
             <span className="step-number">3</span>
             <div>
-              <h3>Ask a question</h3>
+              <h2>Ask a question</h2>
               <p>For example:</p>
               <CopyField
                 mono={false}

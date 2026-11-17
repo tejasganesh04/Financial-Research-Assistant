@@ -204,7 +204,9 @@ export function CopyField({ value, label, mono = true, multiline = false }) {
   }
   return (
     <div className={`copy-field ${multiline ? "multiline" : ""}`}>
-      <code className={mono ? "mono" : ""}>{value}</code>
+      <code className={mono ? "mono" : ""} tabIndex={mono ? 0 : undefined}>
+        {value}
+      </code>
       <button
         type="button"
         className="icon-button"
@@ -306,7 +308,7 @@ export function EmptyState({ icon, title, children, action }) {
       <span className="empty-icon">
         <Icon name={icon} size={20} />
       </span>
-      <h3>{title}</h3>
+      <h2>{title}</h2>
       {children && <p>{children}</p>}
       {action}
     </div>
@@ -356,7 +358,13 @@ export function Answer({ children }) {
               </a>
             ),
           table: ({ children }) => (
-            <div className="table-scroll">
+            // Focusable so a wide table can be scrolled sideways from the keyboard.
+            <div
+              className="table-scroll"
+              tabIndex={0}
+              role="region"
+              aria-label="Table"
+            >
               <table>{children}</table>
             </div>
           ),
