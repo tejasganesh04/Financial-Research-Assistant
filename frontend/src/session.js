@@ -37,10 +37,11 @@ function remember(session) {
   const lifetime = session.expires_in * 1000;
   expiresAt = Date.now() + lifetime;
   clearTimeout(renewTimer);
-  // Renew a minute before expiry. Timers pause while a laptop sleeps; requests check expiry too.
+  // Renew a minute before expiry, or at three quarters of a short lifetime. Timers pause while a
+  // laptop sleeps; requests check expiry too.
   renewTimer = setTimeout(
     () => renewSession().catch(() => {}),
-    Math.max(5000, lifetime - 60000),
+    Math.max(5000, lifetime - 60000, lifetime * 0.75),
   );
   return session.user;
 }
