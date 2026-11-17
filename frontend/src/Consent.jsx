@@ -6,6 +6,9 @@ import { signOut } from "./session.js";
 
 // Shown when an MCP client such as Claude Code asks to connect (OAuth authorization).
 export default function Consent({ requestId, user, onSignedIn, onSignedOut }) {
+  useEffect(() => {
+    document.title = "Connect an app – Financial Research";
+  }, []);
   const [request, setRequest] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [busy, setBusy] = useState("");
