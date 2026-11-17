@@ -259,6 +259,12 @@ try {
 
   // ── Session cookie and renewal ───────────────────────────────────────────
   {
+    const page = await call("GET", "/");
+    check(
+      "pages forbid camera, microphone and location",
+      /camera=\(\)/.test(page.headers.get("permissions-policy") || ""),
+      page.headers.get("permissions-policy") || "missing",
+    );
     const cookie = admin.cookie || "";
     check("refresh cookie is httpOnly", /httponly/i.test(cookie), cookie);
     check(
