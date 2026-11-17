@@ -2233,6 +2233,9 @@ button.account-row:disabled {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.answer-plain {
+  white-space: pre-wrap;
+}
 .answer > :first-child {
   margin-top: 0;
 }

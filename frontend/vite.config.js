@@ -9,14 +9,14 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        // Libraries change rarely: keep them in their own long-cached files.
+        // The core libraries change rarely: keep them in one long-cached file. Everything else,
+        // including the Markdown parser used only for answers, is split where it is first used.
         advancedChunks: {
           groups: [
             {
-              name: "markdown",
-              test: /node_modules[\\/](react-markdown|remark|rehype|micromark|mdast|hast|unified|unist|vfile)/,
+              name: "vendor",
+              test: /node_modules[\\/](react|react-dom|scheduler|axios)[\\/]/,
             },
-            { name: "vendor", test: /node_modules/ },
           ],
         },
       },

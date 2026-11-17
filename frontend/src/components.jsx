@@ -1,6 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Suspense, lazy, useEffect, useId, useRef, useState } from "react";
 import { api } from "./api.js";
 import { ICON_PATHS } from "./icons.js";
 
@@ -340,39 +338,13 @@ export function withCitations(text) {
   });
 }
 
+const AnswerMarkdown = lazy(() => import("./AnswerMarkdown.jsx"));
+
 export function Answer({ children }) {
   return (
-    <div className="answer">
-      <Markdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          img: () => null,
-          a: ({ children, href, title }) =>
-            href === "#cite" ? (
-              <span className="cite" title={title}>
-                {children}
-              </span>
-            ) : (
-              <a href={href} target="_blank" rel="noreferrer">
-                {children}
-              </a>
-            ),
-          table: ({ children }) => (
-            // Focusable so a wide table can be scrolled sideways from the keyboard.
-            <div
-              className="table-scroll"
-              tabIndex={0}
-              role="region"
-              aria-label="Table"
-            >
-              <table>{children}</table>
-            </div>
-          ),
-        }}
-      >
-        {withCitations(children || "")}
-      </Markdown>
-    </div>
+    <Suspense fallback={<div className="answer answer-plain">{children}</div>}>
+      <AnswerMarkdown>{children}</AnswerMarkdown>
+    </Suspense>
   );
 }
 
