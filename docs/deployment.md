@@ -56,6 +56,7 @@ Limits worth reviewing for your budget (defaults shown):
 | `MCP_RATE_LIMIT_PER_MINUTE` | 30 | Searches and page reads per user from MCP clients |
 | `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES` | 5 / 15 | Account lockout after wrong passwords |
 | `ACCESS_TOKEN_MINUTES` | 60 | Longest time a revoked session keeps working |
+| `MAX_CONCURRENT_QUESTIONS` | 0 (no limit) | Questions answered at once; others wait their turn. Set 1–2 on free model tiers, which refuse bursts |
 | `RERANKER_LOCAL_FALLBACK` | off in production | If Voyage reranking fails, keep the search order rather than load a 2 GB local model |
 | `SESSION_IDLE_DAYS` / `SESSION_MAX_DAYS` | 7 / 30 | When a browser or MCP client must sign in again |
 

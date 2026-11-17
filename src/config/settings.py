@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     LOGIN_LOCKOUT_MINUTES: int = 15
     LOGIN_ATTEMPTS_PER_MINUTE: int = 10
     # Questions to the in-app assistant per user (each one makes several model calls). 0 = no limit.
+    # Questions answered at the same time by this API process; others wait their turn and see
+    # "Waiting for a free slot". 0 means no limit. Free model tiers (such as Groq's) refuse
+    # bursts, so a small number keeps simultaneous users from failing with rate limits.
+    MAX_CONCURRENT_QUESTIONS: int = 0
     QUESTIONS_PER_HOUR: int = 60
     QUESTIONS_PER_DAY: int = 300
 

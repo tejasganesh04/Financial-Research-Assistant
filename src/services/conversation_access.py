@@ -1,5 +1,6 @@
 """Small shared checks for conversation ownership and pending approvals."""
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import HTTPException
@@ -21,6 +22,21 @@ async def conversation_write(thread_id: str):
         yield
     finally:
         _busy_threads.discard(thread_id)
+
+
+_question_slots: asyncio.Semaphore | None = None
+_question_slots_size = 0
+
+
+def question_slots() -> asyncio.Semaphore | None:
+    """The shared limit on questions answered at once, or None when unlimited."""
+    global _question_slots, _question_slots_size
+    size = settings.MAX_CONCURRENT_QUESTIONS
+    if size <= 0:
+        return None
+    if _question_slots is None or _question_slots_size != size:
+        _question_slots, _question_slots_size = asyncio.Semaphore(size), size
+    return _question_slots
 
 
 # A paused checkpoint records interrupt data on its tasks; an approval_required payload identifies our review pause.
