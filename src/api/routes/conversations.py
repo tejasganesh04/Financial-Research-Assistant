@@ -8,7 +8,7 @@ import json
 import logging
 import time
 import uuid
-from contextlib import aclosing
+from contextlib import aclosing, nullcontext
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -20,7 +20,7 @@ from src.config.rbac_config import approvers_for, get_permissions
 from src.graph.builder import build_graph
 from src.models.auth import User
 from src.models.schemas import ChatRequest, ChatResponse
-from src.services.conversation_access import check_chat_access, conversation_write
+from src.services.conversation_access import check_chat_access, conversation_write, question_slots
 from src.services.cost_tracker import RequestScopedCostHandler
 from src.services.escalation import parse_escalation
 from src.services.guardrails_service import detect_pii
@@ -782,7 +782,11 @@ async def chat_stream(
                             "sanitized_message": sanitized_message,
                         }
                     )
-                    async with aclosing(unlocked_event_generator()) as events:
+                    slots = question_slots()
+                    if slots is not None and slots.locked():
+                        # Tell the browser why nothing is happening yet.
+                        yield json.dumps({"type": "node_start", "node": "queue", "label": "Waiting for a free slot…"})
+                    async with slots or nullcontext(), aclosing(unlocked_event_generator()) as events:
                         async for event in events:
                             payload = json.loads(event)
                             payload["request_id"] = trace.request_id
