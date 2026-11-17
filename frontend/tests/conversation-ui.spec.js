@@ -375,7 +375,9 @@ test("a dialog keeps keyboard focus inside and returns it when closed", async ({
   const row = page.locator(".conversation-row").first();
   await row.hover();
   const trigger = row.getByRole("button", { name: /^Delete conversation/ });
-  await trigger.click();
+  // Opened from the keyboard: Safari does not focus buttons that are clicked.
+  await trigger.focus();
+  await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   for (let i = 0; i < 6; i += 1) {
