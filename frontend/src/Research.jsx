@@ -63,6 +63,21 @@ const SUGGESTIONS = [
   ],
 ];
 
+// Model providers limit how much they answer per minute and per day. Say so plainly first,
+// then keep the provider's details for whoever looks into it.
+function providerLimitMessage(error) {
+  if (error.code === "provider_quota_exceeded")
+    return `The answer service has reached its usage limit, so this question was not answered. (${error.message})`;
+  const seconds = error.retryAfter;
+  const when =
+    seconds == null
+      ? "in a few minutes"
+      : seconds < 90
+        ? `in about ${seconds} seconds`
+        : `in about ${Math.ceil(seconds / 60)} minutes`;
+  return `The answer service is busy. Try again ${when}. (${error.message})`;
+}
+
 // Conversation state lives above the views so it survives moving between pages.
 export function useResearch(user) {
   const [history, setHistory] = useState([]);
@@ -263,6 +278,8 @@ export function useResearch(user) {
           } else if (event.type === "error") {
             const error = new Error(event.message);
             error.status = event.status;
+            error.code = event.code;
+            error.retryAfter = event.retry_after_seconds;
             throw error;
           }
         },
@@ -284,9 +301,12 @@ export function useResearch(user) {
         }));
         if (keep) setQuestion(message);
         setError(
-          keep
-            ? errorMessage(e)
-            : `${errorMessage(e)} Check saved history before submitting again.`,
+          e.code === "provider_rate_limited" ||
+            e.code === "provider_quota_exceeded"
+            ? providerLimitMessage(e)
+            : keep
+              ? errorMessage(e)
+              : `${errorMessage(e)} Check saved history before submitting again.`,
         );
       }
     } finally {
