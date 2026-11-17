@@ -16,6 +16,8 @@ tar xzf "$ARCHIVE" -C "$ROOT/app.new"
 cp "$ROOT/server.env" "$ROOT/app.new/.env"
 chmod 600 "$ROOT/app.new/.env"
 echo "$REV" > "$ROOT/app.new/REVISION"
+# /version reports which release is running.
+echo "GIT_SHA=$REV" >> "$ROOT/app.new/.env"
 
 # Build before switching, so a failed build leaves the running release alone.
 cd "$ROOT/app.new"
