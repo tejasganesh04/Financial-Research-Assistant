@@ -246,8 +246,19 @@ if settings.MCP_ENABLED:
     app.router.routes.append(Route("/mcp", endpoint=http_endpoint, include_in_schema=False))
     app.router.routes.extend(oauth_routes())
 
+
+class HashedAssets(StaticFiles):
+    """Built files carry a content hash in their names, so browsers may keep them for a year."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 if (FRONTEND_DIR / "assets").is_dir():
-    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="frontend-assets")
+    app.mount("/assets", HashedAssets(directory=FRONTEND_DIR / "assets"), name="frontend-assets")
 
 
 @app.get("/favicon.svg", include_in_schema=False)
