@@ -77,6 +77,8 @@ test("admins reach Health from the menu and see status, usage and AI figures", a
   await expect(ai.getByText("Tokens per question")).toBeVisible();
   await expect(ai).toContainText("91%");
   await expect(ai).toContainText("Free tiers, not billed");
+  await expect(ai.getByText("Slowed by rate limits")).toBeVisible();
+  await expect(ai).toContainText("33%");
   await expect(
     page.getByRole("region", { name: "Where the time goes" }),
   ).toContainText("Checking relevance");

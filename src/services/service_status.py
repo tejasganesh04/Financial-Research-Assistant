@@ -98,6 +98,11 @@ def note_groq_response(model: str | None, status_code: int, headers, body: str |
                     hours, minutes, seconds = (float(g) if g else 0.0 for g in found.groups())
                     wait = int(hours * 3600 + minutes * 60 + seconds + 0.999)
             limits.retry_after_seconds = wait
+    if status_code == 429:
+        # The SDK waits and retries by itself; note it on the question being answered, if any.
+        from src.services.request_trace import record
+
+        record("provider_retry", provider="Groq", model=model, retry_after_seconds=wait)
 
 
 def groq_limits() -> dict[str, GroqModelLimits]:

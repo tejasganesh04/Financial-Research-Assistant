@@ -117,3 +117,17 @@ def test_with_files_on_reports_are_still_written():
     trace.finish("answered")
     assert (trace.directory / "events.jsonl").is_file()
     assert (trace.directory / "summary.md").is_file()
+
+
+def test_a_groq_refusal_during_a_question_counts_as_a_wait_on_that_question():
+    from src.services import service_status
+
+    trace = make_trace()
+    with trace.activate():
+        service_status.note_groq_response("openai/gpt-oss-20b", 429, {"retry-after": "3"}, "tokens per minute")
+        service_status.note_groq_response("openai/gpt-oss-20b", 200, {})
+    # Outside a question, a refusal is only remembered for the Health page.
+    service_status.note_groq_response("openai/gpt-oss-20b", 429, {"retry-after": "3"}, "tokens per minute")
+    trace.finish("answered")
+    assert trace.metrics()["provider_retries"] == 1
+    service_status.reset()

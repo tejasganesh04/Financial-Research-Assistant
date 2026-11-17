@@ -439,6 +439,9 @@ async def health(
             "sources": _round(totals["sources"], 1),
             "search_retry_share": _round(totals["search_retry_share"], 3),
             "revision_share": _round(totals["revision_share"], 3),
+            # Answers that waited for a provider's per-minute limit (the SDK retried for them).
+            "throttled_share": _round(totals["throttled_share"], 3),
+            "failed_model_calls": sum(m["errors"] for m in models if m["kind"] == "llm"),
             "models": models,
         },
         "groq": groq,

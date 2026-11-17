@@ -126,6 +126,8 @@ export function sample(range = "24h", state = "busy") {
           sources: null,
           search_retry_share: null,
           revision_share: null,
+          throttled_share: null,
+          failed_model_calls: 0,
           models: [],
         }
       : {
@@ -139,6 +141,8 @@ export function sample(range = "24h", state = "busy") {
           sources: 3.4,
           search_retry_share: 0.12,
           revision_share: 0.08,
+          throttled_share: 0.33,
+          failed_model_calls: 2,
           models: [
             {
               model: "openai/gpt-oss-20b",
