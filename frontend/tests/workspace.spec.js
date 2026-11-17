@@ -1000,8 +1000,13 @@ test("admin activity lists sign-in events in plain words", async ({ page }) => {
   await login(page, "admin");
   await page.getByRole("link", { name: "Activity" }).click();
   await expect(page.getByText("Failed sign-in")).toBeVisible();
-  await expect(page.getByText("wrong password")).toBeVisible();
+  await expect(page.getByText("wrong password · from 10.0.0.2")).toBeVisible();
   await expect(page.getByText("Connected an MCP client")).toBeVisible();
+  // Empty details are left out rather than shown as dashes.
+  await expect(page.locator(".activity-item").getByText("—")).toHaveCount(0);
+  await page.getByRole("button", { name: "Problems" }).click();
+  await expect(page.getByText("Connected an MCP client")).toBeHidden();
+  await expect(page.getByText("Failed sign-in")).toBeVisible();
 });
 
 test("non-admins are sent back from admin pages", async ({ page }) => {

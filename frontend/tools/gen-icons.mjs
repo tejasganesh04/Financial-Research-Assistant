@@ -13,6 +13,7 @@ const MAP = {
   shield: "verified_user",
   review: "fact_check",
   logout: "logout",
+  login: "login",
   file: "description",
   arrow: "chevron_right",
   back: "arrow_back",

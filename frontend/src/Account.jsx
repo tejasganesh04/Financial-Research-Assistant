@@ -63,7 +63,7 @@ function Profile({ user }) {
               ? "All document types"
               : perms.allowed_doc_types
                   .map((t) => DOC_TYPES[t] || t)
-                  .join(", ") || "—"}
+                  .join(", ") || "None"}
           </dd>
         </div>
         <div>
@@ -71,7 +71,7 @@ function Profile({ user }) {
           <dd className="capitalize">
             {perms.allowed_confidentiality.includes("*")
               ? "All levels"
-              : perms.allowed_confidentiality.join(", ") || "—"}
+              : perms.allowed_confidentiality.join(", ") || "None"}
           </dd>
         </div>
       </dl>

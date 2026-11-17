@@ -32,7 +32,7 @@ function sessionSummary(user) {
     parts.push(
       `${user.mcp_sessions} MCP ${user.mcp_sessions === 1 ? "client" : "clients"}`,
     );
-  return parts.join(" · ") || "—";
+  return parts.join(" · ") || "Not signed in";
 }
 
 export function sessionLabel(session) {
@@ -351,11 +351,19 @@ function UserPanel({ user, me, onClose, onChanged, onCredentials }) {
             </div>
             <div>
               <dt>Department</dt>
-              <dd>{user.department || "—"}</dd>
+              <dd>
+                {user.department || <span className="muted">Not set</span>}
+              </dd>
             </div>
             <div>
               <dt>Last sign-in</dt>
-              <dd>{formatDateTime(user.last_login_at)}</dd>
+              <dd>
+                {user.last_login_at ? (
+                  formatDateTime(user.last_login_at)
+                ) : (
+                  <span className="muted">Never</span>
+                )}
+              </dd>
             </div>
             <div>
               <dt>Password changed</dt>
