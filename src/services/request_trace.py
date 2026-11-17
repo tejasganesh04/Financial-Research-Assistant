@@ -274,6 +274,7 @@ class RequestTrace(BaseCallbackHandler):
         limit = failed_step = answer = None
         queue_ms = 0
         total_ms = 0
+        provider_retries = 0
         for e in events:
             stage = e["stage"]
             if stage in ("step_finished", "step_failed", "step_interrupted"):
@@ -297,6 +298,8 @@ class RequestTrace(BaseCallbackHandler):
                     row["errors"] += 1
             elif stage == "provider_limit":
                 limit = e
+            elif stage == "provider_retry":
+                provider_retries += 1
             elif stage == "queue_wait":
                 queue_ms = int(round((e.get("duration_s") or 0) * 1000))
             elif stage == "answer_ready":
@@ -321,6 +324,7 @@ class RequestTrace(BaseCallbackHandler):
             "cost_usd": round(sum(row["cost"] or 0.0 for row in usage.values()), 6),
             "search_retries": max(steps.get("retrieval", {}).get("runs", 0) - 1, 0),
             "answer_revisions": max(steps.get("generator", {}).get("runs", 0) - 1, 0),
+            "provider_retries": provider_retries,
             "sources": (answer or {}).get("sources"),
             "confidence": (answer or {}).get("confidence"),
             "error_code": (limit or {}).get("code"),

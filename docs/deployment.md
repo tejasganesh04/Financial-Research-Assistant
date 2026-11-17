@@ -144,7 +144,7 @@ reads (read-only, never the dumps themselves) for the Health page.
 reranker and backups are working; questions, answer times and MCP searches over 24 hours, 7 days or
 30 days; how much of Groq's daily allowance is left (estimated from this server's own questions and
 the limits Groq reports with each reply); AI figures such as tokens per question, cost, confidence,
-retried searches and revised answers; where the time goes by pipeline step; and recent failures,
+retried searches, revised answers and answers slowed by a provider's per-minute limit; where the time goes by pipeline step; and recent failures,
 each linked to its LangSmith trace when tracing is on. It reads one summary row per question and
 per MCP call, which the API keeps for `METRICS_RETENTION_DAYS` (90). Nothing on the page calls a
 model. The figures appear as soon as people use the app; a restart only forgets Groq's latest

@@ -112,7 +112,10 @@ async def test_questions_outcomes_latency_and_ai_usage_add_up(health_db):
     for i, total in enumerate((10000, 20000, 30000, 40000)):
         await health_store.record_question(pool, metrics(f"q{i}", total_ms=total), username="analyst", role="analyst")
     await health_store.record_question(
-        pool, metrics("q-review", outcome="awaiting_approval", search_retries=1), username="hr", role="hr"
+        pool,
+        metrics("q-review", outcome="awaiting_approval", search_retries=1, provider_retries=2),
+        username="hr",
+        role="hr",
     )
     await health_store.record_question(
         pool,
@@ -147,6 +150,7 @@ async def test_questions_outcomes_latency_and_ai_usage_add_up(health_db):
     assert ai["tokens_per_question"] == 14500 and ai["calls_per_question"] == 14
     assert ai["confidence"] == 0.9 and ai["sources"] == 3
     assert ai["search_retry_share"] == 0.2  # 1 of the 5 that reached an answer
+    assert ai["throttled_share"] == 0.2 and ai["failed_model_calls"] == 0
     assert ai["cost_usd"] == 0  # free tiers are not billed
     models = {m["model"]: m for m in ai["models"]}
     assert models["openai/gpt-oss-20b"]["provider"] == "Groq" and models["openai/gpt-oss-20b"]["calls"] == 72
@@ -291,3 +295,14 @@ async def test_a_brief_per_minute_refusal_is_not_reported_as_rate_limited(health
     groq = {m["model"]: m for m in data["groq"]["models"]}
     assert groq["openai/gpt-oss-20b"]["limited_now"] is False
     assert data["checks"][1]["state"] == "ok"
+
+
+async def test_an_older_table_gains_new_columns_at_start_up(health_db):
+    pool = health_db
+    async with pool.connection() as conn:
+        await conn.execute("ALTER TABLE question_metrics DROP COLUMN provider_retries")
+    await health_store.ensure_schema(pool)
+    await health_store.record_question(pool, metrics("after-upgrade", provider_retries=1), username="a", role="analyst")
+    async with pool.connection() as conn:
+        cur = await conn.execute("SELECT provider_retries FROM question_metrics WHERE request_id = 'after-upgrade'")
+        assert (await cur.fetchone())[0] == 1

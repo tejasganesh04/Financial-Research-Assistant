@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS question_metrics (
     cost_usd double precision NOT NULL DEFAULT 0,
     search_retries integer NOT NULL DEFAULT 0,
     answer_revisions integer NOT NULL DEFAULT 0,
+    provider_retries integer NOT NULL DEFAULT 0,
     sources integer,
     confidence double precision,
     error_code text,
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS question_metrics (
     traced boolean NOT NULL DEFAULT false
 );
 CREATE INDEX IF NOT EXISTS question_metrics_started ON question_metrics (started_at DESC);
+ALTER TABLE question_metrics ADD COLUMN IF NOT EXISTS provider_retries integer NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS mcp_calls (
     id bigserial PRIMARY KEY,
     at timestamptz NOT NULL DEFAULT now(),
@@ -91,10 +93,10 @@ async def record_question(
             await conn.execute(
                 """INSERT INTO question_metrics (request_id, started_at, finished_at, username, role, thread_id,
                        channel, outcome, total_ms, queue_ms, steps, models, model_calls, input_tokens,
-                       output_tokens, cost_usd, search_retries, answer_revisions, sources, confidence,
-                       error_code, error_step, error_detail, traced)
+                       output_tokens, cost_usd, search_retries, answer_revisions, provider_retries, sources,
+                       confidence, error_code, error_step, error_detail, traced)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                       %s, %s, %s, %s)
+                       %s, %s, %s, %s, %s)
                    ON CONFLICT (request_id) DO NOTHING""",
                 (
                     metrics["request_id"],
@@ -115,6 +117,7 @@ async def record_question(
                     metrics.get("cost_usd") or 0.0,
                     metrics.get("search_retries") or 0,
                     metrics.get("answer_revisions") or 0,
+                    metrics.get("provider_retries") or 0,
                     metrics.get("sources"),
                     metrics.get("confidence"),
                     metrics.get("error_code"),
@@ -253,7 +256,9 @@ async def summary(pool, range_key: str, tz: str) -> dict[str, Any]:
                           avg((search_retries > 0)::int) FILTER (WHERE outcome IN ('answered', 'awaiting_approval'))
                               AS search_retry_share,
                           avg((answer_revisions > 0)::int) FILTER (WHERE outcome IN ('answered', 'awaiting_approval'))
-                              AS revision_share
+                              AS revision_share,
+                          avg((provider_retries > 0)::int) FILTER (WHERE outcome IN ('answered', 'awaiting_approval'))
+                              AS throttled_share
                    FROM question_metrics WHERE started_at >= %(since)s""",
                 params,
             )

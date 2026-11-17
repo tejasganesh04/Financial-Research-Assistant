@@ -588,6 +588,18 @@ function AiFigures({ ai, latency, questions }) {
       format: (v) => percent(v),
       caption: "rewritten after the fact check",
     },
+    {
+      label: "Slowed by rate limits",
+      value: ai.throttled_share,
+      format: (v) => percent(v),
+      caption: "of answers waited for a per-minute limit",
+    },
+    {
+      label: "Failed model calls",
+      value: questions.total ? ai.failed_model_calls : null,
+      format: (v) => whole.format(Math.round(v)),
+      caption: "after the provider's own retries",
+    },
   ];
   return (
     <section className="panel health-card" aria-labelledby="health-ai">
