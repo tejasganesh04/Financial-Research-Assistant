@@ -38,6 +38,18 @@ class Settings(BaseSettings):
     LANGCHAIN_PROJECT: str = "rag-agent-dev"
     LANGCHAIN_API_KEY: str = ""
 
+    # --- Monitoring (admin Health page) ---
+    # Per-question JSONL and Markdown reports under REQUEST_TRACE_DIR, for local debugging and the
+    # FinanceBench scripts. Production turns them off: the database summary and LangSmith cover it.
+    REQUEST_TRACE_FILES: bool = True
+    # Days to keep the per-question and MCP-call summaries behind the Health page.
+    METRICS_RETENTION_DAYS: int = 90
+    # Groq's free tier allows about this many tokens per model per day (it refills continuously).
+    GROQ_DAILY_TOKEN_LIMIT: int = 200_000
+    # JSON written by deploy/backup.sh after each nightly backup ({"at": ..., "bytes": ...}).
+    # Empty: backups are not monitored here.
+    BACKUP_STATUS_FILE: str = ""
+
     # --- Public address ---
     # Where people and MCP clients reach this app (https in production). OAuth issuer and the MCP
     # resource URL ({PUBLIC_URL}/mcp) are derived from it.

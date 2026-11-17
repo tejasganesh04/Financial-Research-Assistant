@@ -10,7 +10,10 @@ services:
     image: financial-research-assistant-api:production
     environment:
       ENVIRONMENT: production
-      REQUEST_TRACE_DIR: /app/logs/traces
+      # No per-question report files: the Health page's database summary and LangSmith cover it.
+      REQUEST_TRACE_FILES: "false"
+      # Written by deploy/backup.sh after each nightly backup; read by the admin Health page.
+      BACKUP_STATUS_FILE: /app/status/backup.json
       # If Voyage fails, keep the search order rather than load a 2 GB local reranker on a small server.
       RERANKER_LOCAL_FALLBACK: ${RERANKER_LOCAL_FALLBACK:-false}
     # Only Caddy can reach the API, so the forwarded client address can be trusted.
@@ -20,6 +23,8 @@ services:
         "--proxy-headers", "--forwarded-allow-ips", "*", "--no-server-header",
       ]
     ports: !reset []
+    volumes:
+      - ${FRA_STATUS_DIR:-/opt/fra/status}:/app/status:ro
     restart: always
 
   qdrant:

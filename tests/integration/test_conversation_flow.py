@@ -791,3 +791,80 @@ async def test_provider_limit_reaches_api_and_trace_without_releasing_answer(flo
     assert saved[-1]["outcome"] == "failed"
     snapshot = await graph.aget_state({"configurable": {"thread_id": thread}})
     assert not any(isinstance(message, AIMessage) for message in snapshot.values["messages"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("flow", ["postgres"], indirect=True)
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_each_question_leaves_a_summary_for_the_health_page(flow, monkeypatch, streaming):
+    import json
+
+    from src.services import health_store
+    from src.services.provider_errors import ProviderRateLimitError
+
+    pool = app.state.pool
+    async with pool.connection() as conn:
+        await conn.execute("DROP TABLE IF EXISTS question_metrics, mcp_calls CASCADE")
+    await health_store.ensure_schema(pool)
+    path = "/v1/conversations/messages" + ("/stream" if streaming else "")
+
+    async def ask(question, role="analyst"):
+        result = await flow.client.post(path, headers=headers(role), json={"message": question})
+        if streaming:
+            events = [json.loads(line[6:]) for line in result.text.splitlines() if line.startswith("data: ")]
+            return events[0]["request_id"]
+        return result.headers.get("X-Request-ID") or result.json()["request_id"]
+
+    answered = await ask("Revenue?")
+    held = await ask("/escalate doc_type=filings confidentiality=internal\nRevenue?", role="hr")
+
+    def limited(state):
+        raise ProviderRateLimitError(stage="grader", provider="Groq", model="openai/gpt-oss-20b", retry_after_seconds=9)
+
+    monkeypatch.setattr(builder, "grader_node", limited)
+    graph = builder.build_graph(flow.graph.checkpointer)
+    monkeypatch.setattr(chat, "_get_graph", lambda **kwargs: graph)
+    rate_limited = await ask("Revenue again?")
+    await health_store.drain()
+
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            "SELECT request_id, outcome, username, role, steps, model_calls, sources, error_step, error_code"
+            " FROM question_metrics"
+        )
+        rows = {row[0]: row for row in await cur.fetchall()}
+    assert set(rows) == {answered, held, rate_limited}
+    _, outcome, username, role, steps, calls, sources, _, _ = rows[answered]
+    assert (outcome, username, role, sources) == ("answered", "analyst", "analyst", 1)
+    assert {"retrieval", "grader", "generator"} <= set(steps)
+    assert rows[held][1] == "awaiting_approval" and rows[held][2] == "hr"
+    assert rows[rate_limited][1] == "rate_limited"
+    assert rows[rate_limited][7:] == ("grader", "provider_rate_limited")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("flow", ["postgres"], indirect=True)
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_a_refused_request_is_not_counted_as_a_question(flow, monkeypatch, streaming):
+    from fastapi import HTTPException
+
+    from src.services import health_store
+
+    pool = app.state.pool
+    async with pool.connection() as conn:
+        await conn.execute("DROP TABLE IF EXISTS question_metrics, mcp_calls CASCADE")
+    await health_store.ensure_schema(pool)
+    checks = {"n": 0}
+
+    async def busy_on_second_check(graph, thread_id, user_id):
+        checks["n"] += 1
+        if checks["n"] == 2:  # the re-check inside the reservation
+            raise HTTPException(status_code=409, detail="Another question is still running in this conversation.")
+
+    monkeypatch.setattr(chat, "check_chat_access", busy_on_second_check)
+    path = "/v1/conversations/messages" + ("/stream" if streaming else "")
+    result = await flow.client.post(path, headers=headers("analyst"), json={"message": "Revenue?"})
+    assert result.status_code == (200 if streaming else 409)
+    await health_store.drain()
+    async with pool.connection() as conn:
+        assert (await (await conn.execute("SELECT count(*) FROM question_metrics")).fetchone())[0] == 0

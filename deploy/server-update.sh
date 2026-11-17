@@ -14,6 +14,8 @@ rm -rf "$ROOT/app.new"
 mkdir -p "$ROOT/app.new"
 tar xzf "$ARCHIVE" -C "$ROOT/app.new"
 cp "$ROOT/server.env" "$ROOT/app.new/.env"
+# Backup status for the admin Health page (deploy/backup.sh writes it; the API reads it).
+mkdir -p "$ROOT/status" && chmod 755 "$ROOT/status"
 chmod 600 "$ROOT/app.new/.env"
 echo "$REV" > "$ROOT/app.new/REVISION"
 # /version reports which release is running.

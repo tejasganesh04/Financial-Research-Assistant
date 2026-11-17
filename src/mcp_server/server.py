@@ -41,6 +41,7 @@ from src.config.settings import settings
 from src.mcp_server import knowledge
 from src.mcp_server.auth import SCOPE, caller_from_claims, provider
 from src.mcp_server.knowledge import Caller, RequestError
+from src.services import health_store, service_status
 from src.services.provider_errors import ProviderRateLimitError, is_rate_limited
 from src.services.rate_limit import SlidingWindowLimiter
 
@@ -115,6 +116,20 @@ def _bounded(value: Any) -> Any:
 
 def _audit(tool: str, caller: Caller | None, status: str, started: float, **details: Any) -> None:
     details = {key: _bounded(value) for key, value in details.items()}
+    # A summary row for the admin Health page, written after the reply.
+    if provider.pool is not None:
+        health_store.in_background(
+            health_store.record_mcp_call(
+                provider.pool,
+                tool=tool,
+                username=caller.user_id if caller else None,
+                role=caller.role if caller else None,
+                status=status,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                results=details.get("results"),
+                error=details.get("error") or details.get("reason"),
+            )
+        )
     audit.info(
         json.dumps(
             {
@@ -158,6 +173,22 @@ def _count(result: dict) -> int:
     return len(result.get("pages", []))
 
 
+def _traced(tool: str, function, caller: Caller, kwargs: dict):
+    """Run a tool, as a LangSmith trace when tracing is on (inputs without the caller's token)."""
+    if not service_status.langsmith_enabled():
+        return function(caller, **kwargs)
+    from langsmith import traceable
+
+    traced = traceable(
+        name=f"mcp.{tool}",
+        run_type="retriever" if tool == "search_documents" else "tool",
+        tags=["mcp", f"role:{caller.role}"],
+        metadata={"user_id": caller.user_id, "role": caller.role, "channel": "mcp"},
+        process_inputs=lambda inputs: {k: v for k, v in inputs.items() if k != "caller"},
+    )(function)
+    return traced(caller, **kwargs)
+
+
 async def _run(tool: str, ctx: Context, function, *, limited: bool, audit_details: dict, **kwargs) -> CallToolResult:
     started, caller = time.monotonic(), None
     try:
@@ -165,7 +196,7 @@ async def _run(tool: str, ctx: Context, function, *, limited: bool, audit_detail
         if limited:
             limiter.check(caller.user_id)
         # Search and reads make blocking network calls; keep them off the server's event loop.
-        result = await anyio.to_thread.run_sync(partial(function, caller, **kwargs))
+        result = await anyio.to_thread.run_sync(partial(_traced, tool, function, caller, kwargs))
     except ToolError as error:
         _audit(tool, caller, "denied", started, **audit_details)
         return _error(str(error))

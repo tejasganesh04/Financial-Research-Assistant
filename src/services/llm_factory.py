@@ -8,12 +8,14 @@ Provider branches and environment settings determine the actual configuration.""
 
 import logging
 
+import groq
 from langchain_anthropic import ChatAnthropic
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from src.config.settings import settings
 from src.services.cost_tracker import get_cost_handler
+from src.services.service_status import groq_event_hooks
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +66,15 @@ def _llm_for_task(model_name: str, temperature: float = 0.0, max_tokens: int = 2
 
 def _groq(model: str, temperature: float = 0.0, max_tokens: int | None = None) -> ChatGroq:
     """Build a Groq client; GPT-OSS models run with low reasoning effort."""
+    # Groq's replies carry the remaining allowance; the Health page reads it from here.
+    sync_hooks, async_hooks = groq_event_hooks()
     kwargs = dict(
         model=model,
         temperature=temperature,
         api_key=settings.GROQ_API_KEY,
         callbacks=[get_cost_handler()],
+        http_client=groq.DefaultHttpxClient(event_hooks=sync_hooks),
+        http_async_client=groq.DefaultAsyncHttpxClient(event_hooks=async_hooks),
     )
     if max_tokens is not None:
         kwargs["max_tokens"] = max_tokens
