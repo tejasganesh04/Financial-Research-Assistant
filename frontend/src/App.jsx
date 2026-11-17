@@ -112,6 +112,22 @@ function Shell({ user, path, onSignOut }) {
 
   useEffect(() => setMenuOpen(false), [path, research.thread.id]);
 
+  // On small screens the menu is a sheet over the page: Escape closes it and focus goes back.
+  const menuButton = useRef(null);
+  const sidebar = useRef(null);
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    sidebar.current?.querySelector("a, button:not(.sidebar-close)")?.focus();
+    const onKey = (event) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        menuButton.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   async function signOutEverywhereHere() {
     research.reset();
     await onSignOut();
@@ -142,7 +158,7 @@ function Shell({ user, path, onSignOut }) {
 
   return (
     <div className={`app ${menuOpen ? "menu-open" : ""}`}>
-      <aside className="sidebar" aria-label="Navigation">
+      <aside className="sidebar" aria-label="Navigation" ref={sidebar}>
         <div className="sidebar-top">
           <a href="/" className="brand-link" onClick={linkHandler("/")}>
             <Brand />
@@ -201,6 +217,8 @@ function Shell({ user, path, onSignOut }) {
         <header className="topbar">
           <button
             className="icon-button menu-button"
+            ref={menuButton}
+            aria-expanded={menuOpen}
             onClick={() => setMenuOpen(true)}
             aria-label="Open menu"
           >

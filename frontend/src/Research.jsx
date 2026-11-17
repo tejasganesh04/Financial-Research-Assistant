@@ -431,12 +431,16 @@ export default function ResearchView({ user, research }) {
     return () => window.removeEventListener("scroll", rememberScrollPosition);
   }, []);
 
-  useEffect(() => {
-    followLatest.current = true;
-  }, [thread.id]);
+  // A different conversation always opens at its latest answer. This is decided here, in the
+  // layout effect, because an ordinary effect would run after the scroll position is set.
+  const shownThread = useRef(thread.id);
 
   useLayoutEffect(() => {
     const panel = chatScroll.current;
+    if (shownThread.current !== thread.id) {
+      shownThread.current = thread.id;
+      followLatest.current = true;
+    }
     if (!panel || !followLatest.current) return;
     // An empty conversation shows the welcome from its top, however small the screen.
     if (!thread.messages.length) {
