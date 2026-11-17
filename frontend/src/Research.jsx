@@ -13,6 +13,27 @@ import {
 
 // The selected conversation ID survives a reload in this tab. Messages are loaded from the server.
 export const THREAD_KEY = "financial-research-conversation";
+// An unsent question survives an expired session in this tab; signing out clears it.
+const DRAFT_KEY = "financial-research-draft";
+
+function readDraft(userId) {
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null");
+    return draft?.user === userId ? draft.text : "";
+  } catch {
+    return "";
+  }
+}
+
+function writeDraft(userId, text) {
+  try {
+    if (text)
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ user: userId, text }));
+    else sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Storage can be unavailable (private windows); the draft then lives only in the page.
+  }
+}
 const emptyConversation = () => ({ id: null, messages: [], pending: false });
 const fromHistory = (data) => ({
   id: data.thread_id,
@@ -47,7 +68,7 @@ export function useResearch(user) {
   const [history, setHistory] = useState([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [thread, setThread] = useState(emptyConversation);
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState(() => readDraft(user?.user_id));
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -105,7 +126,12 @@ export function useResearch(user) {
     await refreshHistory();
   }
 
+  useEffect(() => {
+    if (user) writeDraft(user.user_id, question);
+  }, [question, user?.user_id]);
+
   function reset() {
+    writeDraft(null, "");
     activeRequest.current?.abort();
     activeRequest.current = null;
     historyVersion.current += 1;
