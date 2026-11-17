@@ -238,6 +238,18 @@ async def end_my_session(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/sessions/sign-out-others")
+async def end_my_other_sessions(request: Request, user: User = Depends(get_current_user), pool=Depends(get_pool)):
+    """Sign out every other browser and disconnect every MCP client; this browser stays signed in."""
+    if not user.session_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This browser has no session to keep.")
+    ended = await user_store.revoke_sessions(pool, user.user_id, "ended_by_user", except_session=user.session_id)
+    await user_store.record_event(
+        pool, "signed_out_everywhere", username=user.user_id, actor=user.user_id, ip=client_ip(request), ended=ended
+    )
+    return {"ended": ended}
+
+
 def session_view(row: dict, current: str | None = None) -> dict:
     return {
         "id": row["id"],

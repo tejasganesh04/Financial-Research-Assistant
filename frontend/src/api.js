@@ -30,6 +30,7 @@ export const api = {
     data(client.post("/auth/password", { current_password, new_password })),
   sessions: () => data(client.get("/auth/sessions")).then((d) => d.sessions),
   endSession: (id) => client.delete(`/auth/sessions/${enc(id)}`),
+  endOtherSessions: () => data(client.post("/auth/sessions/sign-out-others")),
 
   conversations: () =>
     client

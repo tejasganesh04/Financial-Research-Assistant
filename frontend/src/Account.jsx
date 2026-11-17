@@ -221,6 +221,21 @@ function Sessions() {
     }
   }
 
+  async function endOthers() {
+    setBusy("others");
+    setError("");
+    try {
+      await api.endOtherSessions();
+      await load();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const others = (sessions || []).filter((s) => !s.current).length;
+
   return (
     <section className="panel section-panel">
       <div className="section-title">
@@ -272,6 +287,18 @@ function Sessions() {
         </ul>
       ) : (
         <p className="muted small">No other sessions.</p>
+      )}
+      {others > 1 && (
+        <div>
+          <button
+            className="button secondary"
+            onClick={endOthers}
+            disabled={!!busy}
+          >
+            {busy === "others" && <Spinner />}
+            Sign out of all other sessions
+          </button>
+        </div>
       )}
     </section>
   );
