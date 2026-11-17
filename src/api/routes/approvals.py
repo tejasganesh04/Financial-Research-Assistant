@@ -10,11 +10,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from langgraph.types import Command
 from pydantic import BaseModel
 
-from src.api.dependencies import get_current_user
+from src.api.dependencies import client_ip, get_current_user
 from src.api.routes.conversations import _get_graph
 from src.config.rbac_config import ROLE_PERMISSIONS, can_approve
 from src.graph.nodes.response_formatter import source_references
 from src.models.auth import User
+from src.services import user_store
 from src.services.conversation_access import conversation_write, pending_approval
 from src.services.thread_service import count_hitl_decisions_on_thread, get_thread_owner_role, list_all_threads
 
@@ -251,6 +252,10 @@ async def _decide(body: HITLDecisionRequest, request: Request, user: User, decis
             decided_at=payload["decided_at"],
             submitted_at=payload["submitted_at"],
             reviewer_role=user.role,
+        )
+        # Reviews belong in the admin activity log next to account changes.
+        await user_store.record_event(
+            pool, f"answer_{decision}", username=owner, actor=user.user_id, ip=client_ip(request)
         )
         return {
             "status": decision,
