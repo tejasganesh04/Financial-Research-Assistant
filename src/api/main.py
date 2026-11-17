@@ -203,7 +203,7 @@ def _git_sha() -> str:
         return "unknown"
 
 
-@app.get("/version")
+@app.api_route("/version", methods=["GET", "HEAD"])
 def version() -> dict:
     llm_mode = (
         "groq-only"
@@ -215,7 +215,8 @@ def version() -> dict:
     return {"api_version": API_VERSION, "semver": app.version, "git_sha": _git_sha(), "llm_mode": llm_mode}
 
 
-@app.get("/", response_model=None)
+# HEAD too, for uptime monitors that check a page without downloading it.
+@app.api_route("/", methods=["GET", "HEAD"], response_model=None)
 def root():
     """Serve the built interface, or API information before the frontend is built."""
     index = FRONTEND_DIR / "index.html"
@@ -267,7 +268,7 @@ if (FRONTEND_DIR / "assets").is_dir():
     app.mount("/assets", HashedAssets(directory=FRONTEND_DIR / "assets"), name="frontend-assets")
 
 
-@app.get("/favicon.svg", include_in_schema=False)
+@app.api_route("/favicon.svg", methods=["GET", "HEAD"], include_in_schema=False)
 def favicon():
     icon = FRONTEND_DIR / "favicon.svg"
     if not icon.is_file():
@@ -297,4 +298,4 @@ def _spa_page():
 
 
 for _path in SPA_PATHS:
-    app.add_api_route(_path, _spa_page, methods=["GET"], include_in_schema=False, response_model=None)
+    app.add_api_route(_path, _spa_page, methods=["GET", "HEAD"], include_in_schema=False, response_model=None)
