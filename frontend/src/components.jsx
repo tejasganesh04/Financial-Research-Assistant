@@ -331,7 +331,7 @@ export function PageHeader({ title, description, actions, eyebrow }) {
 // Models cite as [Source: file, Page 3], [Source 2: file, Page 3] or with 【 】 brackets. Show each
 // as a small chip, without the source number, which need not match the numbered list below.
 const CITATION =
-  /\s*[[【]\s*Sources?\s*\d*\s*:\s*([^,\]】]+?)\s*,\s*(?:pages?|p\.)\s*(\d+(?:\s*[-–]\s*\d+)?)\s*[\]】]/gi;
+  /\s*[[【]\s*Sources?\s*\d*\s*:\s*([^,\]】]+?)\s*,\s*(?:pages?|p\.)\s*(\d+(?:\s*[-–]\s*\d+)?)[^\]】\n]{0,80}[\]】]/gi;
 
 export function withCitations(text) {
   return text.replace(CITATION, (_, file, page) => {

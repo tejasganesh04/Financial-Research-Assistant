@@ -54,8 +54,9 @@ Classify the query into exactly one of these categories:
 - "retrieval": The user asks something a company's filings could answer. THIS IS
   THE DEFAULT for most queries: specific numbers, ratios, trends, segments,
   drivers, risks and other disclosed facts all belong here. Do not reject a
-  question because of the company name; a later step checks which companies
-  are available to the user.
+  question because of the company name or the period asked about, including
+  future or very old years; a later step checks which companies and filings
+  are available to the user and says so when they are not.
 
 - "clarification": The user greeted the assistant, asked what it does, or asked
   something too vague to search (e.g. "hi", "what can you do?", "tell me about

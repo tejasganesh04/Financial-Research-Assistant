@@ -299,7 +299,8 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
             ).join("\n\n")
           : mode === "cited"
             ? "Revenue was **$85,320 million**【Source 5: MICROSOFT_2016_10K.pdf, Page 28】. " +
-              "Cost of revenue rose [Source: MICROSOFT_2016_10K.pdf, Page 52]."
+              "Cost of revenue rose [Source: MICROSOFT_2016_10K.pdf, Page 52]. " +
+              "Total [Source: MICROSOFT_2016_10K.pdf, Page 53 – Income Statements]."
             : "Microsoft’s cost of revenue was **$32,780 million**.";
       if (mode !== "pending")
         state.messages.push({
@@ -1219,6 +1220,7 @@ test("citations in an answer are shown as compact chips", async ({ page }) => {
   await expect(chips).toHaveText([
     "MICROSOFT_2016_10K · p. 28",
     "MICROSOFT_2016_10K · p. 52",
+    "MICROSOFT_2016_10K · p. 53",
   ]);
   await expect(chips.first()).toHaveAttribute(
     "title",
