@@ -156,6 +156,18 @@ function Shell({ user, path, onSignOut }) {
       ?.title ||
     (research.thread.messages.length ? "Conversation" : "New research");
 
+  // The browser tab names the page, as in Google's apps.
+  useEffect(() => {
+    const page = {
+      "/approvals": "Approvals",
+      "/admin/users": "Users",
+      "/admin/activity": "Activity",
+      "/account": "Account",
+      "/connect": "Connect Claude Code",
+    }[view];
+    document.title = `${page || threadTitle} – Financial Research`;
+  }, [view, threadTitle]);
+
   return (
     <div className={`app ${menuOpen ? "menu-open" : ""}`}>
       <aside className="sidebar" aria-label="Navigation" ref={sidebar}>

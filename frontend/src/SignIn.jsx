@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { errorMessage } from "./api.js";
 import { Alert, Icon, Logo, Spinner } from "./components.jsx";
 import { signIn } from "./session.js";
@@ -88,6 +88,9 @@ export function SignInForm({
 }
 
 export default function SignIn({ onSignedIn, notice }) {
+  useEffect(() => {
+    document.title = "Sign in – Financial Research";
+  }, []);
   return (
     <main className="auth-page">
       <div className="auth-card wide">

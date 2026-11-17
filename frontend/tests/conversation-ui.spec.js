@@ -467,3 +467,16 @@ test("opening a conversation on a slow connection shows progress", async ({
   await expect(page.getByText("Question 30 in thread-2")).toBeVisible();
   await expect(page.getByRole("progressbar")).toHaveCount(0);
 });
+
+test("the browser tab names the page and the open conversation", async ({
+  page,
+}) => {
+  await mock(page);
+  await expect(page).toHaveTitle("New research – Financial Research");
+  await openConversation(page, 2);
+  await expect(page).toHaveTitle(
+    /^Conversation 2 about revenue.* – Financial Research$/,
+  );
+  await page.getByRole("link", { name: "Connect Claude Code" }).click();
+  await expect(page).toHaveTitle("Connect Claude Code – Financial Research");
+});
