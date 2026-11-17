@@ -568,13 +568,18 @@ try {
     "the activity log records what happened to the account",
     async () => {
       await admin.goto(BASE + "/admin/activity");
+      await admin.locator("#activity-account").selectOption(username);
       await expectVisible(
-        admin.locator(".data-table tbody tr", { hasText: username }),
+        admin.locator(".activity-item", { hasText: username }),
       );
-      const rows = await admin
-        .locator(".data-table tbody tr", { hasText: username })
-        .count();
+      const rows = await admin.locator(".activity-item").count();
       if (rows < 5) throw new Error(`only ${rows} events for ${username}`);
+      for (const kind of [
+        "Account created",
+        "Failed sign-in",
+        "Account unlocked",
+      ])
+        await expectVisible(admin.locator(".activity-item", { hasText: kind }));
     },
   );
 
