@@ -214,6 +214,22 @@ async def test_users_see_and_end_their_own_sessions(accounts):
         assert response.status_code == 404
 
 
+async def test_signing_out_of_all_other_sessions_keeps_this_one(accounts):
+    async with client() as laptop, client() as phone, client() as tablet, client() as admin_browser:
+        session = await sign_in(laptop)
+        await sign_in(phone)
+        await sign_in(tablet)
+        admin = await sign_in(admin_browser, "admin")
+        response = await laptop.post("/v1/auth/sessions/sign-out-others", headers=bearer(session))
+        assert response.status_code == 200 and response.json() == {"ended": 2}
+        assert (await phone.post("/v1/auth/refresh")).status_code == 401
+        assert (await tablet.post("/v1/auth/refresh")).status_code == 401
+        assert (await laptop.post("/v1/auth/refresh")).status_code == 200
+        # Other people's sessions are untouched.
+        assert (await admin_browser.get("/v1/auth/me", headers=bearer(admin))).status_code == 200
+        assert (await admin_browser.post("/v1/auth/refresh")).status_code == 200
+
+
 # ── Administration ───────────────────────────────────────────────────────────
 
 

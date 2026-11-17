@@ -136,9 +136,25 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
       });
     }
     if (path === "/v1/auth/me") return json(user);
+    if (path === "/v1/auth/sessions/sign-out-others") {
+      state.signedOutOthers = true;
+      return json({ ended: 2 });
+    }
     if (path === "/v1/auth/sessions")
       return json({
         sessions: [
+          ...(state.signedOutOthers
+            ? []
+            : [
+                {
+                  id: "s3",
+                  kind: "web",
+                  user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 19_0) Safari",
+                  created_at: "2026-11-14T10:00:00Z",
+                  last_used_at: "2026-11-15T09:00:00Z",
+                  current: false,
+                },
+              ]),
           {
             id: "s1",
             kind: "web",
@@ -147,14 +163,18 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
             last_used_at: "2026-11-16T10:00:00Z",
             current: true,
           },
-          {
-            id: "s2",
-            kind: "mcp",
-            client_name: "Claude Code",
-            created_at: "2026-11-15T10:00:00Z",
-            last_used_at: "2026-11-16T09:00:00Z",
-            current: false,
-          },
+          ...(state.signedOutOthers
+            ? []
+            : [
+                {
+                  id: "s2",
+                  kind: "mcp",
+                  client_name: "Claude Code",
+                  created_at: "2026-11-15T10:00:00Z",
+                  last_used_at: "2026-11-16T09:00:00Z",
+                  current: false,
+                },
+              ]),
         ],
       });
     if (path === "/v1/auth/password") {
@@ -1231,4 +1251,22 @@ test("citations in an answer are shown as compact chips", async ({ page }) => {
   );
   await expect(page.locator(".answer")).not.toContainText("Source 5");
   await expect(page.locator(".answer")).not.toContainText("【");
+});
+
+test("signing out of all other sessions keeps this browser", async ({
+  page,
+}) => {
+  const state = await mockBackend(page);
+  await login(page);
+  await page.goto("/account");
+  await expect(page.locator(".session-list li")).toHaveCount(3);
+  await page
+    .getByRole("button", { name: "Sign out of all other sessions" })
+    .click();
+  await expect(page.locator(".session-list li")).toHaveCount(1);
+  await expect(page.getByText("This browser")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out of all other sessions" }),
+  ).toHaveCount(0);
+  expect(state.signedOutOthers).toBe(true);
 });
