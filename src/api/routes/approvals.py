@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from src.api.dependencies import get_current_user
 from src.api.routes.conversations import _get_graph
-from src.config.rbac_config import can_approve
+from src.config.rbac_config import ROLE_PERMISSIONS, can_approve
 from src.graph.nodes.response_formatter import source_references
 from src.models.auth import User
 from src.services.conversation_access import conversation_write, pending_approval
@@ -48,6 +48,9 @@ async def list_approvals(
 ) -> dict[str, Any]:
     """List pending HITL interrupts the caller can approve."""
     pool = _pool_or_503(http_request)
+    # Only reviewers see requests; skip loading every conversation for everyone else.
+    if not any(can_approve(user.role, role) for role in ROLE_PERMISSIONS):
+        return {"approvals": [], "count": 0}
 
     rows = await list_all_threads(pool)
 

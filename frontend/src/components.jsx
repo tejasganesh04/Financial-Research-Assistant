@@ -409,7 +409,9 @@ export function Sources({ sources = [] }) {
             <span className="source-index">{index + 1}</span>
             <span className="source-text">
               <span className="source-file">{s.file}</span>
-              <small>Page {s.page ?? "—"}</small>
+              <small>
+                {s.page != null ? `Page ${s.page}` : "Whole document"}
+              </small>
             </span>
             {loading === s.file ? <Spinner /> : <Icon name="file" size={15} />}
           </button>
