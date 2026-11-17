@@ -40,7 +40,11 @@ MCP_ALLOWED_HOSTS=["research.example.com"]
 MCP_ALLOWED_ORIGINS=["https://research.example.com"]
 
 QDRANT_COLLECTION=financial_docs_v3
-LANGCHAIN_TRACING_V2=false
+
+# Optional: trace every question and MCP search in LangSmith (project rag-agent-prod).
+# Questions and answers are then stored by LangSmith; leave it off to keep them on this server.
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=...
 ```
 
 The API refuses to start in production with the default `JWT_SECRET` or database password, a
@@ -59,6 +63,8 @@ Limits worth reviewing for your budget (defaults shown):
 | `MAX_CONCURRENT_QUESTIONS` | 0 (no limit) | Questions answered at once; others wait their turn. Set 1–2 on free model tiers, which refuse bursts |
 | `RERANKER_LOCAL_FALLBACK` | off in production | If Voyage reranking fails, keep the search order rather than load a 2 GB local model |
 | `SESSION_IDLE_DAYS` / `SESSION_MAX_DAYS` | 7 / 30 | When a browser or MCP client must sign in again |
+| `GROQ_DAILY_TOKEN_LIMIT` | 200,000 | Groq's daily tokens per model, for the Health page's allowance estimate |
+| `METRICS_RETENTION_DAYS` | 90 | Days of per-question and MCP-call summaries kept for the Health page |
 
 ## 2. Bring the knowledge base
 
@@ -131,6 +137,25 @@ Copy the dumps off the server now and then. To restore one:
 
 The Qdrant volume changes only when the knowledge base is rebuilt; keep the snapshot from step 2.
 
+After each dump the script writes the time and size to `/opt/fra/status/backup.json`, which the API
+reads (read-only, never the dumps themselves) for the Health page.
+
+**Health page.** Administrators have a **Health** page: whether the website, answers, search,
+reranker and backups are working; questions, answer times and MCP searches over 24 hours, 7 days or
+30 days; how much of Groq's daily allowance is left (estimated from this server's own questions and
+the limits Groq reports with each reply); AI figures such as tokens per question, cost, confidence,
+retried searches and revised answers; where the time goes by pipeline step; and recent failures,
+each linked to its LangSmith trace when tracing is on. It reads one summary row per question and
+per MCP call, which the API keeps for `METRICS_RETENTION_DAYS` (90). Nothing on the page calls a
+model. The figures appear as soon as people use the app; a restart only forgets Groq's latest
+reported limits until the next question.
+
+**Tracing.** With `LANGCHAIN_TRACING_V2=true` and a `LANGCHAIN_API_KEY`, each question is a
+LangSmith run whose ID is the request ID people see under "Request details", and each MCP tool call
+is a run named `mcp.<tool>` (the caller's token is never sent). Production writes no per-question
+report files (`REQUEST_TRACE_FILES=false`); locally they are kept under `logs/traces` for debugging
+and the FinanceBench scripts.
+
 **Updates.** From your own machine, `make deploy` sends the committed code to the server, builds
 the new image there, switches to it and waits until the API reports healthy. It needs the Google
 Cloud CLI signed in and `deploy/target.env` (see `deploy/target.env.example`). A failed build leaves
@@ -192,7 +217,8 @@ once; browsers and MCP clients renew with their refresh tokens.
 
 **Logs.** `docker compose ... logs api` includes one audit line per MCP tool call
 (`src.mcp_server.audit`). Sign-ins, failed attempts, lockouts, MCP connections and account changes
-are in the app's **Activity** page (kept 180 days).
+are in the app's **Activity** page (kept 180 days); service status, usage and failures are on the
+**Health** page.
 
 **One API process.** Sign-in attempt limits and MCP call limits are counted in memory per process;
 question quotas are counted in PostgreSQL. Run a single API container (the default).

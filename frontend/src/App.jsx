@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import Account from "./Account.jsx";
 import AdminActivity from "./AdminActivity.jsx";
 import AdminUsers from "./AdminUsers.jsx";
@@ -18,7 +18,15 @@ import {
 import SignIn from "./SignIn.jsx";
 import { applyTheme, storedTheme } from "./theme.js";
 
-const ADMIN_PATHS = ["/approvals", "/admin/users", "/admin/activity"];
+// Loaded when first opened, so the charts do not weigh on everyone else's first visit.
+const AdminHealth = lazy(() => import("./AdminHealth.jsx"));
+
+const ADMIN_PATHS = [
+  "/approvals",
+  "/admin/users",
+  "/admin/activity",
+  "/admin/health",
+];
 const KNOWN_PATHS = ["/", "/account", "/connect", ...ADMIN_PATHS];
 
 export default function App() {
@@ -162,6 +170,7 @@ function Shell({ user, path, onSignOut }) {
       "/approvals": "Approvals",
       "/admin/users": "Users",
       "/admin/activity": "Activity",
+      "/admin/health": "Health",
       "/account": "Account",
       "/connect": "Connect Claude Code",
     }[view];
@@ -208,6 +217,7 @@ function Shell({ user, path, onSignOut }) {
               <div className="nav-label">Admin</div>
               {navItem("/admin/users", "users", "Users")}
               {navItem("/admin/activity", "activity", "Activity")}
+              {navItem("/admin/health", "health", "Health")}
             </>
           )}
         </nav>
@@ -263,6 +273,21 @@ function Shell({ user, path, onSignOut }) {
           {view === "/approvals" && <Approvals onCountChange={setPending} />}
           {view === "/admin/users" && <AdminUsers me={user} />}
           {view === "/admin/activity" && <AdminActivity />}
+          {view === "/admin/health" && (
+            <Suspense
+              fallback={
+                <div className="page">
+                  <section className="panel">
+                    <div className="panel-loading">
+                      <Spinner /> Loading…
+                    </div>
+                  </section>
+                </div>
+              }
+            >
+              <AdminHealth />
+            </Suspense>
+          )}
           {view === "/account" && <Account user={user} />}
           {view === "/connect" && <Connect user={user} />}
         </main>

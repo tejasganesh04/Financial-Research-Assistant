@@ -21,7 +21,10 @@ accounts can connect their own AI assistant, such as Claude Code, over MCP.
 - Answer grounding checks with feedback for a bounded revision.
 - Admin approval or rejection of explicitly escalated answers.
 - Saved conversations, live processing stages and document/page references.
-- Local request traces with workflow decisions, timings and provider-reported token usage.
+- An admin **Health** page: service status, usage, answer times, Groq's remaining daily allowance,
+  AI quality and cost figures, time per pipeline step and recent failures linked to LangSmith traces.
+- A request recorder that keeps each question's outcome, step timings and provider-reported token
+  usage (and, locally, readable per-request reports).
 - An [MCP server](docs/mcp-server.md) so employees' own AI assistants, such as Claude Code, can search
   the same documents under the same role permissions.
 - A light, Material-style interface (dark on request) that works on phones, with an account menu

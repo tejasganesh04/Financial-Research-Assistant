@@ -47,6 +47,15 @@ const MAP = {
   expand: "keyboard_arrow_down",
   database: "database",
   help: "help",
+  health: "monitor_heart",
+  questions: "forum",
+  timer: "timer",
+  gauge: "data_usage",
+  model: "memory",
+  up: "trending_up",
+  down: "trending_down",
+  flat: "trending_flat",
+  queue: "hourglass_top",
 };
 
 const out = {};

@@ -75,6 +75,8 @@ export const api = {
     client.delete(`/admin/users/${enc(username)}/sessions/${enc(id)}`),
   activity: (params) =>
     data(client.get("/admin/activity", { params })).then((d) => d.events),
+  health: (range, tz) =>
+    data(client.get("/admin/health", { params: { range, tz } })),
 
   // MCP connection and consent
   mcpServer: () => data(client.get("/oauth/server")),
