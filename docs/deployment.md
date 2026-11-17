@@ -176,6 +176,17 @@ cd frontend
 BASE=https://research.example.com ADMIN_PASSWORD=... node tests/live-check.mjs   # ASK=0 skips the question
 ```
 
+Two more checks for a running server, both cleaning up after themselves:
+
+- `tests/security-check.mjs` (no answer-model calls): signed-out and forged tokens, other users'
+  conversations and approvals, admin endpoints as a non-admin, document access by role, path
+  tricks, refresh-cookie flags and reuse detection, OAuth redirect and PKCE rules, input limits.
+- `tests/review-check.mjs` (asks two questions): an HR user's explicit access request is held, an
+  administrator rejects one with a reason and approves the other, and the user sees both outcomes.
+
+On a free model tier, run the checks that ask questions sparingly: they use the same daily
+allowance as your users.
+
 **Rotating the signing key.** Changing `JWT_SECRET` and restarting ends every access token at
 once; browsers and MCP clients renew with their refresh tokens.
 
