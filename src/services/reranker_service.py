@@ -11,6 +11,7 @@ import time
 from functools import lru_cache
 
 from src.config.settings import settings
+from src.services import service_status
 from src.services.model_loading import MODEL_LOAD_LOCK
 
 logger = logging.getLogger(__name__)
@@ -66,12 +67,16 @@ def score(query: str, documents: list[str]) -> tuple[list[float], str]:
     """Scores and the name of the model that produced them."""
     if settings.RERANKER_PROVIDER == "voyage":
         try:
-            return voyage_scores(query, documents), settings.VOYAGE_RERANK_MODEL
+            scores = voyage_scores(query, documents)
+            service_status.note_ok("voyage_rerank")
+            return scores, settings.VOYAGE_RERANK_MODEL
         except Exception as error:  # noqa: BLE001 - any provider failure falls back
             if not settings.RERANKER_LOCAL_FALLBACK:
                 logger.warning("Voyage reranker unavailable (%s); keeping the search order", type(error).__name__)
+                service_status.note_failure("voyage_rerank", error, fallback="search order")
                 return [0.0] * len(documents), SEARCH_ORDER  # equal scores: the stable sort keeps the order
             logger.warning("Voyage reranker unavailable (%s); using the local model", type(error).__name__)
+            service_status.note_failure("voyage_rerank", error, fallback="local model")
     return [float(s) for s in get_reranker().predict([(query, d) for d in documents])], RERANKER_MODEL
 
 

@@ -13,9 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 
-from src.api.routes import admin, approvals, auth, conversations, documents, health, oauth
+from src.api.routes import admin, admin_health, approvals, auth, conversations, documents, health, oauth
 from src.config.settings import settings
-from src.services import user_store
+from src.services import health_store, user_store
 
 API_VERSION = "1"
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
@@ -81,6 +81,8 @@ async def lifespan(app: FastAPI):
     if app.state.pool is not None:
         await user_store.ensure_schema(app.state.pool)
         await user_store.purge_expired(app.state.pool)
+        await health_store.ensure_schema(app.state.pool)
+        await health_store.purge(app.state.pool)
         if await user_store.count_accounts(app.state.pool) == 0:
             logger.warning("No user accounts exist yet. Create them with: make users")
         housekeeping = asyncio.create_task(_housekeeping(app.state.pool))
@@ -105,6 +107,7 @@ async def lifespan(app: FastAPI):
             await housekeeping
 
     if app.state.pool:
+        await health_store.drain()
         await app.state.pool.close()
     logger.info("RAG Agent API shutting down")
 
@@ -121,13 +124,14 @@ async def _warm_models() -> None:
 
 
 async def _housekeeping(pool) -> None:
-    """Delete expired sessions, codes and counters every hour."""
+    """Delete expired sessions, codes, counters and old metrics every hour."""
     while True:
         await asyncio.sleep(3600)
         try:
             await user_store.purge_expired(pool)
+            await health_store.purge(pool)
         except Exception:
-            logger.exception("Auth housekeeping failed")
+            logger.exception("Housekeeping failed")
 
 
 _PRODUCTION = settings.ENVIRONMENT == "production"
@@ -231,7 +235,7 @@ def root():
     }
 
 
-_routers = [health, auth, admin, oauth, conversations, approvals, documents]
+_routers = [health, auth, admin, admin_health, oauth, conversations, approvals, documents]
 
 for r in _routers:
     app.include_router(r.router, prefix=f"/v{API_VERSION}")
@@ -278,6 +282,7 @@ SPA_PATHS = (
     "/admin",
     "/admin/users",
     "/admin/activity",
+    "/admin/health",
     "/account",
     "/connect",
     "/oauth/consent",

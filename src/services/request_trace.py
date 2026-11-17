@@ -1,7 +1,10 @@
-"""A local recorder: workflow events in JSONL, plus a readable Markdown summary.
+"""The request recorder: notes each step, model call and decision while a question is answered.
 
+When the question ends it hands a compact summary (`RequestTrace.metrics`) to its sinks; the API
+stores that summary for the admin Health page. With REQUEST_TRACE_FILES on (the local default) it
+also writes the events as JSONL plus a readable Markdown report under REQUEST_TRACE_DIR.
 It never executes the workflow or records full prompts, chunks or draft answers.
-All writes are best-effort so a tracing failure cannot break an answer.
+All writes are best-effort so a recording failure cannot break an answer.
 """
 
 from __future__ import annotations
@@ -76,6 +79,12 @@ DETAIL_FIELDS = {
 # Local filesystem destination, configured by REQUEST_TRACE_DIR; the default is logs/traces, not PostgreSQL.
 def trace_root() -> Path:
     return Path(os.environ.get("REQUEST_TRACE_DIR", "logs/traces"))
+
+
+def files_enabled() -> bool:
+    from src.config.settings import settings
+
+    return settings.REQUEST_TRACE_FILES
 
 
 def record(stage: str, **details) -> None:
@@ -153,6 +162,9 @@ class RequestTrace(BaseCallbackHandler):
         self.attempts: dict[str, int] = {}
         self.outcome = None
         self.last_step = None
+        self.files = files_enabled()
+        # Called once with this trace when the question ends (see `finish`).
+        self.sinks: list = []
         self.record("request_started", question=question, role=role, permissions=permissions)
         self.record(
             "request_preparation",
@@ -182,9 +194,10 @@ class RequestTrace(BaseCallbackHandler):
                     **details,
                 }
                 self.events.append(event)
-                self.directory.mkdir(parents=True, exist_ok=True)
-                with (self.directory / "events.jsonl").open("a", encoding="utf-8") as stream:
-                    stream.write(json.dumps(event, default=str) + "\n")
+                if self.files:
+                    self.directory.mkdir(parents=True, exist_ok=True)
+                    with (self.directory / "events.jsonl").open("a", encoding="utf-8") as stream:
+                        stream.write(json.dumps(event, default=str) + "\n")
         except Exception:
             logger.warning("Request trace write unavailable", exc_info=True)
 
@@ -241,9 +254,79 @@ class RequestTrace(BaseCallbackHandler):
                 self.record(
                     "request_finished", outcome=self.outcome, duration_s=round(time.monotonic() - self.started, 4)
                 )
-                self._write_summary()
+                if self.files:
+                    self._write_summary()
         except Exception:
             logger.warning("Request trace summary unavailable", exc_info=True)
+            return
+        for sink in self.sinks:
+            try:
+                sink(self)
+            except Exception:
+                logger.warning("Request metrics sink failed", exc_info=True)
+
+    def metrics(self) -> dict:
+        """A compact summary of the finished question: outcome, timings, model usage and errors."""
+        with self._lock:
+            events = list(self.events)
+        steps: dict[str, dict] = {}
+        usage: dict[str, dict] = {}
+        limit = failed_step = answer = None
+        queue_ms = 0
+        total_ms = 0
+        for e in events:
+            stage = e["stage"]
+            if stage in ("step_finished", "step_failed", "step_interrupted"):
+                step = steps.setdefault(e["step"], {"ms": 0, "runs": 0})
+                step["ms"] += int(round((e.get("duration_s") or 0) * 1000))
+                step["runs"] += 1
+                if stage == "step_failed":
+                    failed_step = e["step"]
+            elif stage in ("model_call", "embedding_call", "rerank_call"):
+                kind = {"model_call": "llm", "embedding_call": "embedding", "rerank_call": "rerank"}[stage]
+                row = usage.setdefault(
+                    e.get("model") or "unknown",
+                    {"kind": kind, "calls": 0, "input": 0, "output": 0, "cost": None, "errors": 0},
+                )
+                row["calls"] += 1
+                row["input"] += e.get("input_tokens") or 0
+                row["output"] += e.get("output_tokens") or 0
+                if e.get("cost_usd") is not None:
+                    row["cost"] = round((row["cost"] or 0.0) + e["cost_usd"], 6)
+                if e.get("error_type"):
+                    row["errors"] += 1
+            elif stage == "provider_limit":
+                limit = e
+            elif stage == "queue_wait":
+                queue_ms = int(round((e.get("duration_s") or 0) * 1000))
+            elif stage == "answer_ready":
+                answer = e
+            elif stage == "request_finished":
+                total_ms = int(round((e.get("duration_s") or 0) * 1000))
+        outcome = self.outcome or "unknown"
+        if limit is not None and outcome in ("failed", "refused", "unknown"):
+            outcome = "rate_limited"
+        llm = [row for row in usage.values() if row["kind"] == "llm"]
+        return {
+            "request_id": self.request_id,
+            "conversation_id": self.conversation_id,
+            "outcome": outcome,
+            "total_ms": total_ms,
+            "queue_ms": queue_ms,
+            "steps": steps,
+            "models": usage,
+            "model_calls": sum(row["calls"] for row in llm),
+            "input_tokens": sum(row["input"] for row in llm),
+            "output_tokens": sum(row["output"] for row in llm),
+            "cost_usd": round(sum(row["cost"] or 0.0 for row in usage.values()), 6),
+            "search_retries": max(steps.get("retrieval", {}).get("runs", 0) - 1, 0),
+            "answer_revisions": max(steps.get("generator", {}).get("runs", 0) - 1, 0),
+            "sources": (answer or {}).get("sources"),
+            "confidence": (answer or {}).get("confidence"),
+            "error_code": (limit or {}).get("code"),
+            "error_step": (limit or {}).get("node") or failed_step,
+            "error_detail": _limit_detail(limit),
+        }
 
     def _write_summary(self):
         first, last = self.events[0], self.events[-1]
@@ -357,9 +440,20 @@ class RequestTrace(BaseCallbackHandler):
         (self.directory / "summary.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+def _limit_detail(limit: dict | None) -> str | None:
+    if not limit:
+        return None
+    parts = [p for p in (limit.get("provider"), limit.get("model")) if p]
+    if limit.get("retry_after_seconds") is not None:
+        parts.append(f"retry after {limit['retry_after_seconds']} s")
+    return " · ".join(str(p) for p in parts) or None
+
+
 # Append the later reviewer decision to a local audit file keyed by conversation ID; this does not generate an answer.
 def record_approval(conversation_id: str, **decision):
     """Later decisions are separate events; old reports remain unchanged."""
+    if not files_enabled():
+        return
     try:
         root = trace_root()
         root.mkdir(parents=True, exist_ok=True)

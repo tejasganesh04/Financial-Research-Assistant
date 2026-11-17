@@ -20,6 +20,7 @@ from src.config.rbac_config import approvers_for, get_permissions
 from src.graph.builder import build_graph
 from src.models.auth import User
 from src.models.schemas import ChatRequest, ChatResponse
+from src.services import health_store, service_status
 from src.services.conversation_access import check_chat_access, conversation_write, question_slots
 from src.services.cost_tracker import RequestScopedCostHandler
 from src.services.escalation import parse_escalation
@@ -47,6 +48,46 @@ def _get_graph(checkpointer=None):
     if key not in _graphs:
         _graphs[key] = build_graph(checkpointer=checkpointer)
     return _graphs[key]
+
+
+def _keep_metrics(trace: RequestTrace, http_request: Request | None, user: User) -> None:
+    """Store the question's summary for the admin Health page once it ends."""
+    pool = getattr(http_request.app.state, "pool", None) if http_request else None
+    if pool is None:
+        return
+    traced = service_status.langsmith_enabled()
+
+    def store(finished: RequestTrace) -> None:
+        metrics = finished.metrics()
+        # Refused before any work (a conversation busy or awaiting review): not a question.
+        if metrics["outcome"] == "refused":
+            return
+        health_store.in_background(
+            health_store.record_question(
+                pool, metrics, username=user.user_id, role=user.role, channel="web", traced=traced
+            )
+        )
+
+    trace.sinks.append(store)
+
+
+def _run_config(trace: RequestTrace, thread_id: str, user: User, run_name: str, tags: list[str], hitl: bool) -> dict:
+    """Graph config. The LangSmith run takes the request ID, so the Health page can link to it."""
+    return {
+        "configurable": {"thread_id": thread_id},
+        "run_id": uuid.UUID(trace.request_id),
+        "run_name": run_name,
+        "tags": tags,
+        "metadata": {
+            "request_id": trace.request_id,
+            "user_id": user.user_id,
+            "name": user.name,
+            "department": user.department,
+            "role": user.role,
+            "thread_id": thread_id,
+            "hitl_enabled": hitl,
+        },
+    }
 
 
 # Supply only the new message; add_messages appends it to the saved history.
@@ -132,19 +173,10 @@ async def chat(
     trace = RequestTrace(thread_id, sanitized_message, user.role, get_permissions(user.role), started=request_started)
     trace.record("access_scope", requested_scope=access_scope)
     initial_state = _build_initial_state(sanitized_message, user, trace.request_id, access_scope)
+    _keep_metrics(trace, http_request, user)
     req_cost = RequestScopedCostHandler(trace=trace)
     config = {
-        "configurable": {"thread_id": thread_id},
-        "run_name": "rag_query",
-        "tags": ["api", f"role:{user.role}"],
-        "metadata": {
-            "user_id": user.user_id,
-            "name": user.name,
-            "department": user.department,
-            "role": user.role,
-            "thread_id": thread_id,
-            "hitl_enabled": checkpointer is not None,
-        },
+        **_run_config(trace, thread_id, user, "rag_query", ["api", f"role:{user.role}"], checkpointer is not None),
         "callbacks": [req_cost, trace],
     }
 
@@ -202,6 +234,11 @@ async def chat(
 
                 metadata = result.get("response_metadata", {})
                 cost_summary = req_cost.aggregate()
+                trace.record(
+                    "answer_ready",
+                    sources=len(metadata.get("sources") or []),
+                    confidence=metadata.get("confidence"),
+                )
                 return ChatResponse(
                     response=result.get("final_response", "No response generated."),
                     sources=metadata.get("sources", []),
@@ -215,7 +252,12 @@ async def chat(
                     tokens=cost_summary["tokens"],
                 )
         except BaseException as error:
-            trace.finish("cancelled" if isinstance(error, asyncio.CancelledError) else "failed")
+            if isinstance(error, asyncio.CancelledError):
+                trace.finish("cancelled")
+            elif isinstance(error, HTTPException) and error.status_code < 500 and error.status_code != 429:
+                trace.finish("refused")  # turned away before any work: not counted as a question
+            else:
+                trace.finish("failed")
             raise
         finally:
             trace.finish()
@@ -633,19 +675,17 @@ async def chat_stream(
     trace = RequestTrace(thread_id, sanitized_message, user.role, get_permissions(user.role), started=request_started)
     trace.record("access_scope", requested_scope=access_scope)
     initial_state = _build_initial_state(sanitized_message, user, trace.request_id, access_scope)
+    _keep_metrics(trace, http_request, user)
     req_cost = RequestScopedCostHandler(trace=trace)
     config = {
-        "configurable": {"thread_id": thread_id},
-        "run_name": "rag_query_stream",
-        "tags": ["api", "streaming", f"role:{user.role}"],
-        "metadata": {
-            "user_id": user.user_id,
-            "name": user.name,
-            "department": user.department,
-            "role": user.role,
-            "thread_id": thread_id,
-            "hitl_enabled": checkpointer is not None,
-        },
+        **_run_config(
+            trace,
+            thread_id,
+            user,
+            "rag_query_stream",
+            ["api", "streaming", f"role:{user.role}"],
+            checkpointer is not None,
+        ),
         "callbacks": [req_cost, trace],
     }
 
@@ -720,6 +760,11 @@ async def chat_stream(
             _wall_clock_s = round(_time.monotonic() - _wall_start, 1)
             if final_state:
                 metadata = final_state.get("response_metadata", {})
+                trace.record(
+                    "answer_ready",
+                    sources=len(metadata.get("sources") or []),
+                    confidence=metadata.get("confidence"),
+                )
                 yield json.dumps(
                     {
                         "type": "final",
@@ -786,7 +831,10 @@ async def chat_stream(
                     if slots is not None and slots.locked():
                         # Tell the browser why nothing is happening yet.
                         yield json.dumps({"type": "node_start", "node": "queue", "label": "Waiting for a free slot…"})
+                    queued = time.monotonic()
                     async with slots or nullcontext(), aclosing(unlocked_event_generator()) as events:
+                        if time.monotonic() - queued > 0.05:
+                            trace.record("queue_wait", duration_s=round(time.monotonic() - queued, 4))
                         async for event in events:
                             payload = json.loads(event)
                             payload["request_id"] = trace.request_id
@@ -803,7 +851,7 @@ async def chat_stream(
                             yield json.dumps(payload)
             # The response is already open, so access failures become SSE errors.
             except HTTPException as exc:
-                trace.finish("failed")
+                trace.finish("refused" if exc.status_code < 500 else "failed")
                 yield json.dumps(
                     {"type": "error", "message": exc.detail, "status": exc.status_code, "request_id": trace.request_id}
                 )

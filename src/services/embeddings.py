@@ -12,6 +12,7 @@ import time
 from contextlib import contextmanager
 
 from src.config.settings import settings
+from src.services import service_status
 from src.services.provider_errors import raise_if_rate_limited
 
 logger = logging.getLogger(__name__)
@@ -115,8 +116,11 @@ def _voyage_embed(texts: list[str], input_type: str) -> list[list[float]]:
 def embed_text(text: str, input_type: str = "query") -> list[float]:
     """Embed one text; the knowledge base already holds document vectors, so this embeds queries."""
     try:
-        return _voyage_embed([text], input_type=input_type)[0]
+        vector = _voyage_embed([text], input_type=input_type)[0]
+        service_status.note_ok("voyage_embed")
+        return vector
     except Exception as error:
+        service_status.note_failure("voyage_embed", error)
         raise_if_rate_limited(
             error,
             "retrieval" if input_type == "query" else "embedding",
