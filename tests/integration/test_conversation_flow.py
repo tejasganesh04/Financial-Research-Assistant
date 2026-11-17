@@ -136,7 +136,15 @@ async def flow(monkeypatch, request):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("flow", ["memory", "postgres"], indirect=True)
 @pytest.mark.parametrize("decision", ["approve", "reject"])
-async def test_request_review_decision_and_requester_result(flow, decision):
+async def test_request_review_decision_and_requester_result(flow, decision, monkeypatch):
+    from src.api.routes import approvals as approval_routes
+
+    events = []
+
+    async def capture(pool, event, **fields):
+        events.append({"event": event, **fields})
+
+    monkeypatch.setattr(approval_routes.user_store, "record_event", capture)
     c = flow.client
     first = await c.post(
         "/v1/conversations/messages",
@@ -178,6 +186,16 @@ async def test_request_review_decision_and_requester_result(flow, decision):
     decisions = [json.loads(line) for line in (trace_dir.parent / "approval-decisions.jsonl").read_text().splitlines()]
     assert decisions[-1]["conversation_id"] == thread
     assert decisions[-1]["decision"] == ("approved" if decision == "approve" else "rejected")
+    # The decision is in the admin activity log, under the requester, by the reviewer.
+    logged = [e for e in events if e["event"].startswith("answer_")]
+    assert logged == [
+        {
+            "event": "answer_approved" if decision == "approve" else "answer_rejected",
+            "username": "finance",
+            "actor": "admin",
+            "ip": logged[0]["ip"],
+        }
+    ]
     result = await c.get(f"/v1/conversations/{thread}/result", headers=headers("finance"))
     assert result.status_code == 200, result.text
     assert result.json()["status"] == ("approved" if decision == "approve" else "rejected")

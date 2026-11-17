@@ -39,6 +39,8 @@ const EVENTS = {
   mcp_approved: ["Approved an MCP connection", "plug", "info", "mcp"],
   mcp_connected: ["Connected an MCP client", "terminal", "success", "mcp"],
   mcp_disconnected: ["Disconnected an MCP client", "plug", "neutral", "mcp"],
+  answer_approved: ["Released a reviewed answer", "done", "success", "review"],
+  answer_rejected: ["Rejected a reviewed answer", "block", "warning", "review"],
 };
 
 const FILTERS = [
@@ -47,6 +49,7 @@ const FILTERS = [
   ["problems", "Problems"],
   ["account", "Account changes"],
   ["mcp", "MCP clients"],
+  ["review", "Reviews"],
 ];
 
 const REASONS = {
