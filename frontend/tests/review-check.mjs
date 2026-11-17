@@ -90,6 +90,15 @@ const adminPage = await (
 const QUESTION_A = "What was Microsoft's total revenue in fiscal year 2016?";
 const QUESTION_B = "What was Microsoft's cost of revenue in fiscal year 2016?";
 
+// Wait until the chosen conversation has replaced the one on screen.
+async function openHrConversation(title) {
+  await hrPage.locator(".conversation-item", { hasText: title }).click();
+  await visible(hrPage.locator("h1.topbar-title", { hasText: title }), 60000);
+  await hrPage
+    .locator(".research[aria-busy]")
+    .waitFor({ state: "detached", timeout: 60000 });
+}
+
 async function escalate(question) {
   await hrPage.getByRole("button", { name: "New conversation" }).click();
   await hrPage.fill(
@@ -216,9 +225,7 @@ try {
   await step(
     "HR sees the approved answer appear, with its figure",
     async () => {
-      await hrPage
-        .locator(".conversation-item", { hasText: /total revenue/i })
-        .click();
+      await openHrConversation(/total revenue/i);
       await visible(hrPage.locator(".message.assistant .answer"), 60000);
       const text = await hrPage
         .locator(".message.assistant .answer")
@@ -233,9 +240,7 @@ try {
   );
 
   await step("HR sees the rejection and its reason", async () => {
-    await hrPage
-      .locator(".conversation-item", { hasText: /cost of revenue/i })
-      .click();
+    await openHrConversation(/cost of revenue/i);
     await visible(
       hrPage.getByText("The reviewer rejected this answer."),
       60000,

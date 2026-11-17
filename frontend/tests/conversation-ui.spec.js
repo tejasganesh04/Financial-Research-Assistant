@@ -450,3 +450,20 @@ test("an unsent question survives an expired session but not signing out", async
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByLabel("Ask a financial question")).toHaveValue("");
 });
+
+test("opening a conversation on a slow connection shows progress", async ({
+  page,
+}) => {
+  await mock(page);
+  await page.route("**/v1/conversations/thread-2", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await route.fallback();
+  });
+  await openConversation(page, 1);
+  await page.locator(".conversation-item").nth(1).click();
+  await expect(
+    page.getByRole("progressbar", { name: "Opening conversation" }),
+  ).toBeVisible();
+  await expect(page.getByText("Question 30 in thread-2")).toBeVisible();
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
+});
