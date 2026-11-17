@@ -109,10 +109,10 @@ export default function AdminUsers({ me }) {
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Last active</th>
-                  <th>Signed in on</th>
+                  <th className="wide-only">Role</th>
+                  <th className="wide-only">Status</th>
+                  <th className="wide-only">Last active</th>
+                  <th className="wide-only">Signed in on</th>
                   <th>
                     <span className="sr-only">Actions</span>
                   </th>
@@ -137,20 +137,31 @@ export default function AdminUsers({ me }) {
                                 <span className="you">You</span>
                               )}
                             </strong>
-                            <span>{user.username}</span>
+                            <span>
+                              {user.username}
+                              <span className="narrow-only">
+                                {" · "}
+                                {user.role_label || roleName(user.role)}
+                                {s.label !== "Active" && ` · ${s.label}`}
+                              </span>
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td>{user.role_label || roleName(user.role)}</td>
-                      <td>
+                      <td className="wide-only">
+                        {user.role_label || roleName(user.role)}
+                      </td>
+                      <td className="wide-only">
                         <Badge tone={s.tone} dot>
                           {s.label}
                         </Badge>
                       </td>
-                      <td className="muted">
+                      <td className="muted wide-only">
                         {timeAgo(user.last_seen_at || user.last_login_at)}
                       </td>
-                      <td className="muted">{sessionSummary(user)}</td>
+                      <td className="muted wide-only">
+                        {sessionSummary(user)}
+                      </td>
                       <td className="row-action">
                         <button
                           className="button ghost small"
