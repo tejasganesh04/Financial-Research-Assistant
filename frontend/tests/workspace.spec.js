@@ -939,7 +939,7 @@ test("admin manages users: reset a password and see it once", async ({
   await expect(
     page.getByRole("heading", { name: "Users", level: 1 }),
   ).toBeVisible();
-  await expect(page.getByText("Locked")).toBeVisible();
+  await expect(page.getByText("Locked", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Manage analyst" }).click();
   const panel = page.getByRole("dialog", { name: "Manage Riley Analyst" });
   await panel.getByRole("button", { name: "Reset", exact: true }).click();

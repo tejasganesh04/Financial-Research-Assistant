@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "./api.js";
 import {
   Alert,
@@ -17,6 +17,12 @@ export default function Approvals({ onCountChange }) {
   const [items, setItems] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState(null);
+  const detail = useRef(null);
+  // On a phone the details sit below the queue: bring them into view when a request opens.
+  useEffect(() => {
+    if (selected && window.matchMedia("(max-width: 960px)").matches)
+      detail.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selected?.thread_id]);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -136,7 +142,7 @@ export default function Approvals({ onCountChange }) {
           )}
         </section>
 
-        <section className="panel review-detail">
+        <section className="panel review-detail" ref={detail}>
           {selected ? (
             <>
               <div className="review-meta">

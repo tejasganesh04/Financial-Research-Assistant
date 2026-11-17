@@ -1604,11 +1604,15 @@ button.account-row:disabled {
 .profile-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px 16px;
 }
 .profile-row > div {
-  flex: 1;
+  flex: 1 1 140px;
   min-width: 0;
+}
+.profile-row h2 {
+  overflow-wrap: break-word;
 }
 .profile-row h2 {
   font-size: 22px;
@@ -2808,6 +2812,27 @@ button.account-row:disabled {
   }
   .modal-footer {
     flex-wrap: wrap;
+  }
+}
+
+.narrow-only {
+  display: none;
+}
+@media (max-width: 640px) {
+  .data-table .wide-only {
+    display: none;
+  }
+  .narrow-only {
+    display: inline;
+  }
+  .data-table td,
+  .data-table th {
+    padding-left: 16px;
+    padding-right: 8px;
+    white-space: normal;
+  }
+  .user-cell div > span {
+    overflow-wrap: anywhere;
   }
 }
 

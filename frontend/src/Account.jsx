@@ -68,10 +68,12 @@ function Profile({ user }) {
         </div>
         <div>
           <dt>Confidentiality levels</dt>
-          <dd className="capitalize">
+          <dd>
             {perms.allowed_confidentiality.includes("*")
               ? "All levels"
-              : perms.allowed_confidentiality.join(", ") || "None"}
+              : perms.allowed_confidentiality
+                  .map((level) => level[0].toUpperCase() + level.slice(1))
+                  .join(", ") || "None"}
           </dd>
         </div>
       </dl>
