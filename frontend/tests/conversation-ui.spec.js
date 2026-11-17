@@ -416,3 +416,37 @@ test("the research and connect pages pass an accessibility audit", async ({
     ).toEqual([]);
   }
 });
+
+test("an unsent question survives an expired session but not signing out", async ({
+  page,
+}) => {
+  await mock(page);
+  await page
+    .getByLabel("Ask a financial question")
+    .fill("Half-written question");
+  // The session ends while the person is typing.
+  await page.route("**/v1/auth/refresh", (route) =>
+    route.fulfill({ status: 401, json: { detail: "Your session has ended." } }),
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("session-expired")));
+  await expect(
+    page.getByRole("heading", { name: "Sign in", exact: true }),
+  ).toBeVisible();
+  await page.unroute("**/v1/auth/refresh");
+  await page.getByLabel("Username").fill("analyst");
+  await page.getByLabel("Password").fill("a-test-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByLabel("Ask a financial question")).toHaveValue(
+    "Half-written question",
+  );
+  // Signing out on purpose leaves nothing behind.
+  await page.getByRole("button", { name: /^Account:/ }).click();
+  await page
+    .getByRole("dialog", { name: "Account" })
+    .getByRole("button", { name: "Sign out" })
+    .click();
+  await page.getByLabel("Username").fill("analyst");
+  await page.getByLabel("Password").fill("a-test-password");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByLabel("Ask a financial question")).toHaveValue("");
+});
