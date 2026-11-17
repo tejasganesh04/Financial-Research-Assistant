@@ -246,19 +246,17 @@ export function Modal({
         ),
       ].filter((el) => el.offsetParent !== null);
       if (!items.length) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      const inside = panel.current.contains(document.activeElement);
-      if (event.shiftKey && (document.activeElement === first || !inside)) {
-        event.preventDefault();
-        last.focus();
-      } else if (
-        !event.shiftKey &&
-        (document.activeElement === last || !inside)
-      ) {
-        event.preventDefault();
-        first.focus();
-      }
+      // Move focus ourselves: Safari skips buttons on Tab unless a system setting is on.
+      event.preventDefault();
+      const index = items.indexOf(document.activeElement);
+      const step = event.shiftKey ? -1 : 1;
+      const next =
+        index === -1
+          ? step > 0
+            ? 0
+            : items.length - 1
+          : (index + step + items.length) % items.length;
+      items[next].focus();
     };
     document.addEventListener("keydown", onKey);
     return () => {
