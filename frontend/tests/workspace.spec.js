@@ -562,6 +562,9 @@ test("rate limits name the model and node, keep the trace link and never resubmi
     .getByRole("button", { name: "Send question", exact: true })
     .click();
   const alert = page.getByRole("alert");
+  await expect(alert).toContainText(
+    "The answer service is busy. Try again in about 17 seconds.",
+  );
   await expect(alert).toContainText("Groq model openai/gpt-oss-20b");
   await expect(alert).toContainText("rate limited at node grader");
   await expect(alert).toContainText("17 seconds");
