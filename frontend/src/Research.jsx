@@ -503,8 +503,16 @@ export default function ResearchView({ user, research }) {
     input.current?.focus();
   }
 
+  const opening = busy === "Opening conversation…";
   return (
-    <div className="research">
+    <div className="research" aria-busy={opening || undefined}>
+      {opening && (
+        <div
+          className="progress-bar"
+          role="progressbar"
+          aria-label="Opening conversation"
+        />
+      )}
       <div
         className="chat-scroll"
         ref={chatScroll}
