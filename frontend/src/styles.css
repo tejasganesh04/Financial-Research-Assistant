@@ -759,7 +759,7 @@ input:-webkit-autofill:focus {
   padding: 56px 24px;
   color: var(--text-2);
 }
-.empty-state h3 {
+.empty-state h2 {
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
@@ -1565,6 +1565,7 @@ button.account-row:disabled {
   font-size: 12px;
   line-height: 16px;
 }
+.user-cell .drawer-title,
 .user-cell.large strong {
   font-size: 22px;
   line-height: 28px;
@@ -1681,7 +1682,7 @@ button.account-row:disabled {
   flex-direction: column;
   gap: 8px;
 }
-.steps h3 {
+.steps h2 {
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
@@ -2414,7 +2415,7 @@ button.account-row:disabled {
   color: var(--warning);
   flex-shrink: 0;
 }
-.approval-wait h3 {
+.approval-wait h2 {
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
