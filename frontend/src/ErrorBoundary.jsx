@@ -29,12 +29,14 @@ export default class ErrorBoundary extends Component {
               safe. Reload to continue.
             </p>
           </div>
-          <button
-            className="button primary block"
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </button>
+          <div className="auth-actions">
+            <button
+              className="button primary"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </button>
+          </div>
         </div>
       </main>
     );
