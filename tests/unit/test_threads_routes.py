@@ -20,11 +20,16 @@ def _token(role: str = "finance", user_id: str = "finance") -> str:
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     # Inject a fake pool object so the 503 short-circuit doesn't fire,
     # then restore whatever was there before. Without the restore, this
     # fixture leaks state to downstream tests (notably the integration
     # tests that need a real psycopg pool on app.state.pool).
+    # The fake pool has no accounts, so the per-request account check is stubbed to pass;
+    # tests/integration/test_accounts.py covers that check against a real database.
+    from src.services import user_store
+
+    monkeypatch.setattr(user_store, "access_allowed", AsyncMock(return_value=True))
     prior_pool = getattr(app.state, "pool", None)
     prior_graph = getattr(app.state, "graph", None)
     app.state.pool = object()

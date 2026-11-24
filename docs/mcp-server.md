@@ -88,7 +88,8 @@ address; see [deployment](deployment.md).
 
 - **Same accounts as the app.** There is no separate MCP password or token to hand out; anyone
   with an account can connect their own client, and only they can approve it.
-- **Access tokens** are JWTs valid for `ACCESS_TOKEN_MINUTES` (default 60), with the `documents:read`
+- **Access tokens** are JWTs valid for `ACCESS_TOKEN_MINUTES` (default 60) and checked against the
+  account and session on every call (a deactivated account or ended connection is refused at once), with the `documents:read`
   scope and the MCP address as their audience. The app's API rejects them, so they cannot open
   conversations, approve escalations or change accounts; the MCP endpoint rejects the app's own
   tokens.

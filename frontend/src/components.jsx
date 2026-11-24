@@ -348,43 +348,40 @@ export function Answer({ children }) {
   );
 }
 
-// The request ID names this answer in the server's records and its LangSmith trace; quote it
-// when reporting a problem.
-export function RequestDetails({ requestId }) {
-  return (
-    <details className="request-details">
-      <summary>Request details</summary>
-      {requestId ? (
-        <div className="request-details-body">
-          <span>Request ID</span>
-          <CopyField value={requestId} label="Copy request ID" />
-        </div>
-      ) : (
-        <small>
-          No request ID is available. Older saved questions may not have one.
-        </small>
-      )}
-    </details>
-  );
-}
+// Document types as people read them.
+export const DOC_TYPES = {
+  "10k": "10-K",
+  "10q": "10-Q",
+  "8k": "8-K",
+  invoice: "Invoices",
+  expense_policy: "Expense policies",
+  board_report: "Board reports",
+};
 
 export function Sources({ sources = [] }) {
-  const [error, setError] = useState("");
+  // A note about the source last clicked: { file, text }. Clicking that source again hides it.
+  const [note, setNote] = useState(null);
   const [loading, setLoading] = useState("");
   const unique = [
     ...new Map(sources.map((s) => [`${s.file}:${s.page}`, s])).values(),
   ];
   async function download(file) {
-    setError("");
+    if (note?.file === file) {
+      setNote(null);
+      return;
+    }
+    setNote(null);
     setLoading(file);
     try {
       await api.download(file);
     } catch (e) {
-      setError(
-        e.response?.status === 404
-          ? "The original PDF is not stored on this server. The document name and page remain available here."
-          : "This source PDF could not be opened. Your role may not have access.",
-      );
+      setNote({
+        file,
+        text:
+          e.response?.status === 403
+            ? "Your role doesn’t have access to open this document."
+            : "The original document isn’t available to open right now.",
+      });
     } finally {
       setLoading("");
     }
@@ -402,7 +399,7 @@ export function Sources({ sources = [] }) {
             key={`${s.file}:${s.page}`}
             onClick={() => download(s.file)}
             disabled={!!loading}
-            title="Download the original PDF, if stored on this server"
+            title="Open the original document"
           >
             <span className="source-index">{index + 1}</span>
             <span className="source-text">
@@ -415,7 +412,7 @@ export function Sources({ sources = [] }) {
           </button>
         ))}
       </div>
-      <Alert kind="info">{error}</Alert>
+      <Alert kind="info">{note?.text}</Alert>
     </div>
   );
 }

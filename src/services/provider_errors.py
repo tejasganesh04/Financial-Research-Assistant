@@ -43,7 +43,8 @@ def _retry_after(error) -> int | None:
 
 
 class ProviderRateLimitError(RuntimeError):
-    """Only safe provider/model/stage fields reach the browser; never raw exception text."""
+    """A provider limit that stopped a request. Its text (provider, model, step) is for the trace and
+    the admin Health page; the browser gets `payload()`, which names none of them."""
 
     def __init__(self, *, stage, provider, model=None, retry_after_seconds=None, quota_exceeded=False):
         self.stage = stage
@@ -66,11 +67,30 @@ class ProviderRateLimitError(RuntimeError):
             message = f"{subject} was rate limited at node {stage}. {wait}"
         super().__init__(message + " No answer was released for this request.")
 
+    @property
+    def code(self) -> str:
+        return "provider_quota_exceeded" if self.quota_exceeded else "provider_rate_limited"
+
+    def public_message(self) -> str:
+        """What the person asking sees: plain words, no provider, model or workflow step."""
+        if self.quota_exceeded:
+            return "The answer service has reached its usage limit, so this question wasn't answered. Try again later."
+        return "The answer service is busy right now, so this question wasn't answered. Try again shortly."
+
     def payload(self):
+        """Sent to the browser. The provider, model and step stay in the trace and on the Health page."""
         return {
             "type": "error",
-            "code": "provider_quota_exceeded" if self.quota_exceeded else "provider_rate_limited",
+            "code": self.code,
             "status": 429,
+            "message": self.public_message(),
+            "retry_after_seconds": self.retry_after_seconds,
+        }
+
+    def details(self) -> dict:
+        """For the request trace and the admin Health page."""
+        return {
+            "code": self.code,
             "message": str(self),
             "provider": self.provider,
             "model": self.model,
@@ -122,13 +142,19 @@ def raise_if_rate_limited(error, stage, *, llm=None, provider=None, model=None):
     ) from error
 
 
-def rate_limit_payload(error):
+def find_rate_limit(error) -> ProviderRateLimitError | None:
     """API boundary helper for normalized errors and unexpected wrapped HTTP 429s."""
     for item in _error_chain(error):
         if isinstance(item, ProviderRateLimitError):
-            return item.payload()
+            return item
     try:
         raise_if_rate_limited(error, "workflow")
     except ProviderRateLimitError as limit:
-        return limit.payload()
+        return limit
     return None
+
+
+def rate_limit_payload(error):
+    """The browser's view of a provider limit, or None."""
+    limit = find_rate_limit(error)
+    return limit.payload() if limit else None

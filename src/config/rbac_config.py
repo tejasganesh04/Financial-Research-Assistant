@@ -1,3 +1,12 @@
+# Role names as people see them.
+ROLE_LABELS: dict[str, str] = {
+    "analyst": "Analyst",
+    "finance": "Finance",
+    "hr": "HR",
+    "c_level": "Executive",
+    "admin": "Administrator",
+}
+
 # Document types and confidentiality levels each role may search.
 ROLE_PERMISSIONS: dict[str, dict] = {
     "analyst": {

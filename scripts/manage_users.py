@@ -10,7 +10,7 @@ Run inside the API container so it reaches the database (the Makefile targets do
     python scripts/manage_users.py deactivate analyst | activate analyst | unlock analyst
 
 Changing a password, signing out and deactivating end the account's sessions; access tokens already
-issued stop working when they expire (ACCESS_TOKEN_MINUTES, 60 by default).
+issued stop working on their next use (every request checks the account and session).
 """
 
 from __future__ import annotations

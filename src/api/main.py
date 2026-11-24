@@ -121,6 +121,13 @@ async def _warm_models() -> None:
         await anyio.to_thread.run_sync(warm_local_models, abandon_on_cancel=True)
     except Exception:
         logger.exception("Could not preload the question-screening models; they load on the first question")
+    # The document list behind the welcome screen and MCP's list_documents (read once, then cached).
+    from src.mcp_server.knowledge import load_documents
+
+    try:
+        await anyio.to_thread.run_sync(load_documents, abandon_on_cancel=True)
+    except Exception:
+        logger.warning("Could not preload the document list; it loads on first use")
 
 
 async def _housekeeping(pool) -> None:

@@ -75,9 +75,9 @@ def test_admin_wildcard_allows_any_doc(mock_lookup, client):
         "/v1/documents/board_minutes_2023.pdf",
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
-    # RBAC passed but file isn't on disk → 404 "Document file not on disk"
+    # RBAC passed but the file isn't stored → 404 in plain words, without naming the server.
     assert resp.status_code == 404
-    assert "disk" in resp.json()["detail"].lower()
+    assert resp.json()["detail"] == "The original document isn't available to open right now."
 
 
 @patch("src.api.routes.documents._lookup_document_meta")
@@ -93,3 +93,104 @@ def test_200_when_rbac_ok_and_file_present(mock_lookup, client):
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
     assert "inline" in resp.headers["content-disposition"]
+
+
+# ── GET /v1/documents: what each role can search ───────────────────────────────
+
+
+def _doc(source, company, doc_type, level="public"):
+    from src.mcp_server.knowledge import Document
+
+    return Document(
+        name=source.removesuffix(".pdf"),
+        source_file=source,
+        company=company,
+        company_name=company.title(),
+        fiscal_year=2022,
+        doc_type=doc_type,
+        confidentiality=level,
+        pages=10,
+    )
+
+
+CATALOG = (
+    _doc("MSFT_2022_10K.pdf", "microsoft", "10k"),
+    _doc("MSFT_2023Q1_10Q.pdf", "microsoft", "10q"),
+    _doc("AMZN_2022_10K.pdf", "amazon", "10k"),
+    _doc("AMZN_2023_8K.pdf", "amazon", "8k"),
+)
+
+
+@pytest.fixture
+def catalog(monkeypatch):
+    from src.mcp_server import knowledge
+
+    monkeypatch.setattr(knowledge, "load_documents", lambda: CATALOG)
+
+
+def _library(client, role):
+    c, _ = client
+    response = c.get("/v1/documents", headers={"Authorization": f"Bearer {_token(role)}"})
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_a_filings_role_sees_its_counts_and_has_nothing_extra_to_request(client, catalog):
+    library = _library(client, "analyst")
+    assert (library["documents"], library["companies"]) == (4, 2)
+    assert [d["label"] for d in library["doc_types"]] == ["10-K", "10-Q", "8-K"]
+    assert library["doc_types"][0]["documents"] == 2
+    assert library["requestable"] == []
+
+
+def test_hr_has_no_documents_and_may_request_the_filings(client, catalog):
+    library = _library(client, "hr")
+    assert (library["documents"], library["companies"], library["doc_types"]) == (0, 0, [])
+    assert library["requestable"] == [
+        {
+            "key": "filings",
+            "label": "SEC filings",
+            "detail": "10-K, 10-Q and 8-K reports",
+            "documents": 4,
+            "doc_type": ["filings"],
+            "confidentiality": [],
+        }
+    ]
+
+
+def test_a_confidential_group_names_the_level_to_request(client, monkeypatch):
+    from src.mcp_server import knowledge
+
+    monkeypatch.setattr(
+        knowledge, "load_documents", lambda: (*CATALOG, _doc("BOARD_2023.pdf", "acme", "board_report", "confidential"))
+    )
+    option = next(o for o in _library(client, "finance")["requestable"] if o["key"] == "board_report")
+    assert option["doc_type"] == ["board_report"] and option["confidentiality"] == ["confidential"]
+    assert option["label"] == "Board reports" and "confidential documents" in option["detail"]
+
+
+def test_the_requested_access_is_accepted_by_the_escalation_parser(client, catalog):
+    from src.services.escalation import parse_escalation
+
+    option = _library(client, "hr")["requestable"][0]
+    line = "/escalate doc_type=" + ",".join(option["doc_type"])
+    question, scope = parse_escalation(f"{line}\nMicrosoft revenue?", "hr")
+    assert question == "Microsoft revenue?" and scope["escalated"] and "10k" in scope["doc_types"]
+
+
+def test_admins_see_everything_and_are_offered_no_requests(client, catalog):
+    library = _library(client, "admin")
+    assert library["documents"] == 4 and library["requestable"] == []
+
+
+def test_an_unavailable_document_list_is_a_plain_503(client, monkeypatch):
+    from src.mcp_server import knowledge
+
+    def down():
+        raise ConnectionError("qdrant down")
+
+    monkeypatch.setattr(knowledge, "load_documents", down)
+    c, _ = client
+    response = c.get("/v1/documents", headers={"Authorization": f"Bearer {_token('analyst')}"})
+    assert response.status_code == 503
+    assert response.json()["detail"] == "The document list is unavailable right now."

@@ -4,10 +4,10 @@ import {
   Alert,
   Answer,
   Badge,
+  DOC_TYPES,
   EmptyState,
   Icon,
   PageHeader,
-  RequestDetails,
   Sources,
   Spinner,
   roleName,
@@ -163,15 +163,32 @@ export default function Approvals({ onCountChange }) {
                 <dl className="scope-list">
                   <div>
                     <dt>Document types searched</dt>
-                    <dd>{selected.access_scope.doc_types.join(", ")}</dd>
+                    <dd>
+                      {selected.access_scope.doc_types
+                        .map((d) => DOC_TYPES[d] || d)
+                        .join(", ")}
+                    </dd>
                   </div>
                   <div>
                     <dt>Confidentiality</dt>
-                    <dd>{selected.access_scope.confidentiality.join(", ")}</dd>
+                    <dd>
+                      {selected.access_scope.confidentiality
+                        .map((c) => c[0].toUpperCase() + c.slice(1))
+                        .join(", ")}
+                    </dd>
                   </div>
                 </dl>
               )}
-              <RequestDetails requestId={selected.request_id} />
+              {selected.trace_url && (
+                <a
+                  className="trace-link"
+                  href={selected.trace_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon name="external" size={14} /> Open the trace in LangSmith
+                </a>
+              )}
               <div className="draft">
                 <div className="draft-label">Draft answer</div>
                 <Answer>{selected.draft_answer}</Answer>

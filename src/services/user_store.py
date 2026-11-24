@@ -602,6 +602,29 @@ async def get_session(pool, session_id: str) -> Session | None:
         return _session(row) if row else None
 
 
+async def access_allowed(pool, username: str, session_id: str | None) -> bool:
+    """Whether an access token may still be used: the account is active and its session is open.
+
+    Checked on every request, so deactivating someone, resetting their password or ending a session
+    takes effect on their next request rather than when the access token expires. Tokens always carry
+    a session; one without (only made in tests) is checked against the account alone.
+    """
+    async with pool.connection() as conn:
+        if session_id is None:
+            cur = await conn.execute("SELECT 1 FROM app_users WHERE username = %s AND active", (username,))
+            return await cur.fetchone() is not None
+        try:
+            uuid.UUID(str(session_id))
+        except ValueError:
+            return False
+        cur = await conn.execute(
+            "SELECT 1 FROM auth_sessions s JOIN app_users u ON u.username = s.username"
+            " WHERE s.id = %s AND s.username = %s AND s.revoked_at IS NULL AND u.active",
+            (session_id, username),
+        )
+        return await cur.fetchone() is not None
+
+
 async def revoke_session(pool, session_id: str, reason: str, username: str | None = None) -> bool:
     """End one session (optionally only if it belongs to `username`)."""
     try:

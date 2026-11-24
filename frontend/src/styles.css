@@ -2928,35 +2928,16 @@ button.account-row:disabled {
   margin: 24px 0;
 }
 
-.request-details {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-2);
-}
-.request-details summary {
-  cursor: pointer;
+.trace-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   width: fit-content;
-  list-style: none;
-  user-select: none;
-  border-radius: var(--radius-xs);
-}
-.request-details summary::-webkit-details-marker {
-  display: none;
-}
-.request-details summary:hover {
-  color: var(--text);
+  color: var(--primary);
+  font-size: 13px;
+  line-height: 20px;
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-.request-details-body {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 6px 12px;
-  margin-top: 8px;
-}
-.request-details-body .copy-field {
-  background: var(--surface);
 }
 
 .sources {
@@ -3154,43 +3135,56 @@ button.account-row:disabled {
   font-size: 12px;
   line-height: 16px;
 }
-.escalate {
+.extra-access-toggle {
   flex-shrink: 0;
-  text-align: right;
 }
-.escalate summary {
-  cursor: pointer;
-  list-style: none;
-  color: var(--primary);
-  font-weight: 500;
-  border-radius: var(--radius-xs);
-}
-.escalate summary::-webkit-details-marker {
-  display: none;
-}
-.escalate summary:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.escalate[open] {
-  flex-basis: 100%;
-}
-.escalate-body {
-  margin-top: 8px;
-  padding: 16px;
+.extra-access {
+  max-width: 760px;
+  margin: 0 auto 8px;
+  padding: 12px 16px;
   border-radius: var(--radius);
   background: var(--surface-1);
-  text-align: left;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 8px;
-  color: var(--text-2);
   font-size: 13px;
   line-height: 20px;
+  color: var(--text-2);
 }
-.escalate-body code {
-  background: var(--surface);
+.extra-access-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.extra-access-head .icon {
+  color: var(--primary);
+}
+.extra-access-head .link-button {
+  margin-left: auto;
+}
+.extra-access-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text);
+}
+.extra-access-option input {
+  margin-top: 3px;
+  accent-color: var(--primary);
+}
+.extra-access-option small {
+  display: block;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 16px;
+}
+.extra-access p {
+  margin: 0;
+}
+.welcome > .button {
+  align-self: flex-start;
 }
 
 /* ─── Approvals ──────────────────────────────────────────────────────────── */

@@ -58,6 +58,14 @@ async def flow(monkeypatch, request):
         saver = InMemorySaver()
     monkeypatch.setattr(app.state, "checkpointer", saver, raising=False)
     monkeypatch.setattr(app.state, "pool", pool or object(), raising=False)
+    # These tests sign requests for made-up users with no account rows, so the per-request account
+    # check is stubbed to pass; test_accounts.py covers it against real accounts.
+    from src.services import user_store
+
+    async def accounts_ok(pool, username, session_id):
+        return True
+
+    monkeypatch.setattr(user_store, "access_allowed", accounts_ok)
     monkeypatch.setattr(chat, "detect_pii", lambda text: (text, []))
     monkeypatch.setattr(chat, "get_permissions", lambda role: ROLE_PERMISSIONS[role])
     # Exercise the real graph edges and approval/formatting nodes, replacing
@@ -773,14 +781,18 @@ async def test_provider_limit_reaches_api_and_trace_without_releasing_answer(flo
         events = [json.loads(line[6:]) for line in result.text.splitlines() if line.startswith("data: ")]
         last = events[-1]
         assert last["type"] == "error" and last["status"] == 429
-        assert last["code"] == "provider_rate_limited" and last["node"] == node
-        assert last["model"] == model and last["retry_after_seconds"] == 17
+        assert last["code"] == "provider_rate_limited" and last["retry_after_seconds"] == 17
+        # The person asking is not shown the provider, model or workflow step.
+        assert not {"provider", "model", "node"} & last.keys()
+        assert node not in last["message"] and model not in last["message"]
         assert not any(event["type"] in ("final", "pending_approval") for event in events)
         request_id = last["request_id"]
         assert request_id == events[0]["request_id"]
     else:
         assert result.status_code == 429
-        assert node in result.json()["detail"] and model in result.json()["detail"]
+        detail = result.json()["detail"]
+        assert detail.startswith("The answer service is busy right now")
+        assert node not in detail and model not in detail
         assert result.headers["Retry-After"] == "17"
         request_id = result.headers["X-Request-ID"]
     folder = Path(os.environ["REQUEST_TRACE_DIR"]) / request_id

@@ -6,7 +6,6 @@ import {
   Icon,
   Logo,
   Modal,
-  RequestDetails,
   Sources,
   Spinner,
 } from "./components.jsx";
@@ -63,11 +62,11 @@ const SUGGESTIONS = [
   ],
 ];
 
-// Model providers limit how much they answer per minute and per day. Say so plainly first,
-// then keep the provider's details for whoever looks into it.
+// Model providers limit how much they answer per minute and per day. People are told plainly when
+// to try again; which provider, model and step hit the limit is on the admin Health page.
 function providerLimitMessage(error) {
   if (error.code === "provider_quota_exceeded")
-    return `The answer service has reached its usage limit, so this question was not answered. (${error.message})`;
+    return "The answer service has reached its usage limit, so this question wasn’t answered. Try again later.";
   const seconds = error.retryAfter;
   const when =
     seconds == null
@@ -75,7 +74,38 @@ function providerLimitMessage(error) {
       : seconds < 90
         ? `in about ${seconds} seconds`
         : `in about ${Math.ceil(seconds / 60)} minutes`;
-  return `The answer service is busy. Try again ${when}. (${error.message})`;
+  return `The answer service is busy right now, so this question wasn’t answered. Try again ${when}.`;
+}
+
+// The access to ask for, from the chosen groups of documents. The server reads it from a first
+// line it removes before the question is answered or shown.
+function accessRequest(options) {
+  const types = [...new Set(options.flatMap((o) => o.doc_type))];
+  const levels = [...new Set(options.flatMap((o) => o.confidentiality))];
+  const parts = [
+    types.length && `doc_type=${types.join(",")}`,
+    levels.length && `confidentiality=${levels.join(",")}`,
+  ].filter(Boolean);
+  return parts.length ? `/escalate ${parts.join(" ")}` : "";
+}
+
+const plural = (n, one, many = `${one}s`) =>
+  `${n.toLocaleString()} ${n === 1 ? one : many}`;
+
+// "10-K, 10-Q and 8-K reports" or "Invoices and Expense policies".
+function listWords(words) {
+  return words.length < 2
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+}
+
+function documentKinds(docTypes) {
+  const filings = docTypes.filter((d) => ["10k", "10q", "8k"].includes(d.type));
+  const others = docTypes.filter((d) => !["10k", "10q", "8k"].includes(d.type));
+  return [
+    filings.length && `${listWords(filings.map((d) => d.label))} reports`,
+    ...others.map((d) => d.label),
+  ].filter(Boolean);
 }
 
 // Conversation state lives above the views so it survives moving between pages.
@@ -87,6 +117,10 @@ export function useResearch(user) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // What this role can search (welcome screen), and the groups of documents chosen for extra
+  // access on the next question (null when not asking for extra access).
+  const [library, setLibrary] = useState(null);
+  const [extraAccess, setExtraAccess] = useState(null);
   const activeRequest = useRef(null);
   const historyVersion = useRef(0);
 
@@ -161,6 +195,20 @@ export function useResearch(user) {
 
   useEffect(() => {
     if (!user) return;
+    let current = true;
+    setLibrary(null);
+    setExtraAccess(null);
+    api
+      .library()
+      .then((result) => current && setLibrary(result))
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [user?.user_id]);
+
+  useEffect(() => {
+    if (!user) return;
     refreshHistory();
     const saved = sessionStorage.getItem(THREAD_KEY);
     if (saved) openConversation(saved);
@@ -207,7 +255,12 @@ export function useResearch(user) {
     if (!question.trim() || activeRequest.current || busy || thread.pending)
       return;
     onFollow?.();
-    const message = question.trim();
+    const text = question.trim();
+    const chosen = (library?.requestable || []).filter((o) =>
+      extraAccess?.includes(o.key),
+    );
+    const request = chosen.length ? accessRequest(chosen) : "";
+    const message = request ? `${request}\n${text}` : text;
     const id = thread.id || crypto.randomUUID();
     const answerId = crypto.randomUUID();
     const questionId = crypto.randomUUID();
@@ -215,6 +268,7 @@ export function useResearch(user) {
     activeRequest.current = controller;
     sessionStorage.setItem(THREAD_KEY, id);
     setQuestion("");
+    setExtraAccess(null);
     setError("");
     setNotice("");
     setBusy("Researching…");
@@ -223,7 +277,7 @@ export function useResearch(user) {
       id,
       messages: [
         ...t.messages,
-        { id: questionId, role: "user", content: message },
+        { id: questionId, role: "user", content: text },
         { id: answerId, role: "assistant", content: "" },
       ],
     }));
@@ -299,7 +353,10 @@ export function useResearch(user) {
             (m) => m.id !== answerId && (!keep || m.id !== questionId),
           ),
         }));
-        if (keep) setQuestion(message);
+        if (keep) {
+          setQuestion(text);
+          if (chosen.length) setExtraAccess(chosen.map((o) => o.key));
+        }
         setError(
           e.code === "provider_rate_limited" ||
             e.code === "provider_quota_exceeded"
@@ -327,6 +384,9 @@ export function useResearch(user) {
     busy,
     error,
     notice,
+    library,
+    extraAccess,
+    setExtraAccess,
     sending: !!activeRequest.current,
     refreshHistory,
     openConversation,
@@ -440,7 +500,7 @@ export function ConversationList({ research, active, onOpen }) {
         >
           <div className="stack">
             <p className="modal-text">
-              Its questions, answers and request details are removed for good.
+              Its questions and answers are removed for good.
             </p>
             <Alert>{deleteError}</Alert>
           </div>
@@ -451,8 +511,20 @@ export function ConversationList({ research, active, onOpen }) {
 }
 
 export default function ResearchView({ user, research }) {
-  const { thread, question, setQuestion, busy, error, notice, sending } =
-    research;
+  const {
+    thread,
+    question,
+    setQuestion,
+    busy,
+    error,
+    notice,
+    sending,
+    library,
+    extraAccess,
+    setExtraAccess,
+  } = research;
+  const requestable = user.role === "admin" ? [] : library?.requestable || [];
+  const searchesFilings = library?.doc_types.some((d) => d.type === "10k");
   const chatScroll = useRef(null);
   const followLatest = useRef(true);
   const input = useRef(null);
@@ -542,39 +614,75 @@ export default function ResearchView({ user, research }) {
           {!thread.messages.length && (
             <section className="welcome">
               <h2>What would you like to research?</h2>
-              <p>
-                Ask about figures in company filings, compare periods, or check
-                a calculation. Every answer cites its sources.
-              </p>
-              <div className="suggestions">
-                {SUGGESTIONS.map(([icon, title, text]) => (
+              {library && !library.documents ? (
+                <p>
+                  Your role doesn’t have documents to search yet.
+                  {requestable.length
+                    ? " You can still ask with extra access: an administrator reviews each answer before you see it."
+                    : " Ask your administrator if you need access."}
+                </p>
+              ) : searchesFilings || !library ? (
+                <p>
+                  Ask about figures in company filings, compare periods, or
+                  check a calculation. Every answer cites its sources.
+                </p>
+              ) : (
+                <p>
+                  Ask about the documents your role can search. Every answer
+                  cites its sources.
+                </p>
+              )}
+              {searchesFilings && (
+                <div className="suggestions">
+                  {SUGGESTIONS.map(([icon, title, text]) => (
+                    <button
+                      key={title}
+                      onClick={() => pickSuggestion(text)}
+                      disabled={!!busy}
+                    >
+                      <strong>{title}</strong>
+                      <span>{text}</span>
+                      <span className="suggestion-icon">
+                        <Icon name={icon} size={16} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {library &&
+                !library.documents &&
+                requestable.length > 0 &&
+                !extraAccess && (
                   <button
-                    key={title}
-                    onClick={() => pickSuggestion(text)}
+                    type="button"
+                    className="button secondary"
+                    onClick={() => {
+                      setExtraAccess(requestable.map((o) => o.key));
+                      input.current?.focus();
+                    }}
                     disabled={!!busy}
                   >
-                    <strong>{title}</strong>
-                    <span>{text}</span>
-                    <span className="suggestion-icon">
-                      <Icon name={icon} size={16} />
-                    </span>
+                    <Icon name="shield" size={16} /> Ask with extra access
                   </button>
-                ))}
-              </div>
-              <div className="corpus-note">
-                <span className="chip">
-                  <Icon name="database" size={14} />
-                  32 companies
-                </span>
-                <span className="chip">
-                  <Icon name="file" size={14} />
-                  84 SEC filings
-                </span>
-                <span className="chip">
-                  <Icon name="done" size={14} />
-                  10-K, 10-Q and 8-K reports
-                </span>
-              </div>
+                )}
+              {!!library?.documents && (
+                <div className="corpus-note">
+                  <span className="chip">
+                    <Icon name="database" size={14} />
+                    {plural(library.companies, "company", "companies")}
+                  </span>
+                  <span className="chip">
+                    <Icon name="file" size={14} />
+                    {plural(library.documents, "document")}
+                  </span>
+                  {documentKinds(library.doc_types).map((kind) => (
+                    <span className="chip" key={kind}>
+                      <Icon name="done" size={14} />
+                      {kind}
+                    </span>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
@@ -601,9 +709,6 @@ export default function ResearchView({ user, research }) {
                     <Spinner />
                     {busy || "Preparing response…"}
                   </div>
-                )}
-                {message.role === "user" && (
-                  <RequestDetails requestId={message.request_id} />
                 )}
                 {message.role === "assistant" && !!message.content && (
                   <>
@@ -659,6 +764,52 @@ export default function ResearchView({ user, research }) {
       </div>
 
       <div className="composer-area">
+        {extraAccess && requestable.length > 0 && !thread.pending && (
+          <div
+            className="extra-access"
+            role="group"
+            aria-label="Extra access for this question"
+          >
+            <div className="extra-access-head">
+              <Icon name="shield" size={16} />
+              <strong>Extra access for this question</strong>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => setExtraAccess(null)}
+                disabled={!!busy}
+              >
+                Cancel
+              </button>
+            </div>
+            {requestable.map((option) => (
+              <label className="extra-access-option" key={option.key}>
+                <input
+                  type="checkbox"
+                  checked={extraAccess.includes(option.key)}
+                  disabled={!!busy}
+                  onChange={(e) =>
+                    setExtraAccess((keys) =>
+                      e.target.checked
+                        ? [...(keys || []), option.key]
+                        : (keys || []).filter((k) => k !== option.key),
+                    )
+                  }
+                />
+                <span>
+                  <strong>{option.label}</strong>
+                  {option.detail && <span> · {option.detail}</span>}
+                  <small>{plural(option.documents, "document")}</small>
+                </span>
+              </label>
+            ))}
+            <p>
+              {extraAccess.length
+                ? "An administrator reviews the answer before you see it."
+                : "Choose what you need access to."}
+            </p>
+          </div>
+        )}
         <form
           className={`composer ${thread.pending ? "disabled" : ""}`}
           onSubmit={submit}
@@ -674,7 +825,9 @@ export default function ResearchView({ user, research }) {
             placeholder={
               thread.pending
                 ? "This conversation is waiting for review."
-                : "Ask about the financial filings…"
+                : searchesFilings || !library
+                  ? "Ask about the financial filings…"
+                  : "Ask a question…"
             }
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -694,7 +847,12 @@ export default function ResearchView({ user, research }) {
             className="send-button"
             type="submit"
             aria-label="Send question"
-            disabled={!question.trim() || !!busy || thread.pending}
+            disabled={
+              !question.trim() ||
+              !!busy ||
+              thread.pending ||
+              extraAccess?.length === 0
+            }
           >
             <Icon name="send" size={16} />
           </button>
@@ -709,33 +867,22 @@ export default function ResearchView({ user, research }) {
         </form>
         <div className="composer-footer">
           <span>
-            Answers come only from the loaded filings; coverage varies by
-            company and year.
+            Answers come only from documents your role can search; coverage
+            varies by company and year.
           </span>
-          {user.role !== "admin" && !thread.pending && (
-            <details className="escalate">
-              <summary>Request access outside your role</summary>
-              <div className="escalate-body">
-                <p>
-                  Start the message with{" "}
-                  <code>/escalate doc_type=filings confidentiality=public</code>{" "}
-                  and put your question on the next line. An administrator must
-                  approve the answer before you see it.
-                </p>
-                <button
-                  type="button"
-                  className="link-button"
-                  disabled={!!busy}
-                  onClick={() =>
-                    setQuestion(
-                      "/escalate doc_type=filings confidentiality=public\nWhat was Microsoft’s total revenue in FY2023?",
-                    )
-                  }
-                >
-                  Fill example
-                </button>
-              </div>
-            </details>
+          {requestable.length > 0 && !extraAccess && !thread.pending && (
+            <button
+              type="button"
+              className="link-button extra-access-toggle"
+              onClick={() =>
+                setExtraAccess(
+                  requestable.length === 1 ? [requestable[0].key] : [],
+                )
+              }
+              disabled={!!busy}
+            >
+              Ask with extra access
+            </button>
           )}
         </div>
       </div>

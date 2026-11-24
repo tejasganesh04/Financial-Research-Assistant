@@ -170,6 +170,18 @@ def _langsmith() -> dict:
     return {"enabled": service_status.langsmith_enabled(), "project": project}
 
 
+async def trace_url(request_id: str | None) -> str | None:
+    """A link to this request's LangSmith trace, for administrators; None when tracing is off."""
+    tracing = _langsmith()
+    if not request_id or not tracing["enabled"]:
+        return None
+    try:
+        links = await asyncio.wait_for(asyncio.to_thread(_langsmith_links, tracing["project"]), timeout=6)
+    except Exception:
+        return None
+    return links["run_url"].format(run_id=request_id) if links else None
+
+
 def _langsmith_links(project: str) -> dict | None:
     """The project's web address and the pattern for run links (looked up once, then cached)."""
     cached = _langsmith_cache

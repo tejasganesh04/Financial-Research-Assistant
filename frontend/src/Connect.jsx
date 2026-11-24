@@ -21,12 +21,13 @@ export default function Connect({ user }) {
     <div className="page narrow">
       <PageHeader
         title="Connect Claude Code"
-        description="Search the same filings from your own AI assistant, with your account and your role’s access."
+        description="Search the same documents from your own AI assistant, with your account and your role’s access."
       />
 
       {!server.enabled && (
         <Alert kind="warning">
-          MCP connections are turned off on this server.
+          Connecting AI assistants is turned off. Ask your administrator if you
+          need it.
         </Alert>
       )}
       <section className="panel section-panel">
@@ -74,7 +75,7 @@ export default function Connect({ user }) {
           <li>
             <Icon name="file" size={16} />
             <div>
-              <strong>List, search and read filings</strong>
+              <strong>List, search and read documents</strong>
               <span>
                 Three tools: list_documents, search_documents and read_pages.
                 Results include the document and page to cite.

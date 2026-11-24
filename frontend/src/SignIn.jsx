@@ -10,7 +10,7 @@ export function signInError(error) {
   if (status === 503)
     return "Sign-in is temporarily unavailable. Try again in a moment.";
   if (!error.response)
-    return "Could not reach the server. Check your connection and try again.";
+    return "Couldn’t connect. Check your internet connection and try again.";
   return "Unable to sign in right now. Try again in a moment.";
 }
 

@@ -44,10 +44,42 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
       },
     ],
   };
-  const permissions = {
-    allowed_doc_types: role === "admin" ? ["*"] : ["10k", "10q", "8k"],
-    allowed_confidentiality: role === "admin" ? ["*"] : ["public"],
-  };
+  // As configured: HR searches expense policies only, of which the knowledge base has none.
+  const permissions =
+    role === "admin"
+      ? { allowed_doc_types: ["*"], allowed_confidentiality: ["*"] }
+      : role === "hr"
+        ? {
+            allowed_doc_types: ["expense_policy"],
+            allowed_confidentiality: ["public", "internal"],
+          }
+        : {
+            allowed_doc_types: ["10k", "10q", "8k"],
+            allowed_confidentiality: ["public"],
+          };
+  const filings = [
+    { type: "10k", label: "10-K", documents: 70 },
+    { type: "10q", label: "10-Q", documents: 9 },
+    { type: "8k", label: "8-K", documents: 5 },
+  ];
+  const library =
+    role === "hr"
+      ? {
+          documents: 0,
+          companies: 0,
+          doc_types: [],
+          requestable: [
+            {
+              key: "filings",
+              label: "SEC filings",
+              detail: "10-K, 10-Q and 8-K reports",
+              documents: 84,
+              doc_type: ["filings"],
+              confidentiality: [],
+            },
+          ],
+        }
+      : { documents: 84, companies: 32, doc_types: filings, requestable: [] };
   const user = {
     user_id: role,
     name: `Demo ${role}`,
@@ -84,6 +116,7 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
       state.signedIn = false;
       return route.fulfill({ status: 204 });
     }
+    if (path === "/v1/documents") return json(library);
     if (path === "/v1/oauth/server")
       return json({
         enabled: true,
@@ -260,10 +293,10 @@ async function mockBackend(page, { role = "analyst", mode = "answer" } = {}) {
       const id = path.split("/")[3];
       const question = request.postDataJSON().message;
       state.lastSubmitted = question;
-      const sanitized = question.replace(
-        "tejas@example.com",
-        "<EMAIL_ADDRESS>",
-      );
+      // Like the server: the access-request line is removed and personal data is masked.
+      const sanitized = question
+        .replace(/^\/escalate[^\n]*\n/, "")
+        .replace("tejas@example.com", "<EMAIL_ADDRESS>");
       state.messages = [
         { role: "user", content: sanitized, request_id: "request-test" },
       ];
@@ -536,16 +569,23 @@ test("login, sample fill, complete answer, sources, refresh and logout", async (
   await expect(
     page.getByText("$32,780 million", { exact: true }),
   ).toBeVisible();
-  await page.getByText("Request details", { exact: true }).click();
-  await expect(page.getByText("request-test", { exact: true })).toBeVisible();
-  // Server file paths are not shown; the ID is what to quote.
+  // Internal identifiers and server paths stay out of the conversation.
+  await expect(page.getByText("Request details")).toHaveCount(0);
+  await expect(page.getByText(/request-test/)).toHaveCount(0);
   await expect(page.getByText(/logs\/traces/)).toHaveCount(0);
   expect(state.submissions).toBe(1);
-  await page.getByRole("button", { name: /MICROSOFT_2016_10K.pdf/ }).click();
-  await expect(page.getByText(/original PDF is not stored/)).toBeVisible();
+  // A source whose original is not stored says so plainly; clicking it again hides the note.
+  const source = page.getByRole("button", { name: /MICROSOFT_2016_10K.pdf/ });
+  await source.click();
+  const note = page.getByText(
+    "The original document isn’t available to open right now.",
+  );
+  await expect(note).toBeVisible();
+  await expect(page.getByText(/server/i)).toHaveCount(0);
+  await source.click();
+  await expect(note).toHaveCount(0);
   await page.reload();
-  await page.getByText("Request details", { exact: true }).click();
-  await expect(page.getByText("request-test", { exact: true })).toBeVisible();
+  await expect(page.getByText("Request details")).toHaveCount(0);
   await expect(
     page.getByText("$32,780 million", { exact: true }),
   ).toBeVisible();
@@ -571,7 +611,7 @@ test("a failed request shows an error without resubmitting", async ({
   expect(state.submissions).toBe(1);
 });
 
-test("rate limits name the model and node, keep the trace link and never resubmit", async ({
+test("rate limits say plainly when to try again, without internal details, and never resubmit", async ({
   page,
 }) => {
   const state = await mockBackend(page, { mode: "rate-limit" });
@@ -581,14 +621,20 @@ test("rate limits name the model and node, keep the trace link and never resubmi
     .getByRole("button", { name: "Send question", exact: true })
     .click();
   const alert = page.getByRole("alert");
-  await expect(alert).toContainText(
-    "The answer service is busy. Try again in about 17 seconds.",
+  await expect(alert).toHaveText(
+    "The answer service is busy right now, so this question wasn’t answered. Try again in about 17 seconds.",
   );
-  await expect(alert).toContainText("Groq model openai/gpt-oss-20b");
-  await expect(alert).toContainText("rate limited at node grader");
-  await expect(alert).toContainText("17 seconds");
-  await page.getByText("Request details", { exact: true }).click();
-  await expect(page.getByText("request-limit", { exact: true })).toBeVisible();
+  // Provider, model, workflow step and request IDs are for the admin Health page and traces.
+  for (const internal of [
+    /Groq/,
+    /gpt-oss/,
+    /node/,
+    /grader/,
+    /request-/,
+    /Reference/,
+  ])
+    await expect(page.getByText(internal)).toHaveCount(0);
+  await expect(page.getByText("Request details")).toHaveCount(0);
   await page.screenshot({
     path: "../logs/rate-limit-browser.png",
     fullPage: true,
@@ -717,19 +763,89 @@ test("management cannot see approvals", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Users" })).toHaveCount(0);
 });
 
-test("HR can fill an explicit access request without submitting it", async ({
+test("each role's welcome describes what it can search", async ({ page }) => {
+  await mockBackend(page);
+  await login(page);
+  const welcome = page.locator(".welcome");
+  await expect(welcome).toContainText("32 companies");
+  await expect(welcome).toContainText("84 documents");
+  await expect(welcome).toContainText("10-K, 10-Q and 8-K reports");
+  await expect(
+    page.getByRole("button", { name: /Find a figure/ }),
+  ).toBeVisible();
+  // Analysts can already search every document there is: nothing extra to ask for.
+  await expect(page.getByText("Ask with extra access")).toHaveCount(0);
+  await expect(page.getByText(/escalate/)).toHaveCount(0);
+});
+
+test("HR, with no documents of its own, asks with extra access in plain steps", async ({
   page,
 }) => {
   const state = await mockBackend(page, { role: "hr" });
   await login(page, "hr");
-  await page
-    .getByText("Request access outside your role", { exact: true })
-    .click();
-  await page.getByRole("button", { name: "Fill example" }).click();
-  await expect(page.getByLabel("Ask a financial question")).toHaveValue(
-    /\/escalate doc_type=filings confidentiality=public\n/,
+  await expect(
+    page.getByText("Your role doesn’t have documents to search yet."),
+  ).toBeVisible();
+  // Filing examples and counts are not offered to a role that cannot search filings.
+  await expect(page.getByRole("button", { name: /Find a figure/ })).toHaveCount(
+    0,
   );
-  expect(state.submissions).toBe(0);
+  await expect(page.locator(".corpus-note")).toHaveCount(0);
+  await expect(
+    page.getByText(/escalate|doc_type|confidentiality=/),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Ask with extra access" })
+    .first()
+    .click();
+  const panel = page.getByRole("group", {
+    name: "Extra access for this question",
+  });
+  await expect(panel).toContainText("SEC filings");
+  await expect(panel).toContainText("84 documents");
+  await expect(panel.getByRole("checkbox")).toBeChecked();
+  await expect(panel).toContainText(
+    "An administrator reviews the answer before you see it.",
+  );
+  // Nothing chosen: nothing to send.
+  await page
+    .getByLabel("Ask a financial question")
+    .fill("Microsoft revenue in FY2023?");
+  await panel.getByRole("checkbox").uncheck();
+  await expect(panel).toContainText("Choose what you need access to.");
+  await expect(
+    page.getByRole("button", { name: "Send question", exact: true }),
+  ).toBeDisabled();
+  await panel.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  // The access request travels as the first line; the conversation shows only the question.
+  await expect
+    .poll(() => state.lastSubmitted)
+    .toBe("/escalate doc_type=filings\nMicrosoft revenue in FY2023?");
+  await expect(page.locator(".message.user .message-body").first()).toHaveText(
+    "Microsoft revenue in FY2023?",
+  );
+  await expect(panel).toHaveCount(0);
+});
+
+test("cancelling extra access sends an ordinary question", async ({ page }) => {
+  const state = await mockBackend(page, { role: "hr" });
+  await login(page, "hr");
+  await page
+    .getByRole("button", { name: "Ask with extra access" })
+    .last()
+    .click();
+  await page
+    .getByRole("group", { name: "Extra access for this question" })
+    .getByRole("button", { name: "Cancel" })
+    .click();
+  await page.getByLabel("Ask a financial question").fill("Travel policy?");
+  await page
+    .getByRole("button", { name: "Send question", exact: true })
+    .click();
+  await expect.poll(() => state.lastSubmitted).toBe("Travel policy?");
 });
 
 test("question display uses backend redaction and stays redacted after refresh", async ({

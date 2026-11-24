@@ -59,7 +59,7 @@ Limits worth reviewing for your budget (defaults shown):
 | `QUESTIONS_PER_HOUR` / `QUESTIONS_PER_DAY` | 60 / 300 | Questions per user to the in-app assistant |
 | `MCP_RATE_LIMIT_PER_MINUTE` | 30 | Searches and page reads per user from MCP clients |
 | `LOGIN_MAX_FAILURES` / `LOGIN_LOCKOUT_MINUTES` | 5 / 15 | Account lockout after wrong passwords |
-| `ACCESS_TOKEN_MINUTES` | 60 | Longest time a revoked session keeps working |
+| `ACCESS_TOKEN_MINUTES` | 60 | Lifetime of an access token before it is renewed (a revoked session stops at once) |
 | `MAX_CONCURRENT_QUESTIONS` | 0 (no limit) | Questions answered at once; others wait their turn. Set 1–2 on free model tiers, which refuse bursts |
 | `RERANKER_LOCAL_FALLBACK` | off in production | If Voyage reranking fails, keep the search order rather than load a 2 GB local model |
 | `SESSION_IDLE_DAYS` / `SESSION_MAX_DAYS` | 7 / 30 | When a browser or MCP client must sign in again |
@@ -120,7 +120,8 @@ Keep the `admin` account for yourself and hand out the others. Open
   https://research.example.com/mcp`, then `/mcp` → **Authenticate**, and approve in the browser.
   The **Connect Claude Code** page in the app shows the exact command.
 - To remove someone: **Users** → *Manage* → **Deactivate**. Their browser and MCP sessions end at
-  once; an access token already issued stops working within `ACCESS_TOKEN_MINUTES`.
+  once: every request checks that the account is active and the session open, so their next action
+  is refused.
 
 ## Operations
 
@@ -151,7 +152,8 @@ model. The figures appear as soon as people use the app; a restart only forgets 
 reported limits until the next question.
 
 **Tracing.** With `LANGCHAIN_TRACING_V2=true` and a `LANGCHAIN_API_KEY`, each question is a
-LangSmith run whose ID is the request ID people see under "Request details", and each MCP tool call
+LangSmith run whose ID is the request ID (a failed answer shows its first 8 characters as a reference,
+the same "Ref" the Health page lists with a link to the trace), and each MCP tool call
 is a run named `mcp.<tool>` (the caller's token is never sent). Production writes no per-question
 report files (`REQUEST_TRACE_FILES=false`); locally they are kept under `logs/traces` for debugging
 and the FinanceBench scripts.

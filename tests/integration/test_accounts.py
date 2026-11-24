@@ -291,6 +291,62 @@ async def test_admin_deactivates_and_reactivates(accounts):
         await sign_in(user)
 
 
+@pytest.mark.parametrize("action", ["deactivate", "password", "sign-out"])
+async def test_admin_actions_stop_the_access_the_user_already_holds(accounts, action):
+    """Not only renewal: the access token in the person's browser stops working on the next request."""
+    async with client() as c, client() as user:
+        held = await sign_in(user)
+        admin = await sign_in(c, "admin")
+        # Signed in: their identity loads and a document request gets past sign-in (to "not found").
+        assert (await user.get("/v1/auth/me", headers=bearer(held))).status_code == 200
+        assert (await user.get("/v1/documents/none.pdf", headers=bearer(held))).status_code == 404
+        assert (await c.post(f"/v1/admin/users/analyst/{action}", json={}, headers=bearer(admin))).status_code == 200
+        for path in ("/v1/auth/me", "/v1/documents/none.pdf"):
+            refused = await user.get(path, headers=bearer(held))
+            assert refused.status_code == 401, path
+            assert refused.json()["detail"] == "Your session has ended. Sign in again."
+        # The administrator's own session is untouched.
+        assert (await c.get("/v1/auth/me", headers=bearer(admin))).status_code == 200
+
+
+async def test_admin_ends_one_session_and_the_others_keep_working(accounts):
+    async with client() as c, client() as laptop, client() as phone:
+        on_laptop = await sign_in(laptop)
+        on_phone = await sign_in(phone)
+        mine = (await laptop.get("/v1/auth/sessions", headers=bearer(on_laptop))).json()["sessions"]
+        laptop_id = next(s["id"] for s in mine if s["current"])
+        phone_id = next(s["id"] for s in mine if not s["current"])
+        admin = await sign_in(c, "admin")
+        sessions = (await c.get("/v1/admin/users/analyst/sessions", headers=bearer(admin))).json()["sessions"]
+        assert {s["id"] for s in sessions} == {laptop_id, phone_id}
+        ended = await c.delete(f"/v1/admin/users/analyst/sessions/{laptop_id}", headers=bearer(admin))
+        assert ended.status_code == 204
+        assert (await laptop.get("/v1/auth/me", headers=bearer(on_laptop))).status_code == 401
+        assert (await laptop.post("/v1/auth/refresh")).status_code == 401
+        assert (await phone.get("/v1/auth/me", headers=bearer(on_phone))).status_code == 200
+        # A session cannot be ended through another person's account.
+        other = await c.delete(f"/v1/admin/users/finance/sessions/{phone_id}", headers=bearer(admin))
+        assert other.status_code == 404
+        assert (await phone.get("/v1/auth/me", headers=bearer(on_phone))).status_code == 200
+
+
+async def test_admin_unlocks_a_locked_account(accounts, monkeypatch):
+    monkeypatch.setattr(settings, "LOGIN_MAX_FAILURES", 2)
+    async with client() as c, client() as user:
+        admin = await sign_in(c, "admin")
+        for _ in range(2):
+            await user.post("/v1/auth/login", json={"username": "analyst", "password": "nope-nope-nope"})
+        locked = await user.post("/v1/auth/login", json={"username": "analyst", "password": PASSWORD})
+        assert locked.status_code == 429
+        listed = (await c.get("/v1/admin/users", headers=bearer(admin))).json()["users"]
+        assert next(u for u in listed if u["username"] == "analyst")["locked_until"] is not None
+        unlocked = await c.post("/v1/admin/users/analyst/unlock", headers=bearer(admin))
+        assert unlocked.status_code == 200 and unlocked.json()["user"]["locked_until"] is None
+        await sign_in(user)
+        events = [e["event"] for e in await user_store.recent_events(accounts)]
+        assert "account_unlocked" in events
+
+
 async def test_admin_creates_users_and_rejects_bad_ones(accounts):
     async with client() as c:
         admin = await sign_in(c, "admin")

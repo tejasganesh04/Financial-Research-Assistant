@@ -1,8 +1,8 @@
 """Account administration (administrators only).
 
 Changing a password, signing someone out and deactivating an account end that person's sessions
-in the web app and in MCP clients at once; access tokens already issued stop working when they
-expire (within ACCESS_TOKEN_MINUTES).
+in the web app and in MCP clients at once: every request checks the account and session, so
+access tokens already issued stop working on their next use.
 """
 
 from __future__ import annotations
@@ -14,19 +14,11 @@ from pydantic import BaseModel, Field
 
 from src.api.dependencies import client_ip, get_pool, require_admin
 from src.api.routes.auth import session_view
-from src.config.rbac_config import ROLE_PERMISSIONS
+from src.config.rbac_config import ROLE_LABELS, ROLE_PERMISSIONS
 from src.config.settings import settings
 from src.services import passwords, user_store
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-ROLE_LABELS = {
-    "analyst": "Analyst",
-    "finance": "Finance",
-    "hr": "HR",
-    "c_level": "Executive",
-    "admin": "Administrator",
-}
 
 
 class NewAccount(BaseModel):

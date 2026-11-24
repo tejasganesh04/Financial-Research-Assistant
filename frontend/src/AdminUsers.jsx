@@ -182,15 +182,14 @@ export default function AdminUsers({ me }) {
           </div>
         ) : (
           <EmptyState icon="users" title="No users yet">
-            Add the first account, or run <code>make users</code> on the server.
+            Add the first account.
           </EmptyState>
         )}
       </section>
       <p className="page-note">
         <Icon name="info" size={14} />
-        Password resets, sign-outs and deactivations end a person’s sessions
-        right away. A browser or MCP client that already holds an access token
-        keeps it until it expires, at most one hour.
+        Password resets, sign-outs and deactivations take effect right away: the
+        person’s next action in the app or their AI assistant is refused.
       </p>
 
       {selected && (

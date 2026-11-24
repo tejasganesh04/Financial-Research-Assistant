@@ -298,8 +298,9 @@ async def test_another_client_cannot_use_the_refresh_token(mcp):
 
 
 @pytest.mark.parametrize("action", ["password", "deactivate", "sign_out"])
-async def test_account_changes_stop_mcp_renewal(mcp, action):
+async def test_account_changes_stop_mcp_searches_at_once_and_renewal(mcp, action):
     client, tokens = await connect(mcp)
+    assert (await list_documents(mcp, tokens)).status_code == 200
     pool = app.state.pool
     if action == "password":
         await user_store.set_password(pool, "analyst", "a-new-long-password", actor="admin")
@@ -307,6 +308,8 @@ async def test_account_changes_stop_mcp_renewal(mcp, action):
         await user_store.set_active(pool, "analyst", False, actor="admin")
     else:
         await user_store.revoke_sessions(pool, "analyst", "signed_out_by_admin")
+    # The access token the client already holds stops working now, not when it expires.
+    assert (await list_documents(mcp, tokens)).status_code == 401
     response = await refresh(mcp, client, tokens["refresh_token"])
     assert response.status_code == 400 and response.json()["error"] == "invalid_grant"
 
@@ -330,4 +333,5 @@ async def test_users_can_disconnect_their_mcp_clients_from_the_web(mcp):
     sessions = (await mcp.get("/v1/auth/sessions", headers=headers)).json()["sessions"]
     mcp_session = next(s for s in sessions if s["kind"] == "mcp")
     assert (await mcp.delete(f"/v1/auth/sessions/{mcp_session['id']}", headers=headers)).status_code == 204
+    assert (await list_documents(mcp, tokens)).status_code == 401
     assert (await refresh(mcp, client, tokens["refresh_token"])).status_code == 400

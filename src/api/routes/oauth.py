@@ -24,7 +24,7 @@ SCOPE_DESCRIPTIONS = {
 
 def _provider():
     if not settings.MCP_ENABLED:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP connections are disabled.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connecting AI assistants is turned off.")
     from src.mcp_server.auth import provider
 
     return provider

@@ -25,7 +25,7 @@ from src.services.conversation_access import check_chat_access, conversation_wri
 from src.services.cost_tracker import RequestScopedCostHandler
 from src.services.escalation import parse_escalation
 from src.services.guardrails_service import detect_pii
-from src.services.provider_errors import rate_limit_payload
+from src.services.provider_errors import find_rate_limit
 from src.services.request_trace import RequestTrace
 from src.services.thread_service import (
     delete_thread,
@@ -161,7 +161,7 @@ async def chat(
     if checkpointer is not None:
         await check_chat_access(graph, thread_id, user.user_id)
     elif request.thread_id:
-        raise HTTPException(status_code=503, detail="Conversation history is unavailable.")
+        raise HTTPException(status_code=503, detail="Conversation history is unavailable. Try again shortly.")
     try:
         question, access_scope = parse_escalation(request.message, user.role)
     except ValueError as error:
@@ -188,20 +188,17 @@ async def chat(
                 try:
                     result = await graph.ainvoke(initial_state, config=config)
                 except Exception as e:
-                    limit = rate_limit_payload(e)
+                    limit = find_rate_limit(e)
                     if limit:
-                        trace.record("provider_limit", **{k: v for k, v in limit.items() if k != "type"})
-                        headers = {"X-Request-ID": trace.request_id, "X-Error-Code": limit["code"]}
-                        if limit["retry_after_seconds"] is not None:
-                            headers["Retry-After"] = str(limit["retry_after_seconds"])
-                        raise HTTPException(status_code=429, detail=limit["message"], headers=headers) from e
+                        trace.record("provider_limit", **limit.details())
+                        headers = {"X-Request-ID": trace.request_id, "X-Error-Code": limit.code}
+                        if limit.retry_after_seconds is not None:
+                            headers["Retry-After"] = str(limit.retry_after_seconds)
+                        raise HTTPException(status_code=429, detail=limit.public_message(), headers=headers) from e
                     logger.error(f"Graph execution failed: {e}", exc_info=True)
                     raise HTTPException(
                         status_code=503,
-                        detail=(
-                            "The answer could not be completed. "
-                            "Check service status and conversation history before retrying."
-                        ),
+                        detail=("The answer couldn't be completed. Check your saved conversation before asking again."),
                     )
 
                 # Check if graph was interrupted by HITL (via graph state, not return values)
@@ -273,18 +270,18 @@ async def chat_result(
     """Read the saved answer or approval status for the requester/Admin without executing the graph."""
     checkpointer = getattr(http_request.app.state, "checkpointer", None)
     if checkpointer is None:
-        raise HTTPException(status_code=503, detail="Result polling unavailable (no checkpointer)")
+        raise HTTPException(status_code=503, detail="Conversation history is unavailable. Try again shortly.")
 
     from src.services.thread_service import get_thread_owner_role
 
     pool = getattr(http_request.app.state, "pool", None)
     if pool is None:
-        raise HTTPException(status_code=503, detail="Conversation ownership is unavailable.")
+        raise HTTPException(status_code=503, detail="Conversation history is unavailable. Try again shortly.")
     owner, requester_role, _name, _dept = await get_thread_owner_role(pool, thread_id)
     if owner is None:
-        raise HTTPException(status_code=404, detail="Thread not found")
+        raise HTTPException(status_code=404, detail="This conversation no longer exists.")
     if owner != user.user_id and user.role != "admin":
-        raise HTTPException(status_code=403, detail="Thread belongs to a different user")
+        raise HTTPException(status_code=403, detail="This conversation isn't available to you.")
 
     graph = _get_graph(checkpointer=checkpointer)
     cfg = {"configurable": {"thread_id": thread_id}}
@@ -344,7 +341,7 @@ def _pool_or_503(http_request: Request):
     if pool is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Checkpoint store not initialized — HITL/threads disabled",
+            detail="Conversation history is unavailable. Try again shortly.",
         )
     return pool
 
@@ -518,9 +515,9 @@ async def get_thread(
 
     owner_user_id, owner_role, owner_name, owner_dept = await get_thread_owner_role(pool, thread_id)
     if owner_user_id is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This conversation no longer exists.")
     if owner_user_id != user.user_id and user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Thread belongs to a different user")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This conversation isn't available to you.")
 
     graph = getattr(http_request.app.state, "graph", None)
     if graph is None:
@@ -597,9 +594,11 @@ async def delete_thread_endpoint(
         pool = _pool_or_503(http_request)
         owner = await get_thread_owner(pool, thread_id)
         if owner is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="This conversation no longer exists.")
         if owner != user.user_id and user.role != "admin":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Thread belongs to a different user")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="This conversation isn't available to you."
+            )
 
         n = await delete_thread(pool, thread_id)
         logger.info("Deleted thread %s (%d checkpoint rows) for user %s", thread_id, n, user.user_id)
@@ -661,7 +660,7 @@ async def chat_stream(
     if checkpointer is not None:
         await check_chat_access(graph, thread_id, user.user_id)
     elif request.thread_id:
-        raise HTTPException(status_code=503, detail="Conversation history is unavailable.")
+        raise HTTPException(status_code=503, detail="Conversation history is unavailable. Try again shortly.")
     try:
         question, access_scope = parse_escalation(request.message, user.role)
     except ValueError as error:
@@ -783,7 +782,7 @@ async def chat_stream(
                 yield json.dumps(
                     {
                         "type": "final",
-                        "response": "No response generated.",
+                        "response": "No answer could be prepared for this question. Try rephrasing it.",
                         "sources": [],
                         "confidence": None,
                         "requires_approval": False,
@@ -796,16 +795,16 @@ async def chat_stream(
                 )
 
         except Exception as e:
-            limit = rate_limit_payload(e)
+            limit = find_rate_limit(e)
             if limit:
-                trace.record("provider_limit", **{k: v for k, v in limit.items() if k != "type"})
-                yield json.dumps(limit)
+                trace.record("provider_limit", **limit.details())
+                yield json.dumps(limit.payload())
                 return
             logger.error(f"Streaming graph execution failed: {e}", exc_info=True)
             yield json.dumps(
                 {
                     "type": "error",
-                    "message": "An error occurred processing your request.",
+                    "message": "The answer couldn't be completed.",
                 }
             )
 

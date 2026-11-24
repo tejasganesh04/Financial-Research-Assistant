@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from src.api.dependencies import client_ip, get_current_user
 from src.api.routes.conversations import _get_graph
-from src.config.rbac_config import ROLE_PERMISSIONS, can_approve
+from src.config.rbac_config import ROLE_LABELS, ROLE_PERMISSIONS, can_approve
 from src.graph.nodes.response_formatter import source_references
 from src.models.auth import User
 from src.services import user_store
@@ -29,7 +29,7 @@ def _pool_or_503(http_request: Request):
     if pool is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Checkpoint store not initialized — approvals disabled",
+            detail="Approvals are unavailable right now. Try again shortly.",
         )
     return pool
 
@@ -121,13 +121,13 @@ async def show_approval(
 
     owner, requester_role, requester_name, requester_dept = await get_thread_owner_role(pool, thread_id)
     if owner is None:
-        raise HTTPException(status_code=404, detail="Thread not found")
+        raise HTTPException(status_code=404, detail="This conversation no longer exists.")
 
-    if owner == user.user_id or not can_approve(user.role, requester_role or ""):
-        raise HTTPException(
-            status_code=403,
-            detail=f"Your role '{user.role}' cannot approve requests from '{requester_role}'.",
-        )
+    if owner == user.user_id:
+        raise HTTPException(status_code=403, detail="You can't approve an answer to your own question.")
+    if not can_approve(user.role, requester_role or ""):
+        label = ROLE_LABELS.get(requester_role or "", "this")
+        raise HTTPException(status_code=403, detail=f"Your role can't approve requests from {label} accounts.")
 
     graph = getattr(http_request.app.state, "graph", None)
     if graph is None:
@@ -138,10 +138,10 @@ async def show_approval(
     cfg = {"configurable": {"thread_id": thread_id}}
     gs = await graph.aget_state(cfg)
     if gs is None:
-        raise HTTPException(status_code=404, detail="Thread state unavailable")
+        raise HTTPException(status_code=404, detail="Approvals are unavailable right now. Try again shortly.")
     interrupted, payload = _is_interrupted(gs)
     if not interrupted:
-        raise HTTPException(status_code=409, detail="Thread is not awaiting approval")
+        raise HTTPException(status_code=409, detail="This conversation is not waiting for approval.")
 
     state_values = gs.values or {}
     draft = state_values.get("generated_answer") or state_values.get("final_response") or ""
@@ -167,10 +167,14 @@ async def show_approval(
         except (ValueError, TypeError):
             pass
     prior_decisions = await count_hitl_decisions_on_thread(pool, thread_id)
+    from src.api.routes.admin_health import trace_url
 
+    request_id = state_values.get("request_id")
     return {
         "thread_id": thread_id,
-        "request_id": state_values.get("request_id"),
+        "request_id": request_id,
+        # For reviewers: the whole run in LangSmith, when tracing is on.
+        "trace_url": await trace_url(request_id),
         "requester_user_id": owner,
         "requester_name": requester_name,
         "requester_department": requester_dept,
@@ -200,12 +204,12 @@ async def _decide(body: HITLDecisionRequest, request: Request, user: User, decis
     pool = getattr(request.app.state, "pool", None)
     checkpointer = getattr(request.app.state, "checkpointer", None)
     if pool is None or checkpointer is None:
-        raise HTTPException(status_code=503, detail="Approval storage is unavailable.")
+        raise HTTPException(status_code=503, detail="Approvals are unavailable right now. Try again shortly.")
 
     async with conversation_write(body.thread_id):
         owner, role, name, department = await get_thread_owner_role(pool, body.thread_id)
         if owner is None:
-            raise HTTPException(status_code=404, detail="Thread not found")
+            raise HTTPException(status_code=404, detail="This conversation no longer exists.")
         if owner == user.user_id or not can_approve(user.role, role or ""):
             raise HTTPException(status_code=403, detail="You cannot approve this request or your own answer.")
         graph = _get_graph(checkpointer=checkpointer)

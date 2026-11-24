@@ -5,6 +5,7 @@ import {
   Alert,
   Avatar,
   Badge,
+  DOC_TYPES,
   Icon,
   PageHeader,
   Spinner,
@@ -13,15 +14,6 @@ import {
   timeAgo,
 } from "./components.jsx";
 import { adoptSession } from "./session.js";
-
-const DOC_TYPES = {
-  "10k": "10-K",
-  "10q": "10-Q",
-  "8k": "8-K",
-  invoice: "Invoices",
-  expense_policy: "Expense policies",
-  board_report: "Board reports",
-};
 
 export default function Account({ user }) {
   return (
@@ -78,8 +70,8 @@ function Profile({ user }) {
         </div>
       </dl>
       <p className="muted small">
-        Your role is set by an administrator and applies in the app and in MCP
-        clients.
+        Your role is set by an administrator and applies in the app and in
+        connected AI assistants.
       </p>
     </section>
   );
@@ -106,7 +98,7 @@ function ChangePassword() {
       setNext("");
       setConfirm("");
       setNotice(
-        "Password changed. Your other browsers and MCP clients have been signed out.",
+        "Password changed. Your other browsers and AI assistants have been signed out.",
       );
     } catch (e) {
       setError(errorMessage(e));
@@ -120,8 +112,8 @@ function ChangePassword() {
       <div className="section-title">
         <h2>Password</h2>
         <p>
-          Changing it signs you out everywhere else, including connected MCP
-          clients.
+          Changing it signs you out everywhere else, including connected AI
+          assistants.
         </p>
       </div>
       <form className="stack" onSubmit={submit}>
@@ -241,8 +233,8 @@ function Sessions() {
       <div className="section-title">
         <h2>Sessions</h2>
         <p>
-          Browsers you’re signed in on and MCP clients you’ve connected, such as
-          Claude Code.
+          Browsers you’re signed in on and AI assistants you’ve connected, such
+          as Claude Code.
         </p>
       </div>
       <Alert>{error}</Alert>

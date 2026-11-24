@@ -31,8 +31,14 @@ def test_real_sdk_limit_classes_have_safe_public_messages(provider):
     public = caught.value.payload()
     assert public["status"] == 429 and public["code"] == "provider_rate_limited"
     assert public["retry_after_seconds"] == 13
-    assert "grader" in public["message"] and "configured-model" in public["message"]
-    assert "PRIVATE" not in str(public)
+    # People see plain words; the provider, model and step are kept for the trace and Health page.
+    assert public["message"].startswith("The answer service is busy right now")
+    assert not {"provider", "model", "node"} & public.keys()
+    assert "grader" not in str(public) and "configured-model" not in str(public)
+    details = caught.value.details()
+    assert details["node"] == "grader" and details["model"] == "configured-model"
+    assert "grader" in details["message"] and "configured-model" in details["message"]
+    assert "PRIVATE" not in str(public) and "PRIVATE" not in str(details)
 
 
 @pytest.mark.parametrize(
@@ -65,7 +71,8 @@ def test_http_date_retry_after_and_wrapped_exception():
 def test_usage_quota_is_not_presented_as_a_short_wait():
     public = rate_limit_payload(limit_error("openai", body={"error": {"code": "insufficient_quota"}}))
     assert public["code"] == "provider_quota_exceeded"
-    assert "billing" in public["message"] and "Wait" not in public["message"]
+    assert "usage limit" in public["message"] and "billing" not in public["message"]
+    assert "Wait" not in public["message"]
 
 
 def test_unrelated_failure_is_not_relabelled_and_normalized_error_keeps_stage():

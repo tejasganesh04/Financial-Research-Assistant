@@ -14,11 +14,13 @@ export function errorMessage(error) {
       .filter(Boolean)
       .join(" ");
   }
-  if (error.code === "ECONNABORTED")
-    return "The server took too long to respond. Check saved history before trying again.";
+  if (error.code === "ECONNABORTED") return "This took too long to respond.";
   if (error.code === "ERR_NETWORK")
-    return "Could not reach the server. Check your connection and try again.";
-  return error.message || "The request could not be completed.";
+    return "Couldn’t connect. Check your internet connection and try again.";
+  // Library messages such as "Request failed with status code 500" are not for people.
+  if (error.response || !error.message)
+    return "Something went wrong. Try again.";
+  return error.message;
 }
 
 const enc = encodeURIComponent;
@@ -80,6 +82,8 @@ export const api = {
 
   // MCP connection and consent
   mcpServer: () => data(client.get("/oauth/server")),
+  // What the signed-in role can search, and what it may ask to have opened for one answer.
+  library: () => data(client.get("/documents")),
   oauthRequest: (id) => data(client.get(`/oauth/requests/${enc(id)}`)),
   oauthDecide: (id, decision) =>
     data(client.post(`/oauth/requests/${enc(id)}/${decision}`)),

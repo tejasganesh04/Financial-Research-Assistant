@@ -289,6 +289,11 @@ class OAuthProvider:
         claims = decode_access_token(token)
         if claims is None or caller_from_claims(claims) is None:
             return None
+        # A deactivated account, a changed password or an ended connection stops searches at once.
+        if self.pool is not None and not await user_store.access_allowed(
+            self.pool, str(claims["sub"]), str(claims.get("sid") or "") or None
+        ):
+            return None
         return AccessToken(
             token=token,
             client_id=str(claims["client_id"]),

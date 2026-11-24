@@ -10,15 +10,37 @@ from src.services.rate_limit import QuotaExceeded, quota_check
 security = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(security)) -> User:
-    """Validate the bearer access token and return the authenticated user."""
+async def get_current_user(
+    request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(security)
+) -> User:
+    """Validate the bearer access token and return the authenticated user.
+
+    The account must still be active and the token's session still open, so an administrator's
+    deactivation, password reset or sign-out applies to the very next request.
+    """
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not signed in",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return decode_token(credentials.credentials)
+    user = decode_token(credentials.credentials)
+    pool = getattr(request.app.state, "pool", None)
+    if pool is not None:
+        try:
+            allowed = await user_store.access_allowed(pool, user.user_id, user.session_id)
+        except Exception as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="The account database is unavailable. Try again shortly.",
+            ) from error
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Your session has ended. Sign in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    return user
 
 
 def get_pool(request: Request):
