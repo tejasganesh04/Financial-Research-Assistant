@@ -126,6 +126,40 @@ def test_empty_search_never_probes_outside_requested_scope(scope):
     assert not blocked_response_node({"access_scope": scope})["requires_human_approval"]
 
 
+@pytest.mark.parametrize("unavailable", [True, False])
+def test_an_unreviewed_reply_to_extra_access_names_nothing_that_access_covers(unavailable):
+    """No-information replies skip Admin review, so they must not list what only the extra access covers."""
+    from src.graph.nodes import terminal_nodes
+
+    _, scope = parse_escalation("/escalate doc_type=filings\nRevenue?", "hr")
+    state = {
+        "access_scope": scope,
+        "user_role": "hr",
+        "target_companies": ["microsoft"],
+        "metadata_unavailable": unavailable,
+        "unavailable_message": "Companies you can ask about: Amazon, Microsoft.",
+        "scope_notes": ["No year was given, so the latest available filings were used: Microsoft FY2023."],
+    }
+    with patch.object(terminal_nodes, "not_found_message", side_effect=AssertionError("must not list filings")):
+        result = no_info_node(state)
+    reply = result["final_response"]
+    assert reply == (terminal_nodes.ESCALATED_UNAVAILABLE if unavailable else terminal_nodes.ESCALATED_NOT_FOUND)
+    assert "Microsoft" not in reply and "Amazon" not in reply and "FY2023" not in reply
+    assert result["messages"][0].content == reply
+    assert result["response_metadata"] == {"reason": "no_relevant_info", "sources": []}
+
+
+def test_a_request_within_the_role_still_says_what_was_searched():
+    from src.graph.nodes import terminal_nodes
+
+    _, scope = parse_escalation("/escalate doc_type=filings\nRevenue?", "analyst")
+    assert not scope["escalated"]
+    with patch.object(terminal_nodes, "not_found_message", return_value="Searched: Microsoft (FY2023 10-K).") as found:
+        result = no_info_node({"access_scope": scope, "user_role": "analyst", "target_companies": ["microsoft"]})
+    found.assert_called_once()
+    assert result["final_response"].startswith("Searched: Microsoft")
+
+
 def test_internal_request_keeps_public_access_and_does_not_mutate_role():
     from src.config.rbac_config import get_permissions
 

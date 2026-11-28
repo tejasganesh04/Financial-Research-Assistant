@@ -114,8 +114,8 @@
 <path d="M242 951 H80 V3434 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <path d="M242 3138 H80 V3434 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
 <path d="M242 3138 H80 V3434 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M1760 2465 H1850 V3434 H1026" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M1760 2465 H1850 V3434 H1026" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M1760 2494 H1850 V3434 H1026" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1760 2494 H1850 V3434 H1026" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <g class="graph-node" data-node="__start__">
 <rect x="874" y="298" width="152" height="46" rx="22" fill="#102B40" stroke="#102B40" stroke-width="1.7"/>
 <text x="950" y="328" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle"><tspan x="950" dy="0">START</tspan></text>
@@ -205,10 +205,10 @@
 <text x="782" y="2458" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Draft from evidence + recent chat</tspan><tspan x="782" dy="29">Answer the available parts</tspan><tspan x="782" dy="29">Number rules: units, year, precision</tspan><tspan x="782" dy="29">Exact calculator for arithmetic</tspan><tspan x="782" dy="29">Revision: last draft + feedback</tspan></text>
 </g>
 <g class="graph-node" data-node="no_info_response"><title>no_info_response</title>
-<rect x="1330" y="2393" width="430" height="145" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
-<rect x="1330" y="2393" width="7" height="145" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
+<rect x="1330" y="2393" width="430" height="203" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
+<rect x="1330" y="2393" width="7" height="203" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
 <text x="1352" y="2425" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="1352" dy="0">no_info_response</tspan></text>
-<text x="1352" y="2458" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">Name the filings searched, or</tspan><tspan x="1352" dy="29">the companies this user can</tspan><tspan x="1352" dy="29">ask about</tspan></text>
+<text x="1352" y="2458" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">Name the filings searched, or</tspan><tspan x="1352" dy="29">the companies this user can</tspan><tspan x="1352" dy="29">ask about</tspan><tspan x="1352" dy="29">Extra access: a plain reply that</tspan><tspan x="1352" dy="29">names nothing (not reviewed)</tspan></text>
 </g>
 <g class="graph-node" data-node="hallucination_checker"><title>hallucination_checker</title>
 <rect x="760" y="2676" width="380" height="145" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>

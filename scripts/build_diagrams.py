@@ -175,6 +175,13 @@ LIVE = {
         "Notes: calculations, left-out parts",
         "Refusal → say what was searched",
     ],
+    "no_info_response": [
+        "Name the filings searched, or",
+        "the companies this user can",
+        "ask about",
+        "Extra access: a plain reply that",
+        "names nothing (not reviewed)",
+    ],
 }
 LIVE_BEFORE_START = (
     "JWT + open session → question quota → conversation ownership → parse /escalate → "

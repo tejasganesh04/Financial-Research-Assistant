@@ -5,6 +5,15 @@ from langchain_core.messages import AIMessage
 from src.config.prompts import BLOCKED_RESPONSE, CLARIFICATION_RESPONSE, OUT_OF_SCOPE_RESPONSE
 from src.graph.nodes.response_formatter import not_found_message, scope_note
 from src.models.state import RAGState
+from src.services.escalation import is_escalated
+
+# Replies to a question asked with extra access that found nothing. They skip Admin review, so they
+# must not name the companies, years or filings that only the extra access covers.
+ESCALATED_UNAVAILABLE = (
+    "I couldn't match your question to a company and year within the extra access you requested. "
+    "Name the company, and the year if you need one, then ask again."
+)
+ESCALATED_NOT_FOUND = "I couldn't find this in the documents covered by the extra access you requested."
 
 
 def blocked_response_node(state: RAGState) -> dict:
@@ -55,6 +64,15 @@ def clarification_node(state: RAGState) -> dict:
 
 def no_info_node(state: RAGState) -> dict:
     """Report no relevant evidence in the permitted search scope. Never probe outside it."""
+    if is_escalated(state):
+        # Only an approved answer may reveal what the extra access covers.
+        answer = ESCALATED_UNAVAILABLE if state.get("metadata_unavailable") else ESCALATED_NOT_FOUND
+        return {
+            "requires_human_approval": False,
+            "messages": [AIMessage(content=answer, additional_kwargs={"request_id": state.get("request_id")})],
+            "final_response": answer,
+            "response_metadata": {"reason": "no_relevant_info", "sources": []},
+        }
     answer = not_found_message(state) + scope_note(state)
     if state.get("metadata_unavailable"):
         answer = state.get("unavailable_message") or (
