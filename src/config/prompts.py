@@ -339,7 +339,7 @@ For example:
 
 Name a company to get started."""
 
-OUT_OF_SCOPE_RESPONSE = """I answer questions about companies using their filings, such as annual and quarterly reports.
+OUT_OF_SCOPE_RESPONSE = """Your question is outside what I can help with. I answer questions about companies using their filings, such as annual and quarterly reports.
 
 Try asking about a company's reported figures, for example its revenue, margins or cash flow in a given year."""
 

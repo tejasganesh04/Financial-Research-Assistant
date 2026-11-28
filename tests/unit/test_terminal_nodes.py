@@ -121,3 +121,8 @@ class TestNoInfoNode:
     def test_works_with_empty_state(self):
         result = no_info_node({})
         assert result["final_response"] == NO_INFO_RESPONSE
+
+
+def test_out_of_scope_reply_says_the_question_is_out_of_scope():
+    reply = out_of_scope_node({})["final_response"]
+    assert reply.startswith("Your question is outside what I can help with.")
