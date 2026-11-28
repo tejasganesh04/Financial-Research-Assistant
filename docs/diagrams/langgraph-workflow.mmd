@@ -1,37 +1,39 @@
 %% Registered nodes and edges of src/graph/builder.py.
 %% The rendered PNG/SVG come from scripts/build_diagrams.py; per-version diagrams are in versions/.
+%% Before the graph starts, the API checks the JWT and open session, the question quota and conversation
+%% ownership, parses /escalate, redacts personal data (names kept) and waits for a free question slot.
 flowchart TB
   subgraph intake["01  ·  UNDERSTAND THE QUESTION"]
     direction TB
     start_node(["START"])
-    rbac_gate["rbac_gate<br/>Set allowed document types"]
-    guardrails["guardrails<br/>Prompt injection checks<br/>Resolve follow-up context"]
+    rbac_gate["rbac_gate<br/>Set allowed document types<br/>from role + explicit escalation"]
+    guardrails["guardrails<br/>Prompt injection: local LLM Guard,<br/>then a model for borderline input<br/>Resolve follow-up context"]
     router["router<br/>Classify intent and complexity<br/>Company-filings scope only"]
-    metadata_extractor["metadata_extractor<br/>Document questions only<br/>Company required · no year → latest<br/>Record unavailable companies/years"]
+    metadata_extractor["metadata_extractor<br/>Pick company + years from what this user can access<br/>Company required · no year → latest<br/>Record unavailable companies/years"]
   end
   subgraph evidence["02  ·  GATHER RELEVANT EVIDENCE"]
     direction TB
     knowledge_base[("Qdrant · financial_docs_v3<br/>64,952 chunks with context headers<br/>[Company · Filing · Page · Section · Statement · Units]<br/>3,107 near-empty chunks removed")]
-    retrieval["retrieval<br/>Question + finance terms dictionary<br/>Dense (voyage-finance-2) + BM25 keyword search<br/>100 candidates each · fused by rank (RRF) → 100"]
-    reranker["reranker<br/>Voyage rerank-2.5 (local BGE as fallback)<br/>Keep top 12"]
-    grader["grader<br/>Small model keeps relevant chunks"]
-    query_rewriter["query_rewriter<br/>Rewrite the query and search again<br/>At most 2 retries"]
+    retrieval["retrieval<br/>Question + finance terms dictionary<br/>Dense (voyage-finance-2) + BM25 keyword search<br/>Filter: access, company, year<br/>100 candidates each · fused by rank (RRF) → 100"]
+    reranker["reranker<br/>Voyage reranker · keep top 12<br/>Measured with rerank-2.5 · live site: rerank-3<br/>Fallback: local BGE (off on the live site)"]
+    grader["grader<br/>Drop other companies/years<br/>Small model keeps relevant chunks"]
+    query_rewriter["query_rewriter<br/>Rewrite using the grader's reasons<br/>At most 2 retries"]
     research_agent["research_agent<br/>Plan sub-questions → search each → check → synthesize<br/>Same search, rerank and grader inside"]
-    context_expander["context_expander<br/>Add the chunk before and after<br/>each kept chunk · size-capped"]
+    context_expander["context_expander<br/>Add the chunk before and after<br/>each kept chunk · size-capped<br/>Same access filter"]
   end
   subgraph answer["03  ·  DRAFT, VERIFY AND RELEASE"]
     direction TB
-    generator["generator<br/>Answer the available companies/years<br/>Number rules: units, year column, full precision"]
-    hallucination_checker["hallucination_checker<br/>Check grounding; retry if not grounded"]
-    hitl_gate["hitl_gate<br/>Expanded access: Admin approval"]
-    response_formatter["response_formatter<br/>Answer + source references<br/>Warning if unverified · note on anything left out"]
+    generator["generator<br/>Draft from evidence + recent chat<br/>Answer the available companies/years<br/>Number rules: units, year column, full precision<br/>Exact calculator for arithmetic<br/>Revision: last draft + checker feedback"]
+    hallucination_checker["hallucination_checker<br/>Check the draft against sources<br/>Calculations: check their inputs<br/>Failed → feedback; at most 1 revision"]
+    hitl_gate["hitl_gate<br/>Expanded scope → interrupt()<br/>Hold draft for Admin review<br/>Resume after approve / reject"]
+    response_formatter["response_formatter<br/>Answer + source references<br/>Warning if unverified<br/>Notes: calculations, anything left out<br/>Refusal → say what was searched"]
   end
   subgraph exits["OTHER COMPLETED RESPONSES"]
     direction LR
     clarification_response["clarification_response<br/>Ask the user to clarify"]
     out_of_scope_response["out_of_scope_response<br/>Return the scope limitation"]
     no_info_response["no_info_response<br/>Name the filings searched<br/>or the companies available to this user"]
-    blocked_response["blocked_response<br/>Safety refusal or reviewer rejection"]
+    blocked_response["blocked_response<br/>Safety refusal or reviewer rejection<br/>Also used when approval storage is unavailable"]
   end
   end_node(["END"])
 
@@ -59,7 +61,7 @@ flowchart TB
   hallucination_checker -->|"Not grounded;<br/>retries remain"| generator
   hallucination_checker -->|"Grounded or retries used"| hitl_gate
   hitl_gate -->|"No review needed or approved"| response_formatter
-  hitl_gate -->|"Rejected"| blocked_response
+  hitl_gate -->|"Rejected / review unavailable"| blocked_response
   response_formatter --> end_node
   blocked_response --> end_node
   clarification_response --> end_node

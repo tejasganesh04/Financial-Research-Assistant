@@ -17,11 +17,11 @@
 <tspan x="1840" dy="0">CODE-BASED MAP</tspan>
 </text>
 <text x="1840" y="95" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#D5E4ED" font-weight="400" text-anchor="end">
-<tspan x="1840" dy="0">15 NOV 2026</tspan>
+<tspan x="1840" dy="0">28 NOV 2026</tspan>
 </text>
 <rect x="50" y="180" width="1800" height="105" rx="15" fill="#F0F5F9" stroke="none" stroke-width="2"/>
 <text x="73" y="211" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#17364B" font-weight="700" text-anchor="start">
-<tspan x="73" dy="0">ENTRY · router chose intent=retrieval and complexity=research_required</tspan>
+<tspan x="73" dy="0">ENTRY · router chose research_required; metadata_extractor set the filters</tspan>
 </text>
 <text x="73" y="247" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#17364B" font-weight="400" text-anchor="start">
 <tspan x="73" dy="0">State already contains the standalone question, allowed document types, access scope and company/year filters.</tspan>
@@ -201,7 +201,7 @@
 <tspan x="1222" dy="0">C  RERANK · reranker_node()</tspan>
 </text>
 <text x="1222" y="882" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#17364B" font-weight="400" text-anchor="start">
-<tspan x="1222" dy="0">Voyage rerank-2.5 scores each passage.</tspan>
+<tspan x="1222" dy="0">Voyage reranker scores each passage.</tspan>
 <tspan x="1222" dy="29">Question = this sub-question / follow-up.</tspan>
 <tspan x="1222" dy="29">Keep up to 12 candidates.</tspan>
 </text>
@@ -308,7 +308,7 @@
 </text>
 <text x="75" y="2634" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#567080" font-weight="400" text-anchor="start">
 <tspan x="75" dy="0">Solid arrows show execution order. Dashed helper-call arrow expands ordinary Python work; it is not another graph edge.</tspan>
-<tspan x="75" dy="29">Model names reflect the current Groq-only setup. Benchmark profile: gpt-5.4-mini for planning/grading/checks; gpt-5.4 for synthesis.</tspan>
+<tspan x="75" dy="29">Model names reflect the Groq-only setup. Benchmark: gpt-5.4-mini plans, grades, checks; gpt-5.4 synthesizes. Reranker: rerank-2.5 measured, rerank-3 live.</tspan>
 <tspan x="75" dy="29">Local collections stay inside this function until return. Empty-question return contains only relevant_chunks=[] and agent_synthesis=None.</tspan>
 <tspan x="75" dy="29">Source: research_agent.py, retrieval.py, reranker.py, grader.py, prompts.py, llm_factory.py and builder.py. No API calls were made.</tspan>
 </text>

@@ -2,7 +2,7 @@
 %% Dashed links point to the expanded helper, not additional graph edges.
 %% Current model names assume FORCE_GROQ_ONLY=true.
 flowchart TB
-  entry["router selects research_required<br/>Question, permissions and metadata already in state"]
+  entry["router chose research_required; metadata_extractor set the filters<br/>Question, permissions and metadata already in state"]
   subgraph research["ONE LANGGRAPH NODE: research_agent_node(state)"]
     direction TB
     input{"Working question exists?"}
@@ -34,8 +34,8 @@ flowchart TB
     direction TB
     copy["Copy parent state<br/>retrieval_query = sub-question / follow-up<br/>Keep original contextualized_query and all access/company/year filters"]
     retrieve["retrieval_node()<br/>Voyage dense embedding + BM25 → Qdrant<br/>Sub-question + finance terms; up to 100 candidates"]
-    rerank["reranker_node()<br/>Voyage rerank-2.5 scores against sub-question<br/>Local BGE as fallback · keep up to 12"]
-    grade["grader_node()<br/>GPT-OSS 20B grades against ORIGINAL question<br/>Useful partial evidence can pass"]
+    rerank["reranker_node()<br/>Voyage reranker scores against sub-question<br/>rerank-2.5 measured · rerank-3 live · keep up to 12"]
+    grade["grader_node()<br/>Drop other companies/years, then GPT-OSS 20B<br/>grades against ORIGINAL question<br/>Useful partial evidence can pass"]
     accepted["Return 0–12 relevant chunks to calling loop"]
     copy --> retrieve
     retrieve -->|Candidates exist| rerank

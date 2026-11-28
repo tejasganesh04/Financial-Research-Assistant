@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 3228" width="1900" height="3228" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 3518" width="1900" height="3518" role="img">
 <title>Financial Research Assistant: LangGraph workflow</title>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="context-stroke"/></marker></defs>
-<rect x="0" y="0" width="1900" height="3228" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<rect x="0" y="0" width="1900" height="3518" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
 <rect x="0" y="0" width="1900" height="166" rx="0" fill="#102B40" stroke="none" stroke-width="1.7"/>
 <text x="66" y="48" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" fill="#9BD8CA" text-anchor="start"><tspan x="66" dy="0">FINANCIAL RESEARCH ASSISTANT</tspan></text>
 <text x="66" y="101" font-family="Arial, Helvetica, sans-serif" font-size="43" font-weight="700" fill="#FFFFFF" text-anchor="start"><tspan x="66" dy="0">The graph, from question to release</tspan></text>
@@ -10,112 +10,112 @@
 <text x="1830" y="112" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="400" fill="#C4D6E2" text-anchor="end"><tspan x="1830" dy="0">+ START / END</tspan></text>
 <rect x="62" y="194" width="1776" height="74" rx="12" fill="#F1F5F8" stroke="none" stroke-width="1.7"/>
 <text x="86" y="224" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" fill="#33546B" text-anchor="start"><tspan x="86" dy="0">BEFORE START · FASTAPI</tspan></text>
-<text x="86" y="251" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="400" fill="#344D60" text-anchor="start"><tspan x="86" dy="0">JWT + conversation ownership → parse /escalate → redact personal data (names kept) → prepare state and trace</tspan></text>
-<rect x="46" y="352" width="1808" height="825" rx="20" fill="#F7F9FD" stroke="none" stroke-width="1.7"/>
+<text x="86" y="251" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#344D60" text-anchor="start"><tspan x="86" dy="0">JWT + open session → question quota → conversation ownership → parse /escalate → redact personal data (names kept) → wait for a slot → state and trace</tspan></text>
+<rect x="46" y="352" width="1808" height="883" rx="20" fill="#F7F9FD" stroke="none" stroke-width="1.7"/>
 <text x="178" y="384" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="178" dy="0">01</tspan></text>
 <text x="224" y="384" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="224" dy="0">UNDERSTAND THE QUESTION</tspan></text>
-<rect x="46" y="1232" width="1808" height="887" rx="20" fill="#F2F9F6" stroke="none" stroke-width="1.7"/>
-<text x="178" y="1264" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="178" dy="0">02</tspan></text>
-<text x="224" y="1264" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="224" dy="0">GATHER EVIDENCE</tspan></text>
-<rect x="46" y="2149" width="1808" height="901" rx="20" fill="#F7F8FC" stroke="none" stroke-width="1.7"/>
-<text x="178" y="2181" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="178" dy="0">03</tspan></text>
-<text x="224" y="2181" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="224" dy="0">DRAFT, VERIFY, RELEASE</tspan></text>
+<rect x="46" y="1290" width="1808" height="1003" rx="20" fill="#F2F9F6" stroke="none" stroke-width="1.7"/>
+<text x="178" y="1322" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="178" dy="0">02</tspan></text>
+<text x="224" y="1322" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="224" dy="0">GATHER EVIDENCE</tspan></text>
+<rect x="46" y="2323" width="1808" height="1017" rx="20" fill="#F7F8FC" stroke="none" stroke-width="1.7"/>
+<text x="178" y="2355" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="178" dy="0">03</tspan></text>
+<text x="224" y="2355" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#57738A" text-anchor="start"><tspan x="224" dy="0">DRAFT, VERIFY, RELEASE</tspan></text>
 <path d="M950 345 V405" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
 <path d="M950 345 V405" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <path d="M950 521 V581" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
 <path d="M950 521 V581" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M760 636 H152 V2865 H242" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M760 636 H152 V2865 H242" fill="none" stroke="#B87965" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M760 636 H152 V3126 H242" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M760 636 H152 V3126 H242" fill="none" stroke="#B87965" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <rect x="161" y="661" width="145.6" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
 <text x="168" y="682" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="168" dy="0">Safety check</tspan><tspan x="168" dy="25">blocked</tspan></text>
-<path d="M950 697 V767" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 697 V767" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="968" y="717" width="70.0" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="975" y="738" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Clean</tspan></text>
-<path d="M950 883 V963" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 883 V963" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="968" y="895" width="167.2" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="975" y="916" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Question about</tspan><tspan x="975" dy="25">a company</tspan></text>
-<path d="M1140 1008 H1810 V2149 H1700 V2219" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M1140 1008 H1810 V2149 H1700 V2219" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="1240" y="965" width="199.6" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="1247" y="986" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1247" dy="0">No usable company</tspan><tspan x="1247" dy="25">or year</tspan></text>
-<path d="M760 812 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M760 812 H602" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="612" y="727" width="124.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="619" y="748" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="619" dy="0">Greeting /</tspan><tspan x="619" dy="25">unclear</tspan></text>
-<path d="M760 842 H690 V924 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M760 842 H690 V924 H602" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="612" y="970" width="145.6" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="619" y="991" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="619" dy="0">Out of scope</tspan></text>
-<path d="M1140 1107 H1545 V1307" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M1140 1107 H1545 V1307" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="1220" y="1069" width="199.6" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="1227" y="1090" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1227" dy="0">Research required</tspan></text>
-<path d="M950 1137 V1307" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 1137 V1307" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="968" y="1207" width="156.4" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="975" y="1228" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Simple lookup</tspan></text>
-<path d="M622 1367 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M622 1367 H760" fill="none" stroke="#69AC94" stroke-width="2.6" stroke-linejoin="round" stroke-dasharray="6 6"/>
-<path d="M950 1481 V1541" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 1481 V1541" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M950 1686 V1756" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 1686 V1756" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M760 1811 H437 V1667" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M760 1811 H437 V1667" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="452" y="1679" width="232.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="459" y="1700" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="459" dy="0">Too little evidence;</tspan><tspan x="459" dy="25">retries remain</tspan></text>
-<path d="M602 1591 H690 V1451 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M602 1591 H690 V1451 H760" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="312" y="1511" width="145.6" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="319" y="1532" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="319" dy="0">Search again</tspan></text>
-<path d="M950 1843 V1933" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 1843 V1933" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="968" y="1860" width="178.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="975" y="1881" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Enough relevant</tspan><tspan x="975" dy="25">evidence</tspan></text>
-<path d="M1140 1816 H1265 V2279 H1330" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M1140 1816 H1265 V2279 H1330" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="1275" y="2124" width="134.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="1282" y="2145" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1282" dy="0">Retry limit</tspan><tspan x="1282" dy="25">reached</tspan></text>
-<path d="M1330 1441 H1202 V1991 H1140" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M1330 1441 H1202 V1991 H1140" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="1212" y="1471" width="113.2" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="1219" y="1492" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1219" dy="0">Evidence</tspan><tspan x="1219" dy="25">collected</tspan></text>
-<path d="M1545 1481 V2219" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M1545 1481 V2219" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="1560" y="1511" width="134.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="1567" y="1532" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1567" dy="0">No relevant</tspan><tspan x="1567" dy="25">evidence</tspan></text>
-<path d="M950 2049 V2219" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 2049 V2219" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M950 2364 V2444" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 2364 V2444" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M760 2499 H672 V2274 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M760 2499 H672 V2274 H760" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="440" y="2376" width="199.6" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="447" y="2397" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="447" dy="0">Check not passed;</tspan><tspan x="447" dy="25">retries remain</tspan></text>
-<path d="M950 2560 V2650" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 2560 V2650" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="968" y="2577" width="199.6" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="975" y="2598" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Passed OR</tspan><tspan x="975" dy="25">retries exhausted</tspan></text>
-<path d="M950 2795 V2865" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 2795 V2865" fill="none" stroke="#8760B2" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="968" y="2802" width="188.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="975" y="2823" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">No review needed</tspan><tspan x="975" dy="25">OR approved</tspan></text>
-<path d="M760 2725 H672 V2905 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M760 2725 H672 V2905 H602" fill="none" stroke="#8760B2" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<rect x="420" y="2740" width="210.4" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
-<text x="427" y="2761" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="427" dy="0">Rejected /</tspan><tspan x="427" dy="25">review unavailable</tspan></text>
-<path d="M950 3010 V3120" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M950 3010 V3120" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M242 810 H80 V3144 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M242 810 H80 V3144 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M242 922 H80 V3144 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M242 922 H80 V3144 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M242 2877 H80 V3144 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M242 2877 H80 V3144 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
-<path d="M1760 2291 H1850 V3144 H1026" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
-<path d="M1760 2291 H1850 V3144 H1026" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M950 726 V796" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 726 V796" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="968" y="746" width="70.0" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="767" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Clean</tspan></text>
+<path d="M950 912 V992" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 912 V992" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="968" y="924" width="167.2" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="945" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Question about</tspan><tspan x="975" dy="25">a company</tspan></text>
+<path d="M1140 1037 H1810 V2323 H1700 V2393" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1140 1037 H1810 V2323 H1700 V2393" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1240" y="994" width="199.6" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1247" y="1015" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1247" dy="0">No usable company</tspan><tspan x="1247" dy="25">or year</tspan></text>
+<path d="M760 841 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M760 841 H602" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="612" y="756" width="124.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="619" y="777" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="619" dy="0">Greeting /</tspan><tspan x="619" dy="25">unclear</tspan></text>
+<path d="M760 871 H690 V953 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M760 871 H690 V953 H602" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="612" y="999" width="145.6" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="619" y="1020" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="619" dy="0">Out of scope</tspan></text>
+<path d="M1140 1165 H1545 V1365" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1140 1165 H1545 V1365" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1220" y="1127" width="199.6" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1227" y="1148" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1227" dy="0">Research required</tspan></text>
+<path d="M950 1195 V1365" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 1195 V1365" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="968" y="1265" width="156.4" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="1286" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Simple lookup</tspan></text>
+<path d="M622 1425 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M622 1425 H760" fill="none" stroke="#69AC94" stroke-width="2.6" stroke-linejoin="round" stroke-dasharray="6 6"/>
+<path d="M950 1568 V1628" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 1568 V1628" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M950 1802 V1872" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 1802 V1872" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M760 1927 H437 V1725" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M760 1927 H437 V1725" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="452" y="1737" width="232.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="459" y="1758" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="459" dy="0">Too little evidence;</tspan><tspan x="459" dy="25">retries remain</tspan></text>
+<path d="M602 1649 H690 V1538 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M602 1649 H690 V1538 H760" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="312" y="1569" width="145.6" height="31" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="319" y="1590" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="319" dy="0">Search again</tspan></text>
+<path d="M950 1988 V2078" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 1988 V2078" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="968" y="2005" width="178.0" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="2026" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Enough relevant</tspan><tspan x="975" dy="25">evidence</tspan></text>
+<path d="M1140 1932 H1265 V2453 H1330" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1140 1932 H1265 V2453 H1330" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1275" y="2298" width="134.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1282" y="2319" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1282" dy="0">Retry limit</tspan><tspan x="1282" dy="25">reached</tspan></text>
+<path d="M1330 1499 H1202 V2150 H1140" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1330 1499 H1202 V2150 H1140" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1212" y="1529" width="113.2" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1219" y="1550" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1219" dy="0">Evidence</tspan><tspan x="1219" dy="25">collected</tspan></text>
+<path d="M1545 1539 V2393" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1545 1539 V2393" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1560" y="1569" width="134.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="1567" y="1590" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="1567" dy="0">No relevant</tspan><tspan x="1567" dy="25">evidence</tspan></text>
+<path d="M950 2223 V2393" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 2223 V2393" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M950 2596 V2676" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 2596 V2676" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M760 2731 H672 V2448 H760" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M760 2731 H672 V2448 H760" fill="none" stroke="#398A72" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="440" y="2608" width="199.6" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="447" y="2629" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="447" dy="0">Check not passed;</tspan><tspan x="447" dy="25">retries remain</tspan></text>
+<path d="M950 2821 V2911" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 2821 V2911" fill="none" stroke="#607F95" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="968" y="2838" width="199.6" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="2859" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">Passed OR</tspan><tspan x="975" dy="25">retries exhausted</tspan></text>
+<path d="M950 3056 V3126" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 3056 V3126" fill="none" stroke="#8760B2" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="968" y="3063" width="188.8" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="975" y="3084" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="975" dy="0">No review needed</tspan><tspan x="975" dy="25">OR approved</tspan></text>
+<path d="M760 2986 H672 V3166 H602" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M760 2986 H672 V3166 H602" fill="none" stroke="#8760B2" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="420" y="3001" width="210.4" height="56" rx="5" fill="#FFFFFF" stroke="none" stroke-width="1.7"/>
+<text x="427" y="3022" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="400" fill="#405D71" text-anchor="start"><tspan x="427" dy="0">Rejected /</tspan><tspan x="427" dy="25">review unavailable</tspan></text>
+<path d="M950 3300 V3410" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M950 3300 V3410" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M242 839 H80 V3434 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M242 839 H80 V3434 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M242 951 H80 V3434 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M242 951 H80 V3434 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M242 3138 H80 V3434 H874" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M242 3138 H80 V3434 H874" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M1760 2465 H1850 V3434 H1026" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round"/>
+<path d="M1760 2465 H1850 V3434 H1026" fill="none" stroke="#93A5B4" stroke-width="2.6" stroke-linejoin="round" marker-end="url(#arrow)"/>
 <g class="graph-node" data-node="__start__">
 <rect x="874" y="298" width="152" height="46" rx="22" fill="#102B40" stroke="#102B40" stroke-width="1.7"/>
 <text x="950" y="328" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle"><tspan x="950" dy="0">START</tspan></text>
@@ -127,116 +127,116 @@
 <text x="782" y="470" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Set allowed document types</tspan><tspan x="782" dy="29">from role + explicit escalation</tspan></text>
 </g>
 <g class="graph-node" data-node="guardrails"><title>guardrails</title>
-<rect x="760" y="581" width="380" height="116" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
-<rect x="760" y="581" width="7" height="116" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
+<rect x="760" y="581" width="380" height="145" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
+<rect x="760" y="581" width="7" height="145" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
 <text x="782" y="613" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">guardrails</tspan></text>
-<text x="782" y="646" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Prompt injection checks</tspan><tspan x="782" dy="29">Resolve follow-up context</tspan></text>
+<text x="782" y="646" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Prompt injection: local LLM Guard,</tspan><tspan x="782" dy="29">then a model for borderline input</tspan><tspan x="782" dy="29">Resolve follow-up context</tspan></text>
 </g>
 <g class="graph-node" data-node="router"><title>router</title>
-<rect x="760" y="767" width="380" height="116" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
-<rect x="760" y="767" width="7" height="116" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
-<text x="782" y="799" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">router</tspan></text>
-<text x="782" y="832" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Choose intent + complexity</tspan><tspan x="782" dy="29">Company filings only</tspan></text>
+<rect x="760" y="796" width="380" height="116" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
+<rect x="760" y="796" width="7" height="116" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
+<text x="782" y="828" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">router</tspan></text>
+<text x="782" y="861" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Choose intent + complexity</tspan><tspan x="782" dy="29">Company filings only</tspan></text>
 </g>
 <g class="graph-node" data-node="metadata_extractor"><title>metadata_extractor</title>
-<rect x="760" y="963" width="380" height="174" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
-<rect x="760" y="963" width="7" height="174" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
-<text x="782" y="995" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">metadata_extractor</tspan></text>
-<text x="782" y="1028" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Company questions only</tspan><tspan x="782" dy="29">Company required; no year →</tspan><tspan x="782" dy="29">latest available year</tspan><tspan x="782" dy="29">Record what is unavailable</tspan></text>
+<rect x="760" y="992" width="380" height="203" rx="14" fill="#EAF1FC" stroke="#9AB5D9" stroke-width="1.7"/>
+<rect x="760" y="992" width="7" height="203" rx="3" fill="#9AB5D9" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1024" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#264E75" text-anchor="start"><tspan x="782" dy="0">metadata_extractor</tspan></text>
+<text x="782" y="1057" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Pick company + years from what</tspan><tspan x="782" dy="29">this user can access</tspan><tspan x="782" dy="29">Company required; no year →</tspan><tspan x="782" dy="29">latest available year</tspan><tspan x="782" dy="29">Record what is unavailable</tspan></text>
 </g>
 <g class="graph-node" data-node="clarification_response"><title>clarification_response</title>
-<rect x="242" y="767" width="360" height="87" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
-<rect x="242" y="767" width="7" height="87" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
-<text x="264" y="799" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="264" dy="0">clarification_response</tspan></text>
-<text x="264" y="832" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Ask the user to clarify</tspan></text>
+<rect x="242" y="796" width="360" height="87" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
+<rect x="242" y="796" width="7" height="87" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
+<text x="264" y="828" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="264" dy="0">clarification_response</tspan></text>
+<text x="264" y="861" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Ask the user to clarify</tspan></text>
 </g>
 <g class="graph-node" data-node="out_of_scope_response"><title>out_of_scope_response</title>
-<rect x="242" y="879" width="360" height="87" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
-<rect x="242" y="879" width="7" height="87" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
-<text x="264" y="911" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="264" dy="0">out_of_scope_response</tspan></text>
-<text x="264" y="944" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Explain the scope limitation</tspan></text>
+<rect x="242" y="908" width="360" height="87" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
+<rect x="242" y="908" width="7" height="87" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
+<text x="264" y="940" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="264" dy="0">out_of_scope_response</tspan></text>
+<text x="264" y="973" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Explain the scope limitation</tspan></text>
 </g>
 <g class="graph-node" data-node="retrieval"><title>retrieval</title>
-<rect x="760" y="1307" width="380" height="174" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
-<rect x="760" y="1307" width="7" height="174" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
-<text x="782" y="1339" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">retrieval</tspan></text>
-<text x="782" y="1372" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Question + finance terms</tspan><tspan x="782" dy="29">Meaning (voyage-finance-2) +</tspan><tspan x="782" dy="29">keyword (BM25) search</tspan><tspan x="782" dy="29">100 each, fused by rank → 100</tspan></text>
+<rect x="760" y="1365" width="380" height="203" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="760" y="1365" width="7" height="203" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1397" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">retrieval</tspan></text>
+<text x="782" y="1430" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Question + finance terms</tspan><tspan x="782" dy="29">Meaning (voyage-finance-2) +</tspan><tspan x="782" dy="29">keyword (BM25) search</tspan><tspan x="782" dy="29">Filter: access, company, year</tspan><tspan x="782" dy="29">100 each, fused by rank → 100</tspan></text>
 </g>
 <g class="graph-node" data-node="reranker"><title>reranker</title>
-<rect x="760" y="1541" width="380" height="145" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
-<rect x="760" y="1541" width="7" height="145" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
-<text x="782" y="1573" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">reranker</tspan></text>
-<text x="782" y="1606" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Voyage rerank-2.5</tspan><tspan x="782" dy="29">Local BGE as fallback</tspan><tspan x="782" dy="29">Keep top 12</tspan></text>
+<rect x="760" y="1628" width="380" height="174" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="760" y="1628" width="7" height="174" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1660" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">reranker</tspan></text>
+<text x="782" y="1693" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Voyage reranker · keep top 12</tspan><tspan x="782" dy="29">Measured with rerank-2.5</tspan><tspan x="782" dy="29">Live site: rerank-3</tspan><tspan x="782" dy="29">Fallback: local BGE (off live)</tspan></text>
 </g>
 <g class="graph-node" data-node="grader"><title>grader</title>
-<rect x="760" y="1756" width="380" height="87" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
-<rect x="760" y="1756" width="7" height="87" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
-<text x="782" y="1788" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">grader</tspan></text>
-<text x="782" y="1821" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Small model keeps relevant chunks</tspan></text>
+<rect x="760" y="1872" width="380" height="116" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="760" y="1872" width="7" height="116" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="782" y="1904" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">grader</tspan></text>
+<text x="782" y="1937" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Drop other companies/years</tspan><tspan x="782" dy="29">Small model keeps relevant chunks</tspan></text>
 </g>
 <g class="graph-node" data-node="knowledge_base"><title>Qdrant knowledge base</title>
-<rect x="222" y="1307" width="400" height="174" rx="14" fill="#FFFFFF" stroke="#69AC94" stroke-width="1.7" stroke-dasharray="8 6"/>
-<rect x="222" y="1307" width="7" height="174" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
-<text x="244" y="1339" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="244" dy="0">Qdrant knowledge base</tspan></text>
-<text x="244" y="1372" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="244" dy="0">financial_docs_v3: 64,952 chunks</tspan><tspan x="244" dy="29">Each starts with [Company · Filing</tspan><tspan x="244" dy="29">· Page · Section · Statement · Units]</tspan><tspan x="244" dy="29">3,107 near-empty chunks removed</tspan></text>
+<rect x="222" y="1365" width="400" height="174" rx="14" fill="#FFFFFF" stroke="#69AC94" stroke-width="1.7" stroke-dasharray="8 6"/>
+<rect x="222" y="1365" width="7" height="174" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="244" y="1397" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="244" dy="0">Qdrant knowledge base</tspan></text>
+<text x="244" y="1430" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="244" dy="0">financial_docs_v3: 64,952 chunks</tspan><tspan x="244" dy="29">Each starts with [Company · Filing</tspan><tspan x="244" dy="29">· Page · Section · Statement · Units]</tspan><tspan x="244" dy="29">3,107 near-empty chunks removed</tspan></text>
 </g>
 <g class="graph-node" data-node="query_rewriter"><title>query_rewriter</title>
-<rect x="242" y="1551" width="360" height="116" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
-<rect x="242" y="1551" width="7" height="116" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
-<text x="264" y="1583" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="264" dy="0">query_rewriter</tspan></text>
-<text x="264" y="1616" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Rewrite the search query</tspan><tspan x="264" dy="29">At most 2 retries</tspan></text>
+<rect x="242" y="1609" width="360" height="116" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="242" y="1609" width="7" height="116" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="264" y="1641" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="264" dy="0">query_rewriter</tspan></text>
+<text x="264" y="1674" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Rewrite using the grader&#x27;s reasons</tspan><tspan x="264" dy="29">At most 2 retries</tspan></text>
 </g>
 <g class="graph-node" data-node="research_agent"><title>research_agent</title>
-<rect x="1330" y="1307" width="430" height="174" rx="14" fill="#FFF3D8" stroke="#D7AE50" stroke-width="1.7"/>
-<rect x="1330" y="1307" width="7" height="174" rx="3" fill="#D7AE50" stroke="none" stroke-width="1.7"/>
-<text x="1352" y="1339" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#765419" text-anchor="start"><tspan x="1352" dy="0">research_agent</tspan></text>
-<text x="1352" y="1372" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">Split into sub-questions</tspan><tspan x="1352" dy="29">Search → rerank → grade each</tspan><tspan x="1352" dy="29">Check gaps; bounded follow-ups</tspan><tspan x="1352" dy="29">Synthesize the findings</tspan></text>
+<rect x="1330" y="1365" width="430" height="174" rx="14" fill="#FFF3D8" stroke="#D7AE50" stroke-width="1.7"/>
+<rect x="1330" y="1365" width="7" height="174" rx="3" fill="#D7AE50" stroke="none" stroke-width="1.7"/>
+<text x="1352" y="1397" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#765419" text-anchor="start"><tspan x="1352" dy="0">research_agent</tspan></text>
+<text x="1352" y="1430" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">Split into sub-questions</tspan><tspan x="1352" dy="29">Search → rerank → grade each</tspan><tspan x="1352" dy="29">Check gaps; bounded follow-ups</tspan><tspan x="1352" dy="29">Synthesize the findings</tspan></text>
 </g>
 <g class="graph-node" data-node="context_expander"><title>context_expander</title>
-<rect x="760" y="1933" width="380" height="116" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
-<rect x="760" y="1933" width="7" height="116" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
-<text x="782" y="1965" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">context_expander</tspan></text>
-<text x="782" y="1998" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Add the chunk before and after</tspan><tspan x="782" dy="29">each kept chunk (size-capped)</tspan></text>
+<rect x="760" y="2078" width="380" height="145" rx="14" fill="#E2F3EC" stroke="#69AC94" stroke-width="1.7"/>
+<rect x="760" y="2078" width="7" height="145" rx="3" fill="#69AC94" stroke="none" stroke-width="1.7"/>
+<text x="782" y="2110" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#165D48" text-anchor="start"><tspan x="782" dy="0">context_expander</tspan></text>
+<text x="782" y="2143" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Add the chunk before and after</tspan><tspan x="782" dy="29">each kept chunk (size-capped)</tspan><tspan x="782" dy="29">Same access filter</tspan></text>
 </g>
 <g class="graph-node" data-node="generator"><title>generator</title>
-<rect x="760" y="2219" width="380" height="145" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
-<rect x="760" y="2219" width="7" height="145" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
-<text x="782" y="2251" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">generator</tspan></text>
-<text x="782" y="2284" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Draft from relevant evidence</tspan><tspan x="782" dy="29">Answer the available parts</tspan><tspan x="782" dy="29">Number rules: units, year, precision</tspan></text>
+<rect x="760" y="2393" width="380" height="203" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
+<rect x="760" y="2393" width="7" height="203" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
+<text x="782" y="2425" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">generator</tspan></text>
+<text x="782" y="2458" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Draft from evidence + recent chat</tspan><tspan x="782" dy="29">Answer the available parts</tspan><tspan x="782" dy="29">Number rules: units, year, precision</tspan><tspan x="782" dy="29">Exact calculator for arithmetic</tspan><tspan x="782" dy="29">Revision: last draft + feedback</tspan></text>
 </g>
 <g class="graph-node" data-node="no_info_response"><title>no_info_response</title>
-<rect x="1330" y="2219" width="430" height="145" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
-<rect x="1330" y="2219" width="7" height="145" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
-<text x="1352" y="2251" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="1352" dy="0">no_info_response</tspan></text>
-<text x="1352" y="2284" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">Name the filings searched, or</tspan><tspan x="1352" dy="29">the companies this user can</tspan><tspan x="1352" dy="29">ask about</tspan></text>
+<rect x="1330" y="2393" width="430" height="145" rx="14" fill="#F0F3F6" stroke="#B5C3CE" stroke-width="1.7"/>
+<rect x="1330" y="2393" width="7" height="145" rx="3" fill="#B5C3CE" stroke="none" stroke-width="1.7"/>
+<text x="1352" y="2425" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#455E71" text-anchor="start"><tspan x="1352" dy="0">no_info_response</tspan></text>
+<text x="1352" y="2458" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="1352" dy="0">Name the filings searched, or</tspan><tspan x="1352" dy="29">the companies this user can</tspan><tspan x="1352" dy="29">ask about</tspan></text>
 </g>
 <g class="graph-node" data-node="hallucination_checker"><title>hallucination_checker</title>
-<rect x="760" y="2444" width="380" height="116" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
-<rect x="760" y="2444" width="7" height="116" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
-<text x="782" y="2476" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">hallucination_checker</tspan></text>
-<text x="782" y="2509" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Check support in the evidence</tspan><tspan x="782" dy="29">Update generation retry count</tspan></text>
+<rect x="760" y="2676" width="380" height="145" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
+<rect x="760" y="2676" width="7" height="145" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
+<text x="782" y="2708" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">hallucination_checker</tspan></text>
+<text x="782" y="2741" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Check the draft against sources</tspan><tspan x="782" dy="29">Calculations: check their inputs</tspan><tspan x="782" dy="29">Failed → feedback; 1 revision max</tspan></text>
 </g>
 <g class="graph-node" data-node="hitl_gate"><title>hitl_gate</title>
-<rect x="760" y="2650" width="380" height="145" rx="14" fill="#EEE5FA" stroke="#A385C6" stroke-width="1.7"/>
-<rect x="760" y="2650" width="7" height="145" rx="3" fill="#A385C6" stroke="none" stroke-width="1.7"/>
-<text x="782" y="2682" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#5F3F81" text-anchor="start"><tspan x="782" dy="0">hitl_gate</tspan></text>
-<text x="782" y="2715" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Expanded scope → interrupt()</tspan><tspan x="782" dy="29">Hold draft for Admin review</tspan><tspan x="782" dy="29">Resume after approve / reject</tspan></text>
+<rect x="760" y="2911" width="380" height="145" rx="14" fill="#EEE5FA" stroke="#A385C6" stroke-width="1.7"/>
+<rect x="760" y="2911" width="7" height="145" rx="3" fill="#A385C6" stroke="none" stroke-width="1.7"/>
+<text x="782" y="2943" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#5F3F81" text-anchor="start"><tspan x="782" dy="0">hitl_gate</tspan></text>
+<text x="782" y="2976" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Expanded scope → interrupt()</tspan><tspan x="782" dy="29">Hold draft for Admin review</tspan><tspan x="782" dy="29">Resume after approve / reject</tspan></text>
 </g>
 <g class="graph-node" data-node="blocked_response"><title>blocked_response</title>
-<rect x="242" y="2805" width="360" height="145" rx="14" fill="#FCECE7" stroke="#CE9C8D" stroke-width="1.7"/>
-<rect x="242" y="2805" width="7" height="145" rx="3" fill="#CE9C8D" stroke="none" stroke-width="1.7"/>
-<text x="264" y="2837" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#8C4B36" text-anchor="start"><tspan x="264" dy="0">blocked_response</tspan></text>
-<text x="264" y="2870" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Safety refusal OR review rejection</tspan><tspan x="264" dy="29">Also used when approval</tspan><tspan x="264" dy="29">storage is unavailable</tspan></text>
+<rect x="242" y="3066" width="360" height="145" rx="14" fill="#FCECE7" stroke="#CE9C8D" stroke-width="1.7"/>
+<rect x="242" y="3066" width="7" height="145" rx="3" fill="#CE9C8D" stroke="none" stroke-width="1.7"/>
+<text x="264" y="3098" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#8C4B36" text-anchor="start"><tspan x="264" dy="0">blocked_response</tspan></text>
+<text x="264" y="3131" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="264" dy="0">Safety refusal OR review rejection</tspan><tspan x="264" dy="29">Also used when approval</tspan><tspan x="264" dy="29">storage is unavailable</tspan></text>
 </g>
 <g class="graph-node" data-node="response_formatter"><title>response_formatter</title>
-<rect x="760" y="2865" width="380" height="145" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
-<rect x="760" y="2865" width="7" height="145" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
-<text x="782" y="2897" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">response_formatter</tspan></text>
-<text x="782" y="2930" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Final answer + source references</tspan><tspan x="782" dy="29">Warning if unverified</tspan><tspan x="782" dy="29">Note on anything left out</tspan></text>
+<rect x="760" y="3126" width="380" height="174" rx="14" fill="#E7F0FC" stroke="#8AAED4" stroke-width="1.7"/>
+<rect x="760" y="3126" width="7" height="174" rx="3" fill="#8AAED4" stroke="none" stroke-width="1.7"/>
+<text x="782" y="3158" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="21" font-weight="700" fill="#214F79" text-anchor="start"><tspan x="782" dy="0">response_formatter</tspan></text>
+<text x="782" y="3191" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="400" fill="#344F60" text-anchor="start"><tspan x="782" dy="0">Final answer + source references</tspan><tspan x="782" dy="29">Warning if unverified</tspan><tspan x="782" dy="29">Notes: calculations, left-out parts</tspan><tspan x="782" dy="29">Refusal → say what was searched</tspan></text>
 </g>
 <g class="graph-node" data-node="__end__">
-<rect x="874" y="3120" width="152" height="48" rx="22" fill="#102B40" stroke="#102B40" stroke-width="1.7"/>
-<text x="950" y="3151" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle"><tspan x="950" dy="0">END</tspan></text>
+<rect x="874" y="3410" width="152" height="48" rx="22" fill="#102B40" stroke="#102B40" stroke-width="1.7"/>
+<text x="950" y="3441" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle"><tspan x="950" dy="0">END</tspan></text>
 </g>
-<text x="109" y="3202" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="400" fill="#6E8495" text-anchor="start"><tspan x="109" dy="0">Completed responses → END</tspan></text>
+<text x="109" y="3492" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="400" fill="#6E8495" text-anchor="start"><tspan x="109" dy="0">Completed responses → END</tspan></text>
 </svg>

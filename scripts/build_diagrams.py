@@ -125,6 +125,62 @@ FINAL = {
     "reranker": ["Voyage rerank-2.5", "Local BGE as fallback", "Keep top 12"],
 }
 
+# The current graph also shows what changed after version 4 was measured (the exact calculator,
+# the access filter on neighbouring chunks, the live reranker) and spells out details of each node.
+# Version diagrams keep the labels of the system as it was measured.
+LIVE = {
+    "guardrails": [
+        "Prompt injection: local LLM Guard,",
+        "then a model for borderline input",
+        "Resolve follow-up context",
+    ],
+    "metadata_extractor": [
+        "Pick company + years from what",
+        "this user can access",
+        "Company required; no year →",
+        "latest available year",
+        "Record what is unavailable",
+    ],
+    "retrieval": [
+        "Question + finance terms",
+        "Meaning (voyage-finance-2) +",
+        "keyword (BM25) search",
+        "Filter: access, company, year",
+        "100 each, fused by rank → 100",
+    ],
+    "reranker": [
+        "Voyage reranker · keep top 12",
+        "Measured with rerank-2.5",
+        "Live site: rerank-3",
+        "Fallback: local BGE (off live)",
+    ],
+    "grader": ["Drop other companies/years", "Small model keeps relevant chunks"],
+    "query_rewriter": ["Rewrite using the grader's reasons", "At most 2 retries"],
+    "context_expander": ["Add the chunk before and after", "each kept chunk (size-capped)", "Same access filter"],
+    "generator": [
+        "Draft from evidence + recent chat",
+        "Answer the available parts",
+        "Number rules: units, year, precision",
+        "Exact calculator for arithmetic",
+        "Revision: last draft + feedback",
+    ],
+    "hallucination_checker": [
+        "Check the draft against sources",
+        "Calculations: check their inputs",
+        "Failed → feedback; 1 revision max",
+    ],
+    "response_formatter": [
+        "Final answer + source references",
+        "Warning if unverified",
+        "Notes: calculations, left-out parts",
+        "Refusal → say what was searched",
+    ],
+}
+LIVE_BEFORE_START = (
+    "JWT + open session → question quota → conversation ownership → parse /escalate → "
+    "redact personal data (names kept) → wait for a slot → state and trace"
+)
+
 VERSIONS = [
     Version(
         slug="v0-baseline",
@@ -240,8 +296,8 @@ def rect(x, y, w, h, fill, stroke="none", rx=14, width=1.7, dash="") -> str:
     )
 
 
-def layout(v: Version) -> dict[str, Box]:
-    labels = {**BASE, **v.labels}
+def layout(v: Version, live: bool = False) -> dict[str, Box]:
+    labels = {**BASE, **v.labels, **(LIVE if live else {})}
     boxes: dict[str, Box] = {}
 
     def main(name, y, kind):
@@ -522,7 +578,7 @@ def results(v: Version, top: int) -> tuple[list[str], int]:
 
 
 def build(v: Version, main: bool = False) -> tuple[str, int]:
-    boxes = layout(v)
+    boxes = layout(v, live=main)
     end_y = max(boxes["response_formatter"].bottom, boxes["blocked_response"].bottom) + 110
     total = end_y + 48 + 60
     result_parts: list[str] = []
@@ -530,6 +586,11 @@ def build(v: Version, main: bool = False) -> tuple[str, int]:
         result_parts, bottom = results(v, end_y + 90)
         total = bottom + 50
     redaction = f"redact personal data ({v.redaction})"
+    before_start = (
+        LIVE_BEFORE_START
+        if main
+        else f"JWT + conversation ownership → parse /escalate → {redaction} → prepare state and trace"
+    )
     before = [
         rect(
             62,
@@ -545,8 +606,8 @@ def build(v: Version, main: bool = False) -> tuple[str, int]:
         text(
             86,
             251,
-            [f"JWT + conversation ownership → parse /escalate → {redaction} → prepare state and trace"],
-            22,
+            [before_start],
+            22 if not main else 20,
             400,
             "#344D60",
         ),
