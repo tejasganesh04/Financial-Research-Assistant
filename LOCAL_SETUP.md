@@ -113,6 +113,9 @@ filings, so supported permission categories do not imply that matching documents
 - Signing in returns a 60-minute access token, kept only in the page's memory, and sets a refresh
   token in an httpOnly, `SameSite=Strict` cookie that page scripts cannot read. The page renews
   the access token before it expires and after a reload.
+- A browser holds one account at a time, because every tab shares the refresh cookie. Signing in
+  to another account in any tab ends the previous session and signs the other tabs out with a
+  message; use a private window to work as two accounts at once.
 - Refresh tokens rotate on every use; reusing an old one ends the session. A session ends after
   7 days without use or 30 days after sign-in (`SESSION_IDLE_DAYS`, `SESSION_MAX_DAYS`).
 - Five wrong passwords in a row lock the account for 15 minutes; sign-in attempts are also

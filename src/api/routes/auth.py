@@ -153,6 +153,13 @@ async def login(body: LoginRequest, request: Request, response: Response, pool=D
 
     new_hash = passwords.hash_password(body.password) if passwords.needs_rehash(account.password_hash) else None
     await user_store.record_login(pool, account.username, new_hash)
+    # The browser keeps one refresh cookie, so the new one replaces its previous session. End that
+    # session now rather than leave it open but unreachable, still usable by tabs holding its token.
+    previous = request.cookies.get(REFRESH_COOKIE)
+    if previous:
+        ended_for = await user_store.revoke_by_refresh_token(pool, previous, "web", "replaced_by_sign_in")
+        if ended_for:
+            await user_store.record_event(pool, "logout", username=ended_for, ip=ip, reason="replaced_by_sign_in")
     result = await _start_web_session(pool, account, request, response)
     await user_store.record_event(pool, "login", username=account.username, ip=ip, client="web")
     return result

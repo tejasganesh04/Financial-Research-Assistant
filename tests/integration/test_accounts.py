@@ -154,6 +154,23 @@ async def test_two_tabs_renewing_at_once_do_not_end_the_session(accounts):
         assert (await c.post("/v1/auth/refresh")).status_code == 200
 
 
+async def test_signing_in_again_in_the_same_browser_ends_the_session_it_replaces(accounts):
+    """A browser keeps one refresh cookie: a second sign-in (any account) ends the session it replaced,
+    so a tab still holding that session's access token cannot carry on with it."""
+    async with client() as browser, client() as elsewhere:
+        analyst_tab = await sign_in(browser, "analyst")
+        other_device = await sign_in(elsewhere, "analyst")
+        admin_tab = await sign_in(browser, "admin")
+        assert (await browser.get("/v1/auth/me", headers=bearer(analyst_tab))).status_code == 401
+        renewed = await browser.post("/v1/auth/refresh")
+        assert renewed.status_code == 200 and renewed.json()["user"]["user_id"] == "admin"
+        assert (await browser.get("/v1/auth/me", headers=bearer(admin_tab))).status_code == 200
+        # Only that browser's session ends; the same person's other devices keep working.
+        assert (await elsewhere.get("/v1/auth/me", headers=bearer(other_device))).status_code == 200
+        events = await user_store.recent_events(accounts, username="analyst")
+        assert any(e["event"] == "logout" and e["detail"].get("reason") == "replaced_by_sign_in" for e in events)
+
+
 async def test_sign_out_ends_the_session(accounts):
     async with client() as c:
         await sign_in(c)

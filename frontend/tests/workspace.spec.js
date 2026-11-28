@@ -1266,6 +1266,71 @@ test("signing out in one tab signs out the others", async ({ context }) => {
   ).toBeVisible();
 });
 
+test("signing in to another account in one tab signs the other tabs out with a reason", async ({
+  context,
+}) => {
+  const hrTab = await context.newPage();
+  await mockBackend(hrTab, { role: "hr" });
+  await login(hrTab, "hr");
+  const adminTab = await context.newPage();
+  await mockBackend(adminTab, { role: "admin" });
+  await login(adminTab, "admin");
+  await expect(hrTab.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
+  await expect(
+    hrTab.getByText(
+      "You signed in as Demo admin in another tab, so this tab was signed out.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  // The tab that signed in carries on.
+  await expect(adminTab.getByLabel("Ask a financial question")).toBeVisible();
+});
+
+test("a renewal that returns a different account never acts as that account", async ({
+  page,
+}) => {
+  const state = await mockBackend(page, { role: "hr" });
+  await login(page, "hr");
+  // The shared cookie now belongs to another account, as after a sign-in in a tab without messaging.
+  await page.route("**/v1/auth/refresh", (route) =>
+    route.fulfill({
+      json: {
+        access_token: "admin-token",
+        token_type: "bearer",
+        expires_in: 3600,
+        user: {
+          user_id: "admin",
+          name: "Demo admin",
+          role: "admin",
+          department: "IT",
+          permissions: {
+            allowed_doc_types: ["*"],
+            allowed_confidentiality: ["*"],
+          },
+        },
+      },
+    }),
+  );
+  const sentAsAdmin = [];
+  page.on("request", (request) => {
+    if (request.headers().authorization === "Bearer admin-token")
+      sentAsAdmin.push(request.url());
+  });
+  state.rejectNextToken = true;
+  // Any request now meets the rejected token; a background one may get there before this click.
+  await page
+    .getByRole("button", { name: "Refresh conversation list" })
+    .click({ timeout: 2000 })
+    .catch(() => {});
+  await expect(page.getByRole("heading", SIGN_IN_HEADING)).toBeVisible();
+  await expect(
+    page.getByText("You signed in as Demo admin in another tab", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(sentAsAdmin).toEqual([]);
+});
+
 test("a conversation can be deleted after confirmation", async ({ page }) => {
   const state = await mockBackend(page);
   state.threads = [

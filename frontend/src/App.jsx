@@ -11,6 +11,7 @@ import ResearchView, { ConversationList, useResearch } from "./Research.jsx";
 import { linkHandler, navigate, useLocation } from "./router.js";
 import {
   forgetSession,
+  onAccountReplaced,
   onSignedOutElsewhere,
   renewSession,
   signOut,
@@ -52,9 +53,18 @@ export default function App() {
       setUser(null);
       setNotice("You signed out in another tab.");
     });
+    // A browser holds one account at a time: every tab shares the same sign-in cookie.
+    const stopReplaced = onAccountReplaced((name) => {
+      setUser(null);
+      setNotice(
+        `${name ? `You signed in as ${name}` : "You signed in to another account"} in another tab, so this tab was signed out. ` +
+          "To use two accounts at once, open one in a private window.",
+      );
+    });
     return () => {
       window.removeEventListener("session-expired", expired);
       stopListening();
+      stopReplaced();
     };
   }, []);
 

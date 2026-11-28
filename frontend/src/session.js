@@ -11,12 +11,44 @@ let accessToken = null;
 let expiresAt = 0;
 let renewTimer = null;
 let inflight = null;
+// The account this page is signed in as. The browser keeps one refresh cookie for every tab, so a
+// sign-in to another account in any tab replaces this page's account too.
+let account = null;
+let replaced = false;
 
-// Tabs tell each other about signing out, so no tab keeps working on a session that has ended.
+// Tabs tell each other about signing in and out, so no tab keeps working on a session that has
+// ended or quietly carries on as a different person.
 const channel =
   typeof BroadcastChannel !== "undefined"
     ? new BroadcastChannel("financial-research-session")
     : null;
+
+function replaceAccount(name) {
+  forgetSession();
+  replaced = true;
+  window.dispatchEvent(
+    new CustomEvent("account-replaced", { detail: { name } }),
+  );
+}
+
+const replacedError = () =>
+  Object.assign(
+    new Error("This browser is now signed in to a different account."),
+    { accountReplaced: true },
+  );
+
+channel?.addEventListener("message", (event) => {
+  const data = event.data;
+  if (data?.type === "signed-in" && account && data.user !== account)
+    replaceAccount(data.name);
+});
+
+// Called with the other account's name when another tab signs this browser into it.
+export function onAccountReplaced(handler) {
+  const listener = (event) => handler(event.detail.name);
+  window.addEventListener("account-replaced", listener);
+  return () => window.removeEventListener("account-replaced", listener);
+}
 
 export function onSignedOutElsewhere(handler) {
   if (!channel) return () => {};
@@ -32,7 +64,14 @@ export const client = axios.create({ baseURL: "/v1", timeout: 20000 });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function remember(session) {
+function remember(session, { signedIn = false } = {}) {
+  // A renewal that comes back as someone else means another tab signed in to a different account:
+  // stop here rather than send this page's next request as that person.
+  if (!signedIn && account && session.user.user_id !== account) {
+    replaceAccount(session.user.name);
+    throw replacedError();
+  }
+  account = session.user.user_id;
   accessToken = session.access_token;
   const lifetime = session.expires_in * 1000;
   expiresAt = Date.now() + lifetime;
@@ -48,6 +87,7 @@ function remember(session) {
 
 export function forgetSession() {
   accessToken = null;
+  account = null;
   expiresAt = 0;
   clearTimeout(renewTimer);
 }
@@ -64,6 +104,8 @@ async function postRefresh() {
 // One renewal at a time, across tabs when the browser supports Web Locks: tabs share the refresh
 // cookie, and a refresh token works only once.
 export function renewSession() {
+  // After another tab took over the browser, only a new sign-in (or a reload) continues here.
+  if (replaced) return Promise.reject(replacedError());
   if (!inflight) {
     const run = async () => {
       try {
@@ -93,7 +135,14 @@ export async function signIn(username, password) {
     { username, password },
     { timeout: 20000 },
   );
-  return remember(response.data);
+  replaced = false;
+  const user = remember(response.data, { signedIn: true });
+  channel?.postMessage({
+    type: "signed-in",
+    user: user.user_id,
+    name: user.name,
+  });
+  return user;
 }
 
 export async function signOut() {
@@ -128,9 +177,11 @@ client.interceptors.response.use(
       config._renewed = true;
       try {
         await renewSession();
-      } catch {
+      } catch (renewal) {
         forgetSession();
-        window.dispatchEvent(new Event("session-expired"));
+        // A replaced account already has its own message; this is not an expiry.
+        if (!renewal?.accountReplaced)
+          window.dispatchEvent(new Event("session-expired"));
         return Promise.reject(error);
       }
       config.headers.Authorization = `Bearer ${accessToken}`;
