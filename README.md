@@ -6,6 +6,8 @@ answers grounded in documents available to their role. Explicit requests for
 extra access hold the drafted answer for Admin review before release. The same
 accounts can connect their own AI assistant, such as Claude Code, over MCP.
 
+**Live:** https://tejas-research.duckdns.org (invitation only; accounts are created by the administrator).
+
 ## Features
 
 - Invitation-only accounts (no sign-up) stored in PostgreSQL with scrypt password hashes,
@@ -103,19 +105,23 @@ changed, what changed, examples, and what was tried and dropped. Each version ha
 
 ## Use from Claude Code and other AI assistants (MCP)
 
-The app also serves its search as an [MCP](https://modelcontextprotocol.io) server at
-`http://localhost:8000/mcp`. An employee's assistant can list, search and read the documents
+The app also serves its search as an [MCP](https://modelcontextprotocol.io) server at `/mcp` on
+the same address as the web app. An employee's assistant can list, search and read the documents
 their role allows, then write the answer itself; answer checks and Admin approval stay in the app.
 
 ![Two ways to use the knowledge base](docs/diagrams/mcp-access.png)
 
 ```sh
+# The hosted app
+claude mcp add --transport http financial-research https://tejas-research.duckdns.org/mcp
+
+# A copy running locally
 claude mcp add --transport http financial-research http://localhost:8000/mcp
 ```
 
 Then run `/mcp` in Claude Code and choose **Authenticate**: a browser tab opens on the app, the
 user signs in with their usual account and allows access (OAuth). Claude Code renews its access
-hourly; a password change, deactivation or "sign out everywhere" stops it within the hour.
+by itself; a password change, deactivation or "sign out everywhere" stops it on its next call.
 
 On FinanceBench the search tool returns the answer page within its default 8 results for 145 of
 150 questions. The [MCP guide](docs/mcp-server.md) covers the tools, sign-in, limits and other clients.

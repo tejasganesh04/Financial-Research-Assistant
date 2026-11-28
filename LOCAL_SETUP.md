@@ -117,16 +117,15 @@ filings, so supported permission categories do not imply that matching documents
   7 days without use or 30 days after sign-in (`SESSION_IDLE_DAYS`, `SESSION_MAX_DAYS`).
 - Five wrong passwords in a row lock the account for 15 minutes; sign-in attempts are also
   limited per IP address. Each user may ask 60 questions an hour and 300 a day (`.env`).
-- Changing a password, "sign out everywhere" and deactivation end sessions at once; an access
-  token already issued stops working when it expires, within the hour.
+- Changing a password, "sign out everywhere" and deactivation take effect at once: every request
+  checks that the account is active and the session open, so the next one from that browser or AI
+  assistant is refused.
 
-Normal questions search within the user's permissions. To request extra access,
-place an explicit command on the first line, for example as HR:
-
-```text
-/escalate doc_type=filings
-What was Microsoft's total revenue in FY2016?
-```
+Normal questions search within the user's permissions. To request extra access for one
+question, a user selects **Ask with extra access** (on the welcome screen or below the message
+box) and ticks the documents they need; the welcome screen lists what their role can search.
+The app sends the request as a first line such as `/escalate doc_type=filings`, which can also be
+typed directly.
 
 Requested values are added to the user's ordinary scope for that question. A
 supported drafted answer from an expanded search waits for Admin approval.
@@ -152,9 +151,10 @@ the app shows the same steps with the configured address. See the [MCP guide](do
   checkpoints, conversations and approval state.
 - **`logs/traces/`:** local request reports, excluded from Git.
 
-Expand **Request details** beneath a question to find its request ID and report
-path. Provider-reported usage feeds token counts; dollar costs are estimates and
-can be incomplete when a model has no configured price.
+Each question's report is saved under `logs/traces/<request ID>/`. Users never see request IDs;
+administrators find them on the **Health** page (recent problems) and in LangSmith, where a
+question's run ID is its request ID. Provider-reported usage feeds token counts; dollar costs are
+estimates and can be incomplete when a model has no configured price.
 
 Optional source PDFs belong in `data/sample/`, matching the indexed filename.
 PDFs and downloaded datasets are not included in Git.
@@ -174,8 +174,9 @@ docker compose -f compose.minimal.yml -f compose.local.yml ps
 curl http://localhost:8000/v1/health
 ```
 
-Questions can consume provider credits. Provider limits are shown in the browser
-with the model and workflow stage; do not repeatedly submit a failed request.
+Questions can consume provider credits. When a provider's limit is reached, the browser shows a
+plain message and when to try again; the provider, model and step are recorded for administrators
+on the Health page and in the trace. Do not repeatedly submit a failed request.
 
 To stop services while preserving stored data:
 

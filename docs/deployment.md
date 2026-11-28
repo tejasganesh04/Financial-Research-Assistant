@@ -152,9 +152,10 @@ model. The figures appear as soon as people use the app; a restart only forgets 
 reported limits until the next question.
 
 **Tracing.** With `LANGCHAIN_TRACING_V2=true` and a `LANGCHAIN_API_KEY`, each question is a
-LangSmith run whose ID is the request ID (a failed answer shows its first 8 characters as a reference,
-the same "Ref" the Health page lists with a link to the trace), and each MCP tool call
-is a run named `mcp.<tool>` (the caller's token is never sent). Production writes no per-question
+LangSmith run whose ID is the request ID, and each MCP tool call
+is a run named `mcp.<tool>` (the caller's token is never sent). Users never see request IDs;
+administrators reach a trace from the Health page's recent problems (listed with a short "Ref") and
+from an approval request (**Open the trace in LangSmith**). Production writes no per-question
 report files (`REQUEST_TRACE_FILES=false`); locally they are kept under `logs/traces` for debugging
 and the FinanceBench scripts.
 
@@ -232,8 +233,8 @@ question quotas are counted in PostgreSQL. Run a single API container (the defau
 | Accounts | No sign-up; created by an administrator. Passwords hashed with scrypt; minimum 12 characters. |
 | Sign-in | Lockout after repeated failures; attempts limited per IP; every attempt logged. |
 | Web sessions | 60-minute access token in page memory only; rotating refresh token in an httpOnly, `Secure`, `SameSite=Strict` cookie limited to `/v1/auth`; reuse of an old refresh token ends the session. |
-| MCP | OAuth 2.1 with PKCE and dynamic registration; consent by the signed-in user; tokens bound to the MCP address; rotating refresh tokens checked against the account at renewal. |
-| Revocation | Password change, sign-out-everywhere and deactivation end sessions immediately; access tokens expire within the hour. |
+| MCP | OAuth 2.1 with PKCE and dynamic registration; consent by the signed-in user; tokens bound to the MCP address; every call checks that the account is active and the connection open; rotating refresh tokens. |
+| Revocation | Password change, sign-out-everywhere and deactivation take effect immediately: every web and MCP request checks the account and session, so the next one is refused. |
 | Transport | HTTPS only via Caddy; HSTS; DNS-rebinding check on `/mcp`. |
 | Browser | Content Security Policy (own scripts only, no framing), `nosniff`, no referrer. |
 | Cost control | Per-user question quotas; per-user MCP call limits; registration limits per IP. |

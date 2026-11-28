@@ -51,9 +51,13 @@ Behaviour worth knowing:
 
 ## Connect Claude Code
 
-With the app running, add the server once:
+Add the server once, using the app's address followed by `/mcp`:
 
 ```sh
+# The hosted app
+claude mcp add --transport http financial-research https://tejas-research.duckdns.org/mcp
+
+# A copy running locally
 claude mcp add --transport http financial-research http://localhost:8000/mcp
 ```
 
@@ -94,8 +98,8 @@ address; see [deployment](deployment.md).
   conversations, approve escalations or change accounts; the MCP endpoint rejects the app's own
   tokens.
 - **Refresh tokens** rotate on every use and are stored only as hashes. Reusing an old one ends the
-  connection. Renewal checks the account, so a password change, deactivation or "sign out
-  everywhere" stops a client within the hour. Connections end after `SESSION_IDLE_DAYS` without use
+  connection. A password change, deactivation or "sign out everywhere" is refused on the client's
+  next call, and renewal checks the account as well. Connections end after `SESSION_IDLE_DAYS` without use
   (default 7) or `SESSION_MAX_DAYS` after approval (default 30).
 - **Disconnect** a client under Account → Sessions in the app; administrators can end any user's
   sessions from the Users page. Clients can also revoke their own tokens at `/revoke`.
@@ -111,7 +115,8 @@ address; see [deployment](deployment.md).
   DNS-rebinding attacks from web pages. Add your domain when serving beyond localhost.
 - **Audit log.** Every tool call logs one line (`src.mcp_server.audit`) with the user, role, session
   id, tool, filters, result count, status and duration. Query text is not logged; its length is.
-  Connections and disconnections appear in the app's Activity log.
+  Each call is also summarised for the admin Health page. Connections and disconnections appear in
+  the app's Activity log.
 
 ## Measured
 
@@ -156,7 +161,8 @@ The answer pages were in the results in every case; the mistakes came from choos
   adding documents.
 - Access tokens are signed with the app's `JWT_SECRET`. Rotating the secret ends every access token
   at once (refresh tokens keep working and issue new ones).
-- A role change applies when the client next renews its access token, within the hour.
+- An account's role cannot be changed in place. To give someone a different role, create a new
+  account and deactivate the old one; the old account's connections stop at once.
 - Answers written by an external assistant are not checked by the app. Use the in-app assistant
   where answers must be verified or approved.
 
@@ -169,4 +175,4 @@ The answer pages were in the results in every case; the mistakes came from choos
 | Sign-in fails with "invalid_request ... resource" | The client was added with a different address than `PUBLIC_URL`; use the address shown on the Connect page. |
 | `421` / "Invalid Host header" | Add the host name to `MCP_ALLOWED_HOSTS`. |
 | `503` "The MCP server is not running" | `MCP_ENABLED` is false, or the API is still starting. |
-| Claude Code shows "Failed to connect" | Start the app (`make up`) and check `http://localhost:8000/v1/health`. |
+| Claude Code shows "Failed to connect" | Check the address with `claude mcp get financial-research`, then the app's health: `https://<your address>/v1/health`, or for a local copy start it (`make up`) and open `http://localhost:8000/v1/health`. |

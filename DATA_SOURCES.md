@@ -12,7 +12,7 @@ The `financial_docs` collection was seeded from the public snapshot:
 - FinanceBench paper: https://arxiv.org/abs/2311.11944.
 - Dataset/snapshot license stated in the manifest: CC BY-NC 4.0.
 
-The code's MIT license does not replace the separate dataset terms. The
+The dataset's terms apply to the data, separately from this code. The
 published snapshot supplies extracted text, metadata, and precomputed vectors;
 it does not supply every source PDF as a locally available download.
 
